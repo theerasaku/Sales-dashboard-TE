@@ -4,6 +4,11 @@
 > **ทุก session ที่มาเขียนโค้ด: อ่านไฟล์นี้ให้จบก่อนเริ่มเสมอ**
 > v2 (20 ก.ค. 2026) เพิ่ม: AI Intake (Obsidian/Notion/กระดาษ/นามบัตร) · Archive แสดง/ซ่อนงานจบแล้ว · แถบ Supplier
 
+**พิกัดโปรเจกต์ (ของจริง):**
+- repo: `Sales-dashboard-TE` — <https://github.com/theerasaku/Sales-dashboard-TE> (public)
+- เว็บ: <https://theerasaku.github.io/Sales-dashboard-TE/> (GitHub Pages เสิร์ฟจาก `docs/`)
+- ⚠️ prototype v3 ที่มีข้อมูลลูกค้าจริงเก็บที่ `_local/` ซึ่ง gitignore ไว้ — **ห้าม commit**
+
 ## กติกาการทำงาน (สำคัญที่สุด — ทำตามทุก step)
 1. ทำ **ทีละ 1 step** ตาม Roadmap ด้านล่าง อย่าข้าม
 2. จบ step แล้ว **commit + push ขึ้น GitHub ทุกครั้ง** (งานค้างจะไม่หาย)
@@ -114,5 +119,5 @@ F1 App Shell + Login · F2 Data Adapter · F3 Dashboard ภาพรวม · F4
 
 ---
 ## สถานะโครงการ
-**ยังไม่เริ่ม step ใด — เริ่มที่ step 0.1**
+**ล่าสุด: 0.1 เสร็จ (Pages เปิดใช้แล้ว) + 1.1 เขียน SQL เสร็จ — ถัดไป 0.2 สมัคร Supabase แล้วรัน SQL ทั้ง 3 ไฟล์**
 _(เมื่อทำ step เสร็จ ให้อัปเดตบรรทัดนี้ เช่น "ล่าสุด: 1.3 เสร็จ, ถัดไป 1.4" แล้ว commit ไฟล์นี้)_
