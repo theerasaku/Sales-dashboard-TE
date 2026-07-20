@@ -1,0 +1,11 @@
+.DS_Store
+node_modules/
+*.log
+
+# ห้ามหลุดขึ้น public repo
+.env
+.env.*
+**/secrets.js
+**/service_role*
+data/*.json
+export/

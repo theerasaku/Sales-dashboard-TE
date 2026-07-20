@@ -1,0 +1,5 @@
+-- ข้อมูลตั้งต้น — ห้ามใส่ข้อมูลลูกค้าจริง (repo เป็น public)
+-- เนื้อหาจริงมาใน Phase 1.1
+--
+-- ใส่ได้แค่: teams (GOV.1, TE-IMP, GOV.4, System Project),
+--            app_settings (เป้า 80MB), lead_sources 8 เส้นทาง

@@ -1,0 +1,10 @@
+-- TE Sales Dashboard — schema
+-- เขียนเป็น SQL มาตรฐานให้ย้ายค่ายได้ (Supabase / Postgres ทั่วไป)
+-- เนื้อหาจริงมาใน Phase 1.1 (B1 Users & Teams, B2 Pending Projects)
+--
+-- แผนตาราง:
+--   B1  teams, profiles (role: admin|sale, team)
+--   B2  pending_projects, follow_logs, project_contacts
+--   B3  customers, customer_logs                      (Phase 2.1)
+--   B4  activities                                     (Phase 2.1)
+--   B5  lead_sources, expo_customers, app_settings     (Phase 3.1)
