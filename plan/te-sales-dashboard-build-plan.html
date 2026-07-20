@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แผนสร้าง TE Sales Dashboard — ระบบถาวรบน GitHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#5645d4; --primary-pressed:#4534b3; --primary-soft:#efeafb;
+    --navy:#0a1530;
+    --link:#0075de;
+    --canvas:#ffffff; --surface:#f6f5f4; --surface-soft:#fafaf9;
+    --hairline:#e5e3df; --hairline-soft:#ede9e4; --hairline-strong:#c8c4be;
+    --ink:#1a1a1a; --charcoal:#37352f;
+    --slate:#5d5b54; --steel:#787671; --stone:#a4a097;
+    --on-dark:#ffffff; --on-dark-muted:#a4a097;
+    --tint-peach:#ffe8d4; --tint-rose:#fde0ec; --tint-mint:#d9f3e1;
+    --tint-lavender:#e6e0f5; --tint-sky:#dcecfa; --tint-yellow:#fef7d6;
+    --tint-yellow-bold:#f9e79f; --tint-cream:#f8f5e8;
+    --green:#1aae39; --red:#d1392b; --amber:#b5790a; --blue:#0a5a9e;
+    --font:'Inter','Noto Sans Thai',-apple-system,system-ui,'Segoe UI',Helvetica,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font);background:var(--surface-soft);color:var(--ink);font-size:16px;line-height:1.6}
+  a{color:var(--link)}
+
+  .hero{background:var(--navy);color:var(--on-dark);padding:52px 32px 60px;position:relative;overflow:hidden;text-align:center}
+  .hero .dot{position:absolute;border-radius:9999px;opacity:.9}
+  .hero h1{font-size:38px;font-weight:800;line-height:1.15;letter-spacing:-.5px;position:relative}
+  .hero .sub{font-size:16.5px;font-weight:400;color:var(--on-dark-muted);margin-top:12px;position:relative;max-width:700px;margin-left:auto;margin-right:auto}
+  .hero .sub b{color:var(--on-dark);font-weight:500}
+  @media(max-width:767px){.hero{padding:38px 20px 48px}.hero h1{font-size:25px}}
+
+  .stats{max-width:1040px;margin:-30px auto 0;padding:0 32px;position:relative}
+  .stats-inner{background:var(--canvas);border:1px solid var(--hairline);border-radius:12px;
+    box-shadow:rgba(15,15,15,.16) 0 22px 44px -8px;display:flex;flex-wrap:wrap}
+  .stat{flex:1 1 130px;padding:16px 20px;text-align:center;border-right:1px solid var(--hairline-soft)}
+  .stat:last-child{border-right:none}
+  .stat .num{font-size:24px;font-weight:800;color:var(--ink)}
+  .stat .lbl{font-size:12px;color:var(--steel);margin-top:2px}
+  @media(max-width:600px){.stat{flex:1 1 50%;border-bottom:1px solid var(--hairline-soft)}}
+
+  .qnav{max-width:1040px;margin:24px auto 0;padding:0 32px;display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+  .qnav a{font-size:13.5px;font-weight:600;color:var(--charcoal);text-decoration:none;
+    background:var(--canvas);border:1px solid var(--hairline);border-radius:9999px;padding:7px 15px;transition:all .15s}
+  .qnav a:hover{background:var(--primary-soft);border-color:var(--primary);color:var(--primary-pressed)}
+
+  main{max-width:1040px;margin:0 auto;padding:36px 32px 24px}
+  @media(max-width:767px){main{padding:24px 16px}.stats,.qnav{padding:0 16px}}
+
+  section{margin-bottom:52px;scroll-margin-top:16px}
+  .sec-head{display:flex;align-items:flex-start;gap:14px;border-radius:14px;padding:20px 22px;margin-bottom:18px}
+  .sec-head .ico{font-size:28px;line-height:1}
+  .sec-head h2{font-size:21px;font-weight:800;color:var(--charcoal)}
+  .sec-head p{font-size:14px;color:var(--slate);margin-top:3px}
+
+  .card{background:var(--canvas);border:1px solid var(--hairline);border-radius:12px;padding:18px 20px;margin-bottom:14px}
+  .card h3{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card p{font-size:14.5px;color:var(--slate);line-height:1.65}
+  .card p + p{margin-top:8px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+
+  .sz{display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border-radius:6px;padding:2px 9px;letter-spacing:.3px}
+  .sz.s{background:var(--tint-mint);color:#0e7a28}
+  .sz.m{background:var(--tint-lavender);color:#4a2b8a}
+  .sz.l{background:var(--tint-peach);color:#8a4a10}
+
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:9999px;padding:3px 10px;white-space:nowrap}
+  .pill.be{background:var(--tint-sky);color:var(--blue)}
+  .pill.fe{background:var(--tint-rose);color:#a1266b}
+  .pill.rec{background:var(--tint-mint);color:#0e7a28}
+  .pill.alt{background:var(--tint-yellow-bold);color:var(--amber)}
+
+  .rulebox{background:var(--tint-yellow);border:1px solid var(--tint-yellow-bold);border-left:5px solid var(--amber);border-radius:12px;padding:18px 22px;margin-bottom:14px}
+  .rulebox h3{font-size:17px;font-weight:700;color:var(--charcoal);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .rulebox p{font-size:14.5px;color:var(--charcoal);line-height:1.7}
+
+  .table-wrap{background:var(--canvas);border:1px solid var(--hairline);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{text-align:left;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--steel);
+    background:var(--surface);padding:11px 14px;border-bottom:1px solid var(--hairline);white-space:nowrap;vertical-align:top}
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--hairline-soft);vertical-align:top;line-height:1.55}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--surface-soft)}
+  td .mut{color:var(--steel);font-size:12.5px}
+  tr.rec-row{background:var(--tint-mint)}
+  tr.rec-row:hover{background:var(--tint-mint)}
+
+  /* architecture diagram */
+  .arch{display:flex;flex-direction:column;gap:8px;align-items:center;padding:6px 0}
+  .arch-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%}
+  .node{background:var(--canvas);border:1.5px solid var(--hairline-strong);border-radius:10px;padding:10px 16px;font-size:13.5px;text-align:center;font-weight:700;color:var(--charcoal);flex:0 1 auto}
+  .node small{display:block;font-weight:400;color:var(--steel);font-size:11.5px;margin-top:3px;line-height:1.45}
+  .node.hl{border-color:var(--primary);background:var(--primary-soft)}
+  .node.dim{border-style:dashed;font-weight:600}
+  .arrow{font-size:17px;color:var(--stone);line-height:1;text-align:center}
+
+  ul.plain{margin:6px 0 0 0;padding-left:20px}
+  ul.plain li{font-size:14px;color:var(--slate);margin-bottom:6px;line-height:1.6}
+  ul.plain li b{color:var(--charcoal)}
+
+  /* module cards */
+  .bl{border:1px solid var(--hairline);border-radius:12px;padding:16px 18px;background:var(--canvas);position:relative}
+  .bl .bl-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+  .bl .bl-top .em{font-size:22px;line-height:1}
+  .bl .bl-top .tt{flex:1;min-width:0}
+  .bl .bl-top h3{font-size:15px;font-weight:700;color:var(--ink);line-height:1.35}
+  .bl .meta-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+  .bl p{font-size:13.5px;color:var(--slate);line-height:1.6;margin-top:6px}
+  .bl .mode{font-size:12px;color:var(--steel);margin-top:8px;padding-top:8px;border-top:1px dashed var(--hairline)}
+  .bl .mode b{color:var(--charcoal)}
+
+  /* repo tree + prompt */
+  .tree{background:var(--navy);color:#d7e3f4;border-radius:12px;padding:18px 20px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.75;overflow-x:auto;white-space:pre}
+  .tree .c{color:#7e94b8}
+  .prompt{background:var(--navy);color:#e9e6ff;border-radius:9px;padding:12px 14px 11px;font-size:12.5px;line-height:1.65;margin-top:10px;font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap}
+  .prompt .pl{display:block;font-size:9.5px;letter-spacing:1.2px;color:#948cdd;margin-bottom:5px;font-weight:700;font-family:var(--font)}
+
+  /* roadmap steps */
+  .phase-head{display:flex;align-items:center;gap:12px;margin:26px 0 12px;flex-wrap:wrap}
+  .phase-head .pnum{background:var(--navy);color:#fff;font-weight:800;font-size:13px;border-radius:8px;padding:5px 12px;letter-spacing:.4px}
+  .phase-head h3{font-size:17.5px;font-weight:800;color:var(--charcoal)}
+  .phase-head .goal{font-size:13px;color:var(--steel)}
+  .step{display:flex;gap:12px;padding:14px 16px;border:1px solid var(--hairline);border-radius:11px;background:var(--canvas);margin-bottom:10px}
+  .step .no{flex:none;min-width:40px;height:30px;border-radius:8px;background:var(--primary-soft);color:var(--primary-pressed);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:12.5px;padding:0 6px}
+  .step .st-body{flex:1;min-width:0}
+  .step h4{font-size:14.5px;font-weight:700;color:var(--ink);display:flex;gap:8px;align-items:center;flex-wrap:wrap;line-height:1.4}
+  .step p{font-size:13px;color:var(--slate);margin-top:4px;line-height:1.6}
+  .step p b{color:var(--charcoal)}
+
+  footer{border-top:1px solid var(--hairline);padding:24px 32px 44px;text-align:center;font-size:12.5px;color:var(--steel);line-height:1.7}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="dot" style="width:13px;height:13px;background:#ff64c8;top:30px;left:12%"></div>
+  <div class="dot" style="width:9px;height:9px;background:#f5d75e;top:80px;left:22%"></div>
+  <div class="dot" style="width:11px;height:11px;background:#2a9d99;top:44px;right:18%"></div>
+  <div class="dot" style="width:8px;height:8px;background:#7b3ff2;top:100px;right:11%"></div>
+  <div class="dot" style="width:10px;height:10px;background:#dd5b00;bottom:34px;left:9%"></div>
+  <div class="dot" style="width:7px;height:7px;background:#1aae39;bottom:48px;right:23%"></div>
+  <h1>แผนสร้าง TE Sales Dashboard</h1>
+  <div class="sub">ยกระดับจาก prototype ไฟล์เดียว → <b>ระบบถาวรบน GitHub + ฐานข้อมูลกลาง</b> ทีมขายใช้พร้อมกันได้จากมือถือทุกเครื่อง · แผนนี้คือพิมพ์เขียวให้ <b>Opus เขียนโค้ดทีละ step</b> พร้อม prompt สำเร็จรูปทุกขั้น</div>
+</div>
+
+<div class="stats">
+  <div class="stats-inner">
+    <div class="stat"><div class="num">4</div><div class="lbl">Phase (0–3)</div></div>
+    <div class="stat"><div class="num">7 + 10</div><div class="lbl">Module (Backend + Frontend)</div></div>
+    <div class="stat"><div class="num">20</div><div class="lbl">Step พร้อม prompt สั่ง Opus</div></div>
+    <div class="stat"><div class="num">1 URL</div><div class="lbl">ใช้ได้ทุกเครื่อง iPhone·S24·iPad</div></div>
+  </div>
+</div>
+
+<div class="qnav">
+  <a href="#arch">🏗️ สถาปัตยกรรม</a>
+  <a href="#db">🗄️ เลือกฐานข้อมูล</a>
+  <a href="#backend">⚙️ Backend 7 Module</a>
+  <a href="#frontend">🎨 Frontend 10 Module</a>
+  <a href="#security">🔐 Security</a>
+  <a href="#mobile">📱 Mobile</a>
+  <a href="#repo">🐙 โครงสร้าง GitHub</a>
+  <a href="#roadmap">🗺️ Roadmap 20 Step</a>
+  <a href="#opus">🤖 กติกาสั่ง Opus</a>
+</div>
+
+<main>
+
+  <!-- V2 UPDATE BANNER -->
+  <section id="v2" style="margin-bottom:34px">
+    <div class="rulebox" style="border-left-color:var(--primary);background:var(--primary-soft);border-color:#d8cef5">
+      <h3>🆕 อัปเดตแผน v2 (20 ก.ค. 2026) — เพิ่ม 4 ความสามารถ</h3>
+      <p><b>1) AI Intake</b> — ให้ AI ช่วยอัปเดต/กรอกข้อมูลเข้าแอพจากข้อมูลเดิมบน Obsidian · Notion · หรือแม้แต่ฟอร์มกระดาษ/ลายมือ (module F10, step 3.5) · <b>2) สแกนนามบัตร → Book 3 สี</b> — ถ่ายรูปนามบัตรแล้ว AI แกะเป็นรายชื่อลูกค้าให้อัตโนมัติ (รวมอยู่ใน F10) · <b>3) แสดง/ซ่อนงานที่จบแล้ว</b> — archive งาน Pending / ลูกค้า Book 3 สี ที่ไม่ active หน้าจอโล่งแต่ข้อมูลไม่หาย (step 2.5) · <b>4) แถบ Supplier</b> — ฐาน sourcing ผู้ขาย ผู้รับเหมา วัสดุก่อสร้าง วัตถุดิบ บริการ แบ่งกลุ่มย่อยภายในแถบได้ (B7 + F9, step 3.4)</p>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section id="arch">
+    <div class="sec-head" style="background:var(--tint-sky)">
+      <span class="ico">🏗️</span>
+      <div>
+        <h2>สถาปัตยกรรมภาพรวม — แยก 3 ชั้น เปลี่ยนชิ้นไหนก็ไม่กระทบชิ้นอื่น</h2>
+        <p>หัวใจคือชั้น Data Adapter ที่ทำให้ "ยังไม่ตัดสินใจเรื่อง DB" ไม่ใช่ปัญหา — เริ่มสร้างได้เลยวันนี้</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="arch">
+        <div class="arch-row">
+          <div class="node">📱 iPhone · Samsung S24 · iPad<small>Safari / Chrome · ติดตั้งเป็น PWA ได้</small></div>
+          <div class="node">💻 Desktop<small>ทุก browser</small></div>
+        </div>
+        <div class="arrow">▼</div>
+        <div class="arch-row">
+          <div class="node hl">🎨 Frontend — GitHub Pages<small>HTML/CSS/JS แยกไฟล์เป็น module · ยก UI จาก prototype v3 เดิม<br>URL เดียว https://&lt;user&gt;.github.io/te-sales-dashboard</small></div>
+        </div>
+        <div class="arrow">▼</div>
+        <div class="arch-row">
+          <div class="node hl">🔌 Data Adapter (ชั้นกลาง)<small>UI เรียกฟังก์ชันกลาง เช่น db.listPending() · ไม่รู้จัก DB ตรงๆ<br>เปลี่ยน DB = เขียน adapter ใหม่ 1 ไฟล์ ไม่แตะ UI เลย</small></div>
+        </div>
+        <div class="arrow">▼</div>
+        <div class="arch-row">
+          <div class="node">🐘 Supabase<small>PostgreSQL + Auth + RLS<br><b style="color:#0e7a28">ตัวเลือกแนะนำ</b></small></div>
+          <div class="node dim">🗃️ SQLite + FastAPI<small>บน VPS Hostinger ที่มีอยู่<br>ตัวเลือกสำรอง</small></div>
+          <div class="node dim">📄 Local JSON<small>โหมด offline / ฉุกเฉิน<br>พฤติกรรมเดิมของ prototype</small></div>
+        </div>
+        <div class="arrow">▼</div>
+        <div class="arch-row">
+          <div class="node dim">🔗 App อื่นต่อผ่าน REST API ได้ทันที<small>Excel · Power BI · LINE Bot · AI agent · มือถือ app ในอนาคต — เพราะข้อมูลอยู่ใน DB มาตรฐาน ไม่ได้ฝังในไฟล์ HTML</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rulebox">
+      <h3>💡 หลักออกแบบ 3 ข้อที่ตอบโจทย์ทุกความต้องการ</h3>
+      <p><b>1) Schema เป็น SQL มาตรฐาน</b> — ตารางออกแบบครั้งเดียวใช้ได้ทั้ง PostgreSQL (Supabase) และ SQLite ย้ายค่ายได้ตลอด · <b>2) UI คุยผ่าน Adapter เท่านั้น</b> — สลับ DB ภายหลังโดยไม่รื้อหน้าจอ · <b>3) ยกของเดิมมาใช้</b> — ฟอร์ม/ตาราง/กราฟจาก prototype v3 (artifact pending-project-dashboard) ยกมาได้เลย Opus ไม่ต้องออกแบบใหม่ ประหยัด token มาก</p>
+    </div>
+  </section>
+
+  <!-- DATABASE -->
+  <section id="db">
+    <div class="sec-head" style="background:var(--tint-lavender)">
+      <span class="ico">🗄️</span>
+      <div>
+        <h2>เปรียบเทียบฐานข้อมูล — เตรียมไว้ทุกตัวเลือก ตัดสินใจตอน Phase 0</h2>
+        <p>ทุกตัวใช้ schema เดียวกันได้ เพราะออกแบบเป็น SQL มาตรฐานตั้งแต่ต้น</p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:130px">ตัวเลือก</th>
+            <th>ค่าใช้จ่าย</th>
+            <th>ความง่าย</th>
+            <th>ต่อกับ App อื่น</th>
+            <th>Security</th>
+            <th>การดูแล</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="rec-row">
+            <td><b>Supabase</b> <span class="pill rec">แนะนำ</span><div class="mut">PostgreSQL บนคลาวด์</div></td>
+            <td>ฟรี (500MB DB, 50k users) เกินพอหลายปี</td>
+            <td>สมัคร 10 นาที ไม่ต้องดูแลเซิร์ฟเวอร์</td>
+            <td>★★★ REST + Realtime API อัตโนมัติทุกตาราง</td>
+            <td>★★★ Auth + Row Level Security ในตัว</td>
+            <td>แทบไม่ต้องดูแล backup อัตโนมัติ</td>
+          </tr>
+          <tr>
+            <td><b>SQLite + FastAPI</b> <span class="pill alt">สำรอง</span><div class="mut">บน VPS Hostinger เดิม</div></td>
+            <td>ฟรี (ใช้ VPS ที่จ่ายอยู่แล้ว)</td>
+            <td>ต้องเขียน API เอง + ตั้ง HTTPS</td>
+            <td>★★☆ ต่อได้ผ่าน API ที่เขียนเอง</td>
+            <td>★☆☆ ต้องทำ auth/JWT เองทุกชิ้น</td>
+            <td>ดูแลเอง: update, backup, uptime</td>
+          </tr>
+          <tr>
+            <td><b>PocketBase</b><div class="mut">บน VPS Hostinger</div></td>
+            <td>ฟรี (ไฟล์เดียว รันบน VPS)</td>
+            <td>ติดตั้งง่าย มี admin UI ในตัว</td>
+            <td>★★☆ REST API + SDK อัตโนมัติ</td>
+            <td>★★☆ auth ในตัว แต่ต้องตั้ง rule เอง</td>
+            <td>ดูแลเอง แต่เบากว่า FastAPI</td>
+          </tr>
+          <tr>
+            <td><b>Firebase</b><div class="mut">Firestore NoSQL</div></td>
+            <td>ฟรี tier พอใช้</td>
+            <td>ง่าย SDK ครบ</td>
+            <td>★★☆ ผูกกับ Google ecosystem</td>
+            <td>★★☆ rules ภาษาเฉพาะตัว</td>
+            <td>ไม่ต้องดูแล แต่ NoSQL ทำรายงานซับซ้อนยาก</td>
+          </tr>
+          <tr>
+            <td><b>Google Sheets</b><div class="mut">เป็น DB จำแลง</div></td>
+            <td>ฟรี</td>
+            <td>คุ้นเคยที่สุด</td>
+            <td>★☆☆ ช้า, ติด quota, ไม่เหมาะ multi-user</td>
+            <td>★☆☆ แชร์ทั้งไฟล์ คุมรายแถวไม่ได้</td>
+            <td>ไม่เหมาะเป็นระบบหลัก — ใช้เป็นปลายทาง export แทน</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>📌 ข้อสรุปที่แผนนี้ใช้เดินหน้า</h3>
+      <p>Roadmap เขียนโดยยึด <b>Supabase เป็นเส้นทางหลัก</b> (ตอบครบทั้งความยืดหยุ่น ต่อ app อื่น security และไม่ต้องดูแลเซิร์ฟเวอร์) แต่ทุก step ที่แตะฐานข้อมูลจะสร้างผ่านไฟล์ <b>db/schema.sql</b> ที่เป็น SQL มาตรฐาน — ถ้าภายหลังอยากย้ายไป SQLite บน VPS หรือ PocketBase ใช้ schema เดิมได้ทันที และเขียน adapter เพิ่มอีก 1 ไฟล์เท่านั้น (step 1.3 เตรียมโครงรองรับไว้แล้ว)</p>
+    </div>
+  </section>
+
+  <!-- BACKEND MODULES -->
+  <section id="backend">
+    <div class="sec-head" style="background:var(--tint-mint)">
+      <span class="ico">⚙️</span>
+      <div>
+        <h2>Backend — 7 Module (ตาราง + สิทธิ์ + API)</h2>
+        <p>ทั้งหมดนิยามในไฟล์ SQL 3 ไฟล์: schema.sql (ตาราง) · policies.sql (สิทธิ์) · views.sql (สรุปตัวเลข)</p>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="bl">
+        <div class="bl-top"><span class="em">👤</span><div class="tt">
+          <h3>B1 · Users &amp; Teams</h3>
+          <div class="meta-row"><span class="pill be">BACKEND</span><span class="sz s">S</span></div>
+        </div></div>
+        <p>ตาราง <b>profiles</b> (ชื่อ, role: admin/sale, ทีม: GOV.1 / TE-IMP / GOV.4 / System Project) ผูกกับ Supabase Auth — admin คือเก๋ เห็นและแก้ได้ทั้งหมด, sale เห็นงานของทีมตัวเอง</p>
+        <div class="mode"><b>ตาราง:</b> profiles · teams</div>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📋</span><div class="tt">
+          <h3>B2 · Pending Projects</h3>
+          <div class="meta-row"><span class="pill be">BACKEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>หัวใจของระบบ — ครบตามฟอร์มกระดาษ 2 หน้า: PENDING NO., SITE, PROJECT DETAIL, QUOTATION NO, มูลค่า, OWNER/CONTRACTOR/DESIGNER/CONSULT, DECISION/PURCHASED DAY, CONTACT TO 1–3, COMPETITOR, Win plan, สถานะ funnel</p>
+        <div class="mode"><b>ตาราง:</b> pending_projects · follow_logs (DATE/BY/RESPONSE/NEXT DOING) · project_contacts · <b>มี field สถานะ active/จบแล้ว</b> (archive — step 2.5)</div>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📗</span><div class="tt">
+          <h3>B3 · Book 3 สี (Customers)</h3>
+          <div class="meta-row"><span class="pill be">BACKEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>ฐานลูกค้าตามฟอร์ม Potential — 🟢 สนิท/ซื้อประจำ · 🟡 มีโอกาส · 🔴 เพิ่งเริ่ม พร้อมช่อง Sale ผู้ดูแล และ log การติดต่อรายคน (รวมนามบัตร 11 รายที่ import จาก Obsidian แล้ว)</p>
+        <div class="mode"><b>ตาราง:</b> customers · customer_logs · <b>มี field สถานะ active/ไม่ active</b> (archive — step 2.5)</div>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📅</span><div class="tt">
+          <h3>B4 · Activities (แผนติดต่อลูกค้า)</h3>
+          <div class="meta-row"><span class="pill be">BACKEND</span><span class="sz s">S</span></div>
+        </div></div>
+        <p>กิจกรรมรายสัปดาห์ผูกกับ pending project หรือลูกค้า มีวันครบกำหนด + สถานะ เพื่อแจ้งเตือนงานเลยกำหนดบน dashboard</p>
+        <div class="mode"><b>ตาราง:</b> activities</div>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">🧭</span><div class="tt">
+          <h3>B5 · Lead Sources &amp; Settings</h3>
+          <div class="meta-row"><span class="pill be">BACKEND</span><span class="sz s">S</span></div>
+        </div></div>
+        <p>แหล่งงาน 8 เส้นทาง + ลิงก์ที่แก้ไขได้ (e-GP, G-LEAD, Data Center, กชช.2ค, กรมทรัพยากรน้ำ ฯลฯ), ลูกค้า Thai Water Expo 90 ราย + Prospect 37 ★, และค่าตั้งระบบ (เป้า 80 MB, แผนรายเดือน)</p>
+        <div class="mode"><b>ตาราง:</b> lead_sources · expo_customers · app_settings</div>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📊</span><div class="tt">
+          <h3>B6 · Dashboard Views</h3>
+          <div class="meta-row"><span class="pill be">BACKEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>SQL View / RPC สรุปตัวเลขให้หน้า Dashboard ดึงทีเดียวจบ — ยอดปิดเทียบเป้า 80 MB, pipeline coverage, funnel, มูลค่าตามแหล่ง, top 3 งานใหญ่, งานเลยกำหนด — คำนวณฝั่ง DB เร็วกว่าดึงทุกแถวมาคำนวณในมือถือ (นับเฉพาะงาน active)</p>
+        <div class="mode"><b>ไฟล์:</b> db/views.sql</div>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">🏭</span><div class="tt">
+          <h3>B7 · Suppliers (Sourcing)</h3>
+          <div class="meta-row"><span class="pill be">BACKEND</span><span class="sz m">M</span><span class="pill rec">ใหม่ v2</span></div>
+        </div></div>
+        <p>ฐานข้อมูล sourcing สำหรับทำงานโครงการให้แล้วเสร็จ — ผู้ขาย/ตัวแทนจำหน่าย, ผู้รับเหมา, วัสดุก่อสร้าง, วัตถุดิบ/อุปกรณ์ (ปั๊ม วาล์ว ท่อ media), บริการ (ขนส่ง เครน ทดสอบน้ำ) — <b>แบ่งกลุ่มหลัก → กลุ่มย่อย เพิ่ม/แก้เองได้</b> พร้อมเรตติ้ง ราคา/เงื่อนไข และประวัติว่าเคยใช้ในโครงการไหน</p>
+        <div class="mode"><b>ตาราง:</b> suppliers · supplier_categories (กลุ่ม/กลุ่มย่อย แก้ไขได้) · project_suppliers (ผูก supplier ↔ pending project)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FRONTEND MODULES -->
+  <section id="frontend">
+    <div class="sec-head" style="background:var(--tint-rose)">
+      <span class="ico">🎨</span>
+      <div>
+        <h2>Frontend — 10 Module (แยกไฟล์ แก้ทีละส่วนได้)</h2>
+        <p>ต่างจาก prototype เดิมที่เป็นไฟล์เดียว — แยกเป็น module เพื่อให้ Opus แก้ทีละไฟล์ ประหยัด token ต่อรอบ</p>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="bl">
+        <div class="bl-top"><span class="em">🏠</span><div class="tt">
+          <h3>F1 · App Shell + Login</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>โครงหน้าเว็บ, แท็บนำทาง (มือถือ = bottom bar), หน้า login/logout, จำ session, แสดงชื่อ+ทีมผู้ใช้ — ธีม Linear-style dark เดิมจาก prototype</p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">🔌</span><div class="tt">
+          <h3>F2 · Data Adapter Layer</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>ไฟล์ adapter.js กำหนดฟังก์ชันกลาง (list/get/create/update/delete ต่อ module) + supabase-adapter.js ตัวจริง + local-adapter.js สำหรับ offline — จุดยืดหยุ่นที่ทำให้เปลี่ยน DB ได้โดยไม่แตะ UI</p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📊</span><div class="tt">
+          <h3>F3 · Dashboard ภาพรวม</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>Executive Summary อ่านจบ 30 วินาที — hero เทียบเป้า 80 MB, สถานะตามแผน/ต้องเร่ง, กราฟแผน vs ปิดจริง, funnel, top 3 งานใหญ่, งานเลยกำหนด, ความคืบหน้ารายทีม (ยก layout จาก prototype v3)</p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📋</span><div class="tt">
+          <h3>F4 · Pending Project UI</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz l">L</span></div>
+        </div></div>
+        <p>ฟอร์มครบตามฟอร์มกระดาษ + ตาราง sort/ซ่อนคอลัมน์ + บันทึกติดตาม + Win plan + export CSV — บนมือถือตารางเปลี่ยนเป็นการ์ดแตะเปิดรายละเอียด + toggle <b>แสดง/ซ่อนงานที่จบแล้ว</b></p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📗</span><div class="tt">
+          <h3>F5 · Book 3 สี UI</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz l">L</span></div>
+        </div></div>
+        <p>ฐานลูกค้า 3 สี (Indigo/Terracotta/Forest ตาม palette ที่วางไว้) กรองตามสี/ทีม/sale ผู้ดูแล, log รายคน, ปุ่มยกลูกค้า → Pending Project + toggle <b>แสดง/ซ่อนลูกค้าที่ไม่ active</b> + รับข้อมูลจาก<b>สแกนนามบัตร</b> (ผ่าน F10)</p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📅</span><div class="tt">
+          <h3>F6 · แผนติดต่อลูกค้า UI</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>ปฏิทิน/รายการกิจกรรมรายสัปดาห์ ผูกกับงานและลูกค้า ป้ายแดงงานเลยกำหนด เห็นภาระงานของแต่ละ sale</p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">🧭</span><div class="tt">
+          <h3>F7 · แหล่งงาน + ทีมขาย + กลยุทธ์</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>แหล่งงาน 8 เส้นทางพร้อมลิงก์กดได้+แก้ได้, Thai Water Expo (★ Prospect ขึ้นก่อน, ปุ่ม → Pending), playbook กลยุทธ์ 8 เส้นทาง + เช็กลิสต์ 7 ข้อ, หน้าทีมขาย 4 ทีม</p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">📱</span><div class="tt">
+          <h3>F8 · PWA + Responsive</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz m">M</span></div>
+        </div></div>
+        <p>manifest.json + service worker → กด "Add to Home Screen" บน iPhone/iPad (Safari) และ S24 (Chrome) เปิดใช้เหมือน app จริง ไอคอน TE บนหน้าจอ, cache หน้าจอให้เปิดดูได้แม้เน็ตช้า</p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">🏭</span><div class="tt">
+          <h3>F9 · Supplier Tab UI</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz m">M</span><span class="pill rec">ใหม่ v2</span></div>
+        </div></div>
+        <p>แถบใหม่ "Supplier" — เลือกดูตาม<b>กลุ่มย่อยภายในแถบ</b> (ผู้ขาย · ผู้รับเหมา · วัสดุก่อสร้าง · วัตถุดิบ · บริการ), ค้นหา/กรองเร็ว, เพิ่ม-แก้กลุ่มย่อยเองได้จากหน้าจอ, การ์ดแต่ละเจ้าแสดงผู้ติดต่อ เรตติ้ง และโครงการที่เคยใช้ — กดจากหน้า Pending เพื่อหา supplier ให้งานนั้นได้เลย</p>
+      </div>
+
+      <div class="bl">
+        <div class="bl-top"><span class="em">🤖</span><div class="tt">
+          <h3>F10 · AI Intake — กรอกข้อมูลด้วย AI</h3>
+          <div class="meta-row"><span class="pill fe">FRONTEND</span><span class="sz l">L</span><span class="pill rec">ใหม่ v2</span></div>
+        </div></div>
+        <p>ปุ่ม "🤖 AI Import" ในแท็บ Pending / Book 3 สี / Supplier รับข้อมูลจาก 4 แหล่ง: <b>📇 รูปนามบัตร</b> → ลูกค้า Book 3 สี · <b>📄 รูปฟอร์มกระดาษ/ลายมือ</b> → Pending Project · <b>🗂️ Obsidian</b> · <b>📓 Notion</b> — AI แกะเป็นข้อมูลตาม schema ระบบแสดง <b>preview ให้ตรวจก่อนบันทึกจริง</b> พร้อมกติกากันซ้ำ (จับคู่เบอร์โทร/ชื่อบริษัท/PENDING NO.) และ log ทุกการเปลี่ยนแปลง</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECURITY -->
+  <section id="security">
+    <div class="sec-head" style="background:var(--tint-yellow)">
+      <span class="ico">🔐</span>
+      <div>
+        <h2>ระบบ Security — 5 ชั้นป้องกัน</h2>
+        <p>ข้อมูลลูกค้า/มูลค่างานเป็นความลับทางธุรกิจ — ออกแบบสิทธิ์ตั้งแต่วันแรก ไม่ใช่มาเสริมทีหลัง</p>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>1️⃣ Authentication — ต้อง login ก่อนเห็นทุกอย่าง</h3>
+        <p>Supabase Auth แบบ email + password · <b>ปิดรับสมัครสาธารณะ</b> — admin (เก๋) เป็นคนสร้าง/เชิญบัญชีให้ทีมเท่านั้น คนนอกเดา URL เจอก็เข้าไม่ได้ เห็นแค่หน้า login</p>
+      </div>
+      <div class="card">
+        <h3>2️⃣ Authorization — Row Level Security (RLS)</h3>
+        <p>กติกาสิทธิ์บังคับที่ <b>ตัวฐานข้อมูล</b> ไม่ใช่แค่หน้าจอ: admin เห็น/แก้ทั้งหมด · sale เห็นงานทีมตัวเอง แก้ได้เฉพาะงานที่ตัวเองดูแล — ต่อให้มีคนพยายามยิง API ตรงก็ทะลุไม่ได้</p>
+      </div>
+      <div class="card">
+        <h3>3️⃣ การจัดการ Key</h3>
+        <p>หน้าเว็บใช้เฉพาะ <b>anon key</b> (ออกแบบมาให้เปิดเผยได้ ความปลอดภัยจริงอยู่ที่ RLS) · <b>service_role key ห้ามอยู่ใน repo เด็ดขาด</b> · repo เป็น public (GitHub Pages ฟรี) จึงมีกติกา: ไม่มีข้อมูลลูกค้าหรือ secret ใดๆ ใน code — ข้อมูลทั้งหมดอยู่ใน DB เท่านั้น</p>
+      </div>
+      <div class="card">
+        <h3>4️⃣ การเชื่อมต่อ</h3>
+        <p>HTTPS ทุกเส้นทางอัตโนมัติ (GitHub Pages และ Supabase บังคับอยู่แล้ว) — ใช้บน 4G/WiFi สาธารณะได้ปลอดภัย</p>
+      </div>
+      <div class="card">
+        <h3>5️⃣ Audit + Backup</h3>
+        <p>ทุก record เก็บ created_by / updated_at อัตโนมัติ (รู้ว่าใครแก้อะไรเมื่อไร) · Supabase backup รายวันอัตโนมัติ + คงปุ่ม <b>export JSON/CSV</b> จาก prototype เดิมไว้เป็น backup มือ ก่อนปิดงานสำคัญกดเก็บได้เสมอ</p>
+      </div>
+      <div class="card">
+        <h3>✳️ ถ้าเลือกเส้นทาง VPS (SQLite/PocketBase)</h3>
+        <p>ต้องเพิ่มเอง: JWT auth, HTTPS certificate (Let's Encrypt), rate limit, backup cron — คือเหตุผลหลักที่ Supabase เป็นตัวเลือกแนะนำสำหรับทีมที่ไม่มี dev ประจำ</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MOBILE -->
+  <section id="mobile">
+    <div class="sec-head" style="background:var(--tint-cream)">
+      <span class="ico">📱</span>
+      <div>
+        <h2>ใช้บนมือถือ — iPhone · Samsung S24 · iPad</h2>
+        <p>ออกแบบ mobile-first เพราะงานขายส่วนใหญ่เกิดนอกออฟฟิศ</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📐 Responsive 3 ระดับ</h3>
+      <ul class="plain">
+        <li><b>โทรศัพท์ (≤430px — iPhone 15/16, S24):</b> แท็บนำทางย้ายลงล่างเป็น bottom bar แตะถนัดมือเดียว · ตาราง Pending เปลี่ยนเป็นการ์ดแตะเปิดรายละเอียด · ฟอร์มยาวแบ่งเป็นขั้น · ปุ่ม/จุดแตะ ≥44px ตามมาตรฐาน Apple/Google</li>
+        <li><b>แท็บเล็ต (431–1024px — iPad แนวตั้ง/แนวนอน):</b> layout 2 คอลัมน์ ตารางแสดงเต็มแบบเลื่อนข้างได้ เหมาะกางประชุมทีมขาย</li>
+        <li><b>Desktop (&gt;1024px):</b> เต็มจอเหมือน prototype เดิม</li>
+      </ul>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>📲 ติดตั้งเป็น App (PWA)</h3>
+        <p>iPhone/iPad: Safari → Share → <b>Add to Home Screen</b> · S24: Chrome → <b>Install app</b> — ได้ไอคอน TE บนหน้าจอ เปิดเต็มจอไม่มีแถบ browser เหมือน app จริง โดยไม่ต้องผ่าน App Store</p>
+      </div>
+      <div class="card">
+        <h3>⚡ เร็วบน 4G</h3>
+        <p>Service worker cache ตัวหน้าเว็บไว้ในเครื่อง — เปิดครั้งถัดไปโหลดทันที ดึงเฉพาะข้อมูลใหม่จาก DB · สัญญาณหลุดยังเปิดดูข้อมูลล่าสุดที่ cache ไว้ได้ (การบันทึกต้อง online)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPO -->
+  <section id="repo">
+    <div class="sec-head" style="background:var(--tint-sky)">
+      <span class="ico">🐙</span>
+      <div>
+        <h2>โครงสร้าง GitHub Repository</h2>
+        <p>repo เดียวเก็บทั้ง frontend + schema — โฟลเดอร์ docs/ คือส่วนที่ GitHub Pages เผยแพร่</p>
+      </div>
+    </div>
+
+    <div class="tree">te-sales-dashboard/
+├── docs/                    <span class="c">← GitHub Pages เสิร์ฟโฟลเดอร์นี้</span>
+│   ├── index.html           <span class="c">← โครงหน้า + โหลด module</span>
+│   ├── css/app.css          <span class="c">← ธีม Linear-dark + responsive</span>
+│   ├── js/
+│   │   ├── app.js           <span class="c">← F1 shell + router + auth</span>
+│   │   ├── config.js        <span class="c">← URL + anon key ของ Supabase</span>
+│   │   ├── data/
+│   │   │   ├── adapter.js            <span class="c">← F2 นิยามฟังก์ชันกลาง</span>
+│   │   │   ├── supabase-adapter.js   <span class="c">← ตัวจริง</span>
+│   │   │   └── local-adapter.js      <span class="c">← offline/สำรอง</span>
+│   │   └── modules/
+│   │       ├── dashboard.js  <span class="c">← F3</span>
+│   │       ├── pending.js    <span class="c">← F4</span>
+│   │       ├── book3.js      <span class="c">← F5</span>
+│   │       ├── activities.js <span class="c">← F6</span>
+│   │       ├── sources.js    <span class="c">← F7 (+ทีม+กลยุทธ์)</span>
+│   │       ├── suppliers.js  <span class="c">← F9 Supplier (ใหม่ v2)</span>
+│   │       └── ai-intake.js  <span class="c">← F10 AI Intake (ใหม่ v2)</span>
+│   ├── manifest.json + sw.js <span class="c">← F8 PWA</span>
+│   └── icons/                <span class="c">← ไอคอน app</span>
+├── db/
+│   ├── schema.sql            <span class="c">← B1–B5 ตาราง (SQL มาตรฐาน ย้าย DB ได้)</span>
+│   ├── policies.sql          <span class="c">← RLS สิทธิ์ admin/sale</span>
+│   ├── views.sql             <span class="c">← B6 สรุปตัวเลข dashboard</span>
+│   └── seed.sql              <span class="c">← ข้อมูลตั้งต้น (ทีม 4 ทีม, แหล่งงาน 8 เส้นทาง)</span>
+├── tools/
+│   └── import-json.html      <span class="c">← เครื่องมือย้ายข้อมูล JSON v1/v2/v3 เดิม → DB</span>
+└── README.md                 <span class="c">← วิธี setup + ลิงก์แผนนี้</span></div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>🔎 ทำไมแยกไฟล์ (ต่างจาก prototype ไฟล์เดียว)</h3>
+      <p>เมื่อ Opus แก้งานใน step ถัดๆ ไป จะเปิดเฉพาะไฟล์ module ที่เกี่ยว เช่น แก้ Book 3 สี ก็แตะแค่ book3.js — ไม่ต้องอ่าน/เขียนไฟล์ยักษ์ทั้งไฟล์ทุกรอบ <b>ประหยัด token ลงมาก และลดโอกาสแก้พลาดโดนส่วนอื่น</b></p>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="roadmap">
+    <div class="sec-head" style="background:var(--tint-peach)">
+      <span class="ico">🗺️</span>
+      <div>
+        <h2>Roadmap — 4 Phase · 20 Step พร้อม prompt สั่ง Opus</h2>
+        <p>ป้าย S/M/L ตรงกับระบบ Token Backlog — เลือกยิง step ให้พอดีกับโควตาที่เหลือแต่ละรอบ</p>
+      </div>
+    </div>
+
+    <div class="phase-head"><span class="pnum">PHASE 0</span><h3>เตรียมฐาน</h3><span class="goal">เป้า: มี repo + มี database พร้อมใช้ (ครึ่งวันจบ)</span></div>
+
+    <div class="step"><div class="no">0.1</div><div class="st-body">
+      <h4>สร้าง GitHub repo + โครงไฟล์ + เปิด Pages <span class="sz s">S</span></h4>
+      <p>สร้าง repo ตามโครงสร้างด้านบน (ไฟล์เปล่าที่มีโครง) + เปิด GitHub Pages จาก docs/ + README</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>อ่านแผนจาก project doc claude/pending-dashboard-build-plan.md แล้วทำ Step 0.1: สร้าง GitHub repo ชื่อ te-sales-dashboard ตามโครงสร้างในแผน พร้อมไฟล์โครงเปล่า + README แล้วแนะนำวิธีเปิด GitHub Pages จากโฟลเดอร์ docs/ ให้ผม</div>
+    </div></div>
+
+    <div class="step"><div class="no">0.2</div><div class="st-body">
+      <h4>ตัดสินใจ DB + สร้างโปรเจกต์ Supabase <span class="sz s">S</span></h4>
+      <p><b>จุดตัดสินใจฐานข้อมูล</b> (ดูตารางเปรียบเทียบ) — ถ้าเลือก Supabase: สมัคร supabase.com → New Project → เก็บ Project URL + anon key ใส่ config.js (~10 นาที มีขั้นตอนใน README)</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 0.2: เขียนคู่มือ setup Supabase ทีละขั้นแบบมีภาพหน้าจอบอกตำแหน่งปุ่ม สำหรับคนไม่ใช่โปรแกรมเมอร์ ลงใน README ของ repo te-sales-dashboard แล้วบอกวิธีเอา URL + anon key มาใส่ config.js</div>
+    </div></div>
+
+    <div class="phase-head"><span class="pnum">PHASE 1</span><h3>MVP — Pending Project ใช้งานจริงได้</h3><span class="goal">เป้า: ทีมล็อกอิน บันทึกงาน เห็น dashboard จากมือถือ</span></div>
+
+    <div class="step"><div class="no">1.1</div><div class="st-body">
+      <h4>Schema หลัก + สิทธิ์ (B1, B2 + RLS) <span class="sz m">M</span></h4>
+      <p>เขียน db/schema.sql (profiles, teams, pending_projects, follow_logs, project_contacts) + policies.sql + seed.sql แล้วรันใน Supabase SQL Editor</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>อ่านแผนจาก project doc แล้วทำ Step 1.1: เขียน db/schema.sql + policies.sql + seed.sql สำหรับ module B1 และ B2 ฟิลด์ครบตามฟอร์ม Pending Project ในแผน ใช้ SQL มาตรฐานที่ย้ายไป SQLite ได้ แล้วสอนผมรันใน Supabase SQL Editor</div>
+    </div></div>
+
+    <div class="step"><div class="no">1.2</div><div class="st-body">
+      <h4>F1 · App Shell + หน้า Login <span class="sz m">M</span></h4>
+      <p>index.html + app.css + app.js: login/logout, จำ session, แท็บนำทาง (bottom bar บนมือถือ), ธีมดาร์กเดิม</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 1.2: สร้าง F1 App Shell + Login ด้วย Supabase Auth ตามแผน ธีม Linear-style dark แบบ artifact pending-project-dashboard เดิม รองรับมือถือ (bottom bar, ปุ่ม ≥44px) แล้ว commit + push</div>
+    </div></div>
+
+    <div class="step"><div class="no">1.3</div><div class="st-body">
+      <h4>F2 · Data Adapter Layer <span class="sz m">M</span></h4>
+      <p>adapter.js (ฟังก์ชันกลาง) + supabase-adapter.js + local-adapter.js — จุดที่ทำให้เปลี่ยน DB ภายหลังได้</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 1.3: สร้างชั้น Data Adapter ตามแผน — adapter.js นิยาม interface กลาง, supabase-adapter.js ใช้งานจริง, local-adapter.js เก็บในเครื่องเป็นโหมดสำรอง พร้อมสวิตช์เลือก adapter ใน config.js</div>
+    </div></div>
+
+    <div class="step"><div class="no">1.4</div><div class="st-body">
+      <h4>F4 · Pending Project เต็มระบบ <span class="sz l">L</span></h4>
+      <p>ฟอร์มครบฟอร์มกระดาษ 2 หน้า + ตาราง sort/ซ่อนคอลัมน์ + บันทึกติดตาม + Win plan + CSV — ยก UI จาก prototype มาต่อกับ adapter (งานใหญ่สุด เหมาะยิงตอนโควตาเหลือเยอะ/ก่อนนอน)</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 1.4: สร้าง modules/pending.js ยกฟอร์ม+ตาราง+บันทึกติดตามจาก prototype v3 (แนบ artifact pending-project-dashboard) มาต่อกับ Data Adapter บันทึกลง Supabase จริง มือถือแสดงเป็นการ์ด ทดสอบครบแล้ว commit</div>
+    </div></div>
+
+    <div class="step"><div class="no">1.5</div><div class="st-body">
+      <h4>B6 + F3 · Dashboard ภาพรวม <span class="sz m">M</span></h4>
+      <p>views.sql สรุปตัวเลข + หน้า dashboard: เทียบเป้า 80 MB, กราฟแผน vs ปิดจริง, funnel, top 3, งานเลยกำหนด</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 1.5: เขียน db/views.sql สรุปตัวเลข dashboard แล้วสร้าง modules/dashboard.js แสดง Executive Summary ตามแผน ยก layout กราฟจาก prototype ใช้ palette CVD-safe เดิม</div>
+    </div></div>
+
+    <div class="step"><div class="no">1.6</div><div class="st-body">
+      <h4>ย้ายข้อมูลเดิม JSON → Database <span class="sz m">M</span></h4>
+      <p>tools/import-json.html อ่านไฟล์ JSON v1/v2/v3 จาก prototype → migrate ขึ้น Supabase ครั้งเดียว ข้อมูลเก่าไม่หาย</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 1.6: สร้าง tools/import-json.html รับไฟล์ JSON v1/v2/v3 ของระบบเดิม (โครงตามแผน+prototype) แปลงและ insert ลง Supabase พร้อมรายงานสรุปว่านำเข้ากี่รายการ ข้ามซ้ำกี่รายการ</div>
+    </div></div>
+
+    <div class="step"><div class="no">1.7</div><div class="st-body">
+      <h4>Deploy + ทดสอบ 3 เครื่องจริง <span class="sz s">S</span></h4>
+      <p>เปิดใช้จริงบน GitHub Pages → ทดสอบบน iPhone, S24, iPad: login, เพิ่มงาน, ดู dashboard — <b>จบ Phase 1 = ระบบใช้งานจริงได้แล้ว</b></p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 1.7: ตรวจ deploy บน GitHub Pages, ทำ checklist ทดสอบบนมือถือ 3 เครื่อง (iPhone/S24/iPad) ให้ผมไล่กด แล้วแก้ bug ที่เจอจากผลทดสอบที่ผมรายงานกลับ</div>
+    </div></div>
+
+    <div class="phase-head"><span class="pnum">PHASE 2</span><h3>ลูกค้า + ทีม</h3><span class="goal">เป้า: Book 3 สี + แผนติดต่อ + สิทธิ์รายทีมสมบูรณ์</span></div>
+
+    <div class="step"><div class="no">2.1</div><div class="st-body">
+      <h4>Schema B3 + B4 <span class="sz s">S</span></h4>
+      <p>เพิ่มตาราง customers, customer_logs, activities + RLS — รวม migrate นามบัตร 11 รายจาก Obsidian ที่อยู่ในระบบเดิม</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 2.1: เพิ่มตาราง B3 (customers, customer_logs) และ B4 (activities) ใน schema.sql + policies.sql ตามแผน พร้อม migration ต่อยอดจากของเดิมโดยไม่กระทบข้อมูลที่มีแล้ว</div>
+    </div></div>
+
+    <div class="step"><div class="no">2.2</div><div class="st-body">
+      <h4>F5 · Book 3 สี UI <span class="sz l">L</span></h4>
+      <p>หน้า Book 3 สี เต็มระบบ: กรองสี/ทีม/sale, log รายคน, ปุ่มยกลูกค้า → Pending</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 2.2: สร้าง modules/book3.js ตามแผน ยก UI Book 3 สีจาก prototype มาต่อ adapter ครบ ฟีเจอร์กรอง+log+ปุ่มยกเป็น Pending ทดสอบบนมือถือ</div>
+    </div></div>
+
+    <div class="step"><div class="no">2.3</div><div class="st-body">
+      <h4>F6 · แผนติดต่อลูกค้า + แจ้งเตือนเลยกำหนด <span class="sz m">M</span></h4>
+      <p>กิจกรรมรายสัปดาห์ + ป้ายเตือนบน dashboard + มุมมองภาระงานราย sale</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 2.3: สร้าง modules/activities.js แผนติดต่อลูกค้าตามแผน ผูกกิจกรรมกับ pending/customer มีป้ายงานเลยกำหนดโชว์บน dashboard ด้วย</div>
+    </div></div>
+
+    <div class="step"><div class="no">2.4</div><div class="st-body">
+      <h4>สิทธิ์รายทีมเต็มรูปแบบ + หน้า Admin <span class="sz m">M</span></h4>
+      <p>admin จัดการผู้ใช้/ทีม/เป้าหมายจากหน้าเว็บ (ไม่ต้องเข้า Supabase) + ทดสอบ RLS ว่า sale เห็นเฉพาะของทีมจริง</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 2.4: สร้างหน้า Admin จัดการผู้ใช้/ทีม/แก้เป้าหมาย 80MB และเขียนชุดทดสอบ RLS ยืนยันว่า role sale เห็นเฉพาะงานทีมตัวเอง แก้ข้ามทีมไม่ได้</div>
+    </div></div>
+
+    <div class="step"><div class="no">2.5</div><div class="st-body">
+      <h4>แสดง/ซ่อนงานที่จบแล้ว (Archive) <span class="sz m">M</span> <span class="pill rec">ใหม่ v2</span></h4>
+      <p>เพิ่มสถานะ <b>active / จบแล้ว / ไม่ active</b> ให้งาน Pending และลูกค้า Book 3 สี + ปุ่มสลับ "แสดงงานที่จบแล้ว" ในทุกหน้า (ค่าเริ่มต้นซ่อน หน้าจอโล่ง) — ข้อมูลไม่หาย เรียกกลับมาดู/ปลุกกลับมา active ได้ตลอด และ dashboard นับเฉพาะงาน active</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 2.5: เพิ่มระบบ archive ตามแผน — field สถานะใน pending_projects/customers (migration ไม่กระทบข้อมูลเดิม), toggle แสดง/ซ่อนในหน้า Pending และ Book 3 สี, ปุ่มเปลี่ยนสถานะในการ์ด/ตาราง, dashboard และ views.sql คำนวณเฉพาะงาน active</div>
+    </div></div>
+
+    <div class="phase-head"><span class="pnum">PHASE 3</span><h3>ครบระบบ + Supplier + AI Intake + PWA</h3><span class="goal">เป้า: ครบทุกส่วน + sourcing + AI ช่วยกรอก + ติดตั้งเป็น app ได้</span></div>
+
+    <div class="step"><div class="no">3.1</div><div class="st-body">
+      <h4>B5 + F7 · แหล่งงาน 8 เส้นทาง + Expo <span class="sz m">M</span></h4>
+      <p>ลิงก์แหล่งงานแก้ไขได้ + ลูกค้า Thai Water Expo 90 ราย (★37 Prospect ขึ้นก่อน) + ปุ่ม → Pending</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 3.1: สร้างตาราง B5 + modules/sources.js แหล่งงาน 8 เส้นทางตามแผน ลิงก์ครบตามระบบเดิม (e-GP, G-LEAD ฯลฯ) แก้ไขลิงก์ได้ และหน้า Expo พร้อมปุ่มยกเป็น Pending</div>
+    </div></div>
+
+    <div class="step"><div class="no">3.2</div><div class="st-body">
+      <h4>ทีมขาย + กลยุทธ์ Playbook <span class="sz s">S</span></h4>
+      <p>หน้าทีม 4 ทีม + playbook 8 เส้นทาง + เช็กลิสต์ชนะงาน 7 ข้อ (เนื้อหายกจาก prototype)</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 3.2: เพิ่มหน้าทีมขายและกลยุทธ์ชนะงานใน modules/sources.js ยกเนื้อหา playbook + เช็กลิสต์ 7 ข้อจาก prototype v3 มาทั้งชุด</div>
+    </div></div>
+
+    <div class="step"><div class="no">3.3</div><div class="st-body">
+      <h4>F8 · PWA — ติดตั้งเป็น App <span class="sz m">M</span></h4>
+      <p>manifest + service worker + ไอคอน TE → Add to Home Screen บน iPhone/iPad/S24 + cache ให้เปิดไว</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 3.3: ทำ PWA ตามแผน — manifest.json, sw.js, ไอคอน ให้ติดตั้งบน iPhone (Safari) และ S24 (Chrome) ได้ พร้อมเขียนวิธีติดตั้งสั้นๆ แปะใน README</div>
+    </div></div>
+
+    <div class="step"><div class="no">3.4</div><div class="st-body">
+      <h4>B7 + F9 · แถบ Supplier (Sourcing) <span class="sz m">M</span> <span class="pill rec">ใหม่ v2</span></h4>
+      <p>ตาราง suppliers + supplier_categories + project_suppliers และแถบ Supplier ใหม่ — กลุ่มย่อยภายในแถบ (ผู้ขาย/ผู้รับเหมา/วัสดุก่อสร้าง/วัตถุดิบ/บริการ) เพิ่ม-แก้กลุ่มเองได้ ผูก supplier กับ pending project เพื่อ sourcing ต่อโครงการ</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 3.4: สร้าง B7 (suppliers, supplier_categories, project_suppliers + RLS) และ modules/suppliers.js ตามแผน — แถบ Supplier กลุ่มย่อยกรองได้ เพิ่ม/แก้กลุ่มจากหน้าจอ การ์ดแสดงผู้ติดต่อ+เรตติ้ง+โครงการที่เคยใช้ และปุ่มหา supplier จากหน้า Pending</div>
+    </div></div>
+
+    <div class="step"><div class="no">3.5</div><div class="st-body">
+      <h4>F10 · AI Intake — นามบัตร / กระดาษ / Obsidian / Notion <span class="sz l">L</span> <span class="pill rec">ใหม่ v2</span></h4>
+      <p>ปุ่ม 🤖 AI Import ทุกแท็บหลัก: <b>ถ่ายรูปนามบัตร</b> → AI แกะเป็นลูกค้า Book 3 สี · <b>รูปฟอร์มกระดาษ/ลายมือ</b> → Pending Project · <b>Obsidian</b> (raw/TE-Pending project, raw/TE-Book 3 สี) · <b>Notion</b> — Claude แกะ/อ่านแล้ว merge เข้า Supabase ผ่าน REST API มี <b>preview ตรวจก่อนบันทึก</b> + กันซ้ำ (จับคู่เบอร์โทร/ชื่อบริษัท/PENDING NO.) + log (งานใหญ่ ยิงตอนโควตาเหลือเยอะ)</p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 3.5: สร้าง F10 AI Intake ตามแผน — modal AI Import 4 แหล่ง (นามบัตร/กระดาษ/Obsidian/Notion), คำสั่งสำเร็จรูปให้ Claude คืน JSON ตาม schema, หน้าจอ preview+merge กันซ้ำก่อนบันทึกจริง, log ทุกการนำเข้า</div>
+    </div></div>
+
+    <div class="step"><div class="no">3.6</div><div class="st-body">
+      <h4>Backup อัตโนมัติ + เก็บงาน <span class="sz s">S</span></h4>
+      <p>ปุ่ม export CSV/JSON ทุก module + นัด backup รายสัปดาห์ + ทดสอบรวมทั้งระบบรอบสุดท้าย — <b>จบโครงการ</b></p>
+      <div class="prompt"><span class="pl">PROMPT → OPUS</span>ทำ Step 3.6: เพิ่มปุ่ม export CSV/JSON ครบทุก module, เขียนวิธี backup รายสัปดาห์ลง README แล้วไล่ทดสอบรวมทุกหน้าจอทุก breakpoint รายงานผลก่อนปิดโครงการ</div>
+    </div></div>
+  </section>
+
+  <!-- OPUS RULES -->
+  <section id="opus">
+    <div class="sec-head" style="background:var(--tint-lavender)">
+      <span class="ico">🤖</span>
+      <div>
+        <h2>กติกาการสั่งงาน Opus — ให้ได้งานชัวร์ทุก session</h2>
+        <p>แต่ละ session ของ Opus เริ่มใหม่ไม่มีความจำ — แผนนี้ + project doc คือความจำกลางของโครงการ</p>
+      </div>
+    </div>
+
+    <div class="rulebox">
+      <h3>🎯 สูตรสั่งงาน 1 คำสั่ง = 1 Step</h3>
+      <p>เปิด session ใหม่ในโปรเจกต์ <b>Sales Director</b> นี้ → วาง prompt ของ step นั้น (Opus จะอ่านแผนเต็มจาก project doc <b>claude/pending-dashboard-build-plan.md</b> เองได้) → จบ step ให้ commit + push ทุกครั้ง — งานค้างครึ่งทางจะไม่หาย เพราะ code ล่าสุดอยู่บน GitHub เสมอ</p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>✅ ทุกครั้งที่จบ step ต้องได้</h3>
+        <ul class="plain">
+          <li>Code ถูก <b>commit + push</b> ขึ้น GitHub แล้ว</li>
+          <li>Opus <b>ทดสอบเอง</b> (เปิด headless/screenshot) ก่อนส่งงาน ไม่มี JS error</li>
+          <li>สรุปสั้นๆ ว่าทำอะไรไป + step ต่อไปคืออะไร</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>⏳ จับคู่กับระบบ Token Backlog</h3>
+        <ul class="plain">
+          <li><span class="sz s">S</span> โควตาเหลือน้อย / ช่วงเวลางาน — 0.1, 0.2, 1.7, 2.1, 3.2, 3.6</li>
+          <li><span class="sz m">M</span> โควตาปานกลาง นั่งอยู่หน้าจอ — step กลางส่วนใหญ่ (รวม 2.5 Archive, 3.4 Supplier)</li>
+          <li><span class="sz l">L</span> โควตาเหลือเยอะ / ก่อนนอน — 1.4 (Pending UI), 2.2 (Book 3 สี), 3.5 (AI Intake)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--surface-soft)">
+      <h3>🚀 เริ่มได้เลย — ลำดับ 3 คำสั่งแรก</h3>
+      <ul class="plain">
+        <li><b>คำสั่งที่ 1:</b> Step 0.1 สร้าง repo (S — ยิงได้ทันทีแม้โควตาเหลือน้อย)</li>
+        <li><b>คำสั่งที่ 2:</b> Step 0.2 ตัดสินใจ DB + setup Supabase (S — มีคู่มือให้ทำตาม 10 นาที)</li>
+        <li><b>คำสั่งที่ 3:</b> Step 1.1 schema + สิทธิ์ (M) — จากนั้นไล่ตามลำดับ 1.2 → 1.7 จะได้ระบบใช้จริงเมื่อจบ Phase 1</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  แผนสร้าง TE Sales Dashboard — ระบบถาวรบน GitHub · จัดทำ 19 ก.ค. 2026 · <b>อัปเดต v2: 20 ก.ค. 2026</b> (+ AI Intake · Archive · สแกนนามบัตร · Supplier)<br>
+  <span style="color:var(--stone)">Project "Sales Director" · ต่อยอดจาก artifact pending-project-dashboard (v3) · เชื่อมกับระบบ Token Backlog</span>
+</footer>
+
+</body>
+</html>

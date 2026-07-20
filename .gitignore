@@ -9,3 +9,7 @@ node_modules/
 **/service_role*
 data/*.json
 export/
+
+# ไฟล์อ้างอิงที่มีข้อมูลลูกค้าจริง (prototype v3 มีชื่อ/เบอร์/อีเมลลูกค้า)
+# เก็บไว้ในเครื่องเท่านั้น ห้าม commit
+_local/

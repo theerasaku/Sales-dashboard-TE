@@ -9,8 +9,9 @@ import pending    from './modules/pending.js';
 import book3      from './modules/book3.js';
 import activities from './modules/activities.js';
 import sources    from './modules/sources.js';
+import suppliers  from './modules/suppliers.js';
 
-const VIEWS = { dashboard, pending, book3, activities, sources };
+const VIEWS = { dashboard, pending, book3, activities, sources, suppliers };
 
 const el = {
   content:    document.getElementById('content'),
