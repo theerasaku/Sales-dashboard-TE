@@ -157,13 +157,13 @@ const localAdapter = {
   async listActivities() { return [...db.activities]; },
   async saveActivity(r)  { return upsert('activities', r); },
 
-  // B6 — Phase 1.5 จะคำนวณจริง
+  // B6 — Phase 1.5 จะคำนวณจริง (รูปข้อมูลต้องตรงกับ supabase-adapter: null = ยังนับไม่ได้)
   async getDashboardStats() {
     return {
-      pendingCount:   db.pending_projects.length,
+      pendingCount:   db.pending_projects.filter(r => r.is_active !== false).length,
       customerCount:  db.customers.length,
       activityCount:  db.activities.length,
-      pipelineValue:  0,
+      pipelineValue:  null,
     };
   },
 };

@@ -163,7 +163,8 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 /* ---------- iPad ---------- */
 @media (max-width: 1024px) {
   :root { --sidebar-w: 68px; }
-  .brand-text, .nav-item span:not(.ico), .sidebar-foot { display: none; }
+  /* .lbl = ป้ายชื่อเมนู (ต้องมี span ครอบใน index.html ไม่งั้นซ่อนไม่ได้) */
+  .brand-text, .nav-item .lbl, .sidebar-foot { display: none; }
   .brand { justify-content: center; padding: 16px 0; }
   .nav-item { justify-content: center; padding: 10px 0; }
   .content { padding: 20px; }

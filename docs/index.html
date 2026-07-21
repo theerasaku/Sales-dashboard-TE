@@ -51,12 +51,14 @@
     </div>
 
     <nav class="nav" id="nav">
-      <button class="nav-item is-active" data-view="dashboard"><span class="ico">◎</span> ภาพรวม</button>
-      <button class="nav-item" data-view="pending"><span class="ico">▤</span> Pending Project</button>
-      <button class="nav-item" data-view="book3"><span class="ico">◍</span> Book 3 สี</button>
-      <button class="nav-item" data-view="activities"><span class="ico">✓</span> แผนติดต่อลูกค้า</button>
-      <button class="nav-item" data-view="sources"><span class="ico">⌘</span> แหล่งงาน</button>
-      <button class="nav-item" data-view="suppliers"><span class="ico">⚒</span> Supplier</button>
+      <!-- ป้ายชื่อต้องอยู่ใน .lbl เสมอ — ตอนจอ ≤1024px CSS จะซ่อน .lbl ให้เหลือแต่ไอคอน
+           ถ้าปล่อยเป็น text เปล่า ๆ จะซ่อนไม่ได้ แล้วตัวหนังสือจะตกบรรทัดในแถบกว้าง 68px -->
+      <button class="nav-item is-active" data-view="dashboard" title="ภาพรวม"><span class="ico">◎</span><span class="lbl">ภาพรวม</span></button>
+      <button class="nav-item" data-view="pending" title="Pending Project"><span class="ico">▤</span><span class="lbl">Pending Project</span></button>
+      <button class="nav-item" data-view="book3" title="Book 3 สี"><span class="ico">◍</span><span class="lbl">Book 3 สี</span></button>
+      <button class="nav-item" data-view="activities" title="แผนติดต่อลูกค้า"><span class="ico">✓</span><span class="lbl">แผนติดต่อลูกค้า</span></button>
+      <button class="nav-item" data-view="sources" title="แหล่งงาน"><span class="ico">⌘</span><span class="lbl">แหล่งงาน</span></button>
+      <button class="nav-item" data-view="suppliers" title="Supplier"><span class="ico">⚒</span><span class="lbl">Supplier</span></button>
     </nav>
 
     <div class="sidebar-foot">

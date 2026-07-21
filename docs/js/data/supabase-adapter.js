@@ -119,6 +119,29 @@ async function rest(path, opts = {}) {
   return data;
 }
 
+/**
+ * นับจำนวนแถวโดยไม่ต้องโหลดข้อมูลจริงลงมือถือ
+ * ใช้ header `Prefer: count=exact` แล้วอ่านจำนวนจาก Content-Range ("0-24/137")
+ * RLS ยังทำงานตามปกติ → นับเฉพาะแถวที่ผู้ใช้คนนี้มีสิทธิ์เห็น
+ */
+async function countRows(path) {
+  const s = await ensureFreshToken();
+  if (!s) throw new Error('เซสชันหมดอายุ — กรุณาเข้าสู่ระบบใหม่');
+
+  const res = await fetch(url('/rest/v1' + path), {
+    headers: {
+      apikey: apikey(),
+      Authorization: `Bearer ${s.access_token}`,
+      Prefer: 'count=exact',
+      Range: '0-0',                 // ไม่ต้องการตัวข้อมูล ขอแค่ยอดรวม
+    },
+  });
+  if (!res.ok) throw new Error(`นับข้อมูลไม่สำเร็จ (${res.status})`);
+
+  const total = res.headers.get('content-range')?.split('/')[1];
+  return total && total !== '*' ? Number(total) : 0;
+}
+
 /** ดึง profile ของผู้ใช้ (ชื่อ/role/ทีม) — ผ่าน RLS จริง ไม่ได้เชื่อค่าจากฝั่ง client */
 async function fetchProfile(userId) {
   const rows = await rest(
@@ -367,20 +390,33 @@ const supabaseAdapter = {
     return rows?.[0] || null;
   },
 
-  // ---------- ยังไม่มีตารางรองรับ ----------
-  // customers/activities สร้างใน step 2.1 · dashboard views ใน step 1.5
+  // ---------- B6 Dashboard ----------
 
-  async listCustomers() { return notReady('listCustomers'); },
-  async saveCustomer()  { return notReady('saveCustomer'); },
+  /**
+   * ตัวเลขสรุป — ตอนนี้นับได้จริงเฉพาะ pending
+   * customers/activities ยังไม่มีตาราง (step 2.1) · ยอดรวม/ยอดปิดต้องใช้ views.sql (step 1.5)
+   * คืน null สำหรับตัวที่ยังไม่มี เพื่อให้ UI แสดง "—" ได้ ไม่ใช่พังทั้งหน้า
+   */
+  async getDashboardStats() {
+    return {
+      pendingCount:  await countRows('/pending_projects?select=id&is_active=eq.true'),
+      customerCount: null,
+      activityCount: null,
+      pipelineValue: null,
+    };
+  },
 
-  async listActivities() { return notReady('listActivities'); },
-  async saveActivity()   { return notReady('saveActivity'); },
+  // ---------- ยังไม่มีตารางรองรับ (สร้างใน step 2.1) ----------
 
-  async getDashboardStats() { return notReady('getDashboardStats'); },
+  async listCustomers() { return notReady('listCustomers', '2.1'); },
+  async saveCustomer()  { return notReady('saveCustomer',  '2.1'); },
+
+  async listActivities() { return notReady('listActivities', '2.1'); },
+  async saveActivity()   { return notReady('saveActivity',   '2.1'); },
 };
 
-const notReady = (what) => {
-  throw new Error(`ส่วนนี้ยังไม่เปิดใช้ (${what}) — มาใน Phase 1.3`);
+const notReady = (what, phase) => {
+  throw new Error(`ส่วนนี้ยังไม่เปิดใช้ (${what}) — มาใน Phase ${phase}`);
 };
 
 export default supabaseAdapter;

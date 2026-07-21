@@ -15,14 +15,26 @@ export default {
   subtitle: 'สรุปสถานะงานขายทั้งหมด',
 
   async render(root) {
-    const s = await adapter.getDashboardStats();
+    // ตัวเลขที่ยังไม่มีตารางรองรับจะเป็น null → แสดง "—" ไม่ใช่ 0
+    // (0 แปลว่า "นับแล้วไม่มี" ซึ่งคนละความหมายกับ "ยังนับไม่ได้")
+    const n = (v) => (v === null || v === undefined ? '—' : v);
+
+    let s = { pendingCount: null, customerCount: null, activityCount: null };
+    let warn = '';
+    try {
+      s = await adapter.getDashboardStats();
+    } catch (e) {
+      // ต่อฐานข้อมูลไม่ได้ก็ยังต้องเห็นหน้าจอ ไม่ใช่จอว่างเปล่า
+      warn = `<div class="empty" style="margin-bottom:16px">โหลดตัวเลขไม่สำเร็จ — ${e.message}</div>`;
+    }
 
     root.innerHTML = `
+      ${warn}
       <div class="grid cols-4">
         ${card('เป้ายอดขาย', `${CONFIG.TARGET_MB} MB`, 'เป้ารวมทั้งปี')}
-        ${card('Pending Project', s.pendingCount, 'โครงการที่ติดตามอยู่')}
-        ${card('ลูกค้า Book 3 สี', s.customerCount, 'ทั้งเขียว/เหลือง/แดง')}
-        ${card('กิจกรรมค้าง', s.activityCount, 'รอดำเนินการ')}
+        ${card('Pending Project', n(s.pendingCount), 'โครงการที่ยังเดินอยู่')}
+        ${card('ลูกค้า Book 3 สี', n(s.customerCount), 'ยังไม่มีตาราง — Phase 2.1')}
+        ${card('กิจกรรมค้าง', n(s.activityCount), 'ยังไม่มีตาราง — Phase 2.1')}
       </div>
 
       <div class="empty" style="margin-top:20px">
