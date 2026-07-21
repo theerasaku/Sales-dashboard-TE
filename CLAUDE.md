@@ -9,6 +9,13 @@
 - เว็บ: <https://theerasaku.github.io/Sales-dashboard-TE/> (GitHub Pages เสิร์ฟจาก `docs/`)
 - ⚠️ prototype v3 ที่มีข้อมูลลูกค้าจริงเก็บที่ `_local/` ซึ่ง gitignore ไว้ — **ห้าม commit**
 
+**⚠️ กับดักภาษาไทยบนเครื่องนี้ (เคยทำข้อมูลใน DB พังมาแล้ว):**
+- `LANG`/`LC_CTYPE` ในเครื่องนี้ว่างเปล่า → **`pbcopy` เฉย ๆ จะแปลงไทยเป็น MacRoman พัง**
+  ต้องใช้ **`LC_CTYPE=UTF-8 pbcopy`** เสมอเมื่อก๊อปข้อความไทย
+- `pbpaste` แปลงกลับด้วยวิธีเดียวกัน → **ตรวจด้วย `pbcopy | pbpaste` จะไม่เจอบั๊ก**
+  ต้องตรวจด้วย `osascript -e 'the clipboard as text'` ถึงจะเห็นของจริง
+- Supabase SQL Editor / Table Editor **แสดงฟอนต์ไทยไม่ได้** → เขียนสคริปต์ที่ต้องให้ผู้ใช้อ่านผลเป็น ASCII
+
 ## กติกาการทำงาน (สำคัญที่สุด — ทำตามทุก step)
 1. ทำ **ทีละ 1 step** ตาม Roadmap ด้านล่าง อย่าข้าม
 2. จบ step แล้ว **commit + push ขึ้น GitHub ทุกครั้ง** (งานค้างจะไม่หาย)

@@ -59,12 +59,13 @@ select 'users',
   from profiles
 
 union all
--- Thai text stored correctly? compares byte length vs character length.
--- Thai chars are 3 bytes in UTF-8, so bytes > chars means Thai survived intact.
+-- Thai text stored correctly?
+-- Looks for real Thai characters (U+0E01-U+0E5B). Mojibake contains none of them,
+-- so this catches encoding damage that a byte-vs-char length check would miss.
 select 'thai text stored ok',
-       case when max(octet_length(description)) > max(char_length(description))
-            then 'YES' else 'CHECK' end,
+       case when max(description) ~ '[ก-๛]' then 'YES' else 'NO - CORRUPTED' end,
        'GOV.4 desc: ' || max(char_length(description))::text || ' chars / '
                        || max(octet_length(description))::text || ' bytes'
+                       || ' (expected 22 chars / 60 bytes)'
   from teams
  where code = 'GOV.4';
