@@ -1,8 +1,11 @@
 -- TE Sales Dashboard - health check
 --
 -- Read-only. Safe to run anytime. Changes nothing.
--- Labels are ASCII on purpose: the Supabase SQL Editor font cannot render Thai.
--- (Thai data in the tables is stored fine - it is only a display issue in that editor.)
+--
+-- Labels are ASCII so the output is easy to scan.
+-- NOTE: the Supabase SQL Editor renders Thai fine. If Thai ever looks like
+-- garbage there, the text was mangled on the way in (see CLAUDE.md: always use
+-- "LC_CTYPE=UTF-8 pbcopy" on this machine), not a font problem.
 --
 -- Expected result after schema.sql + policies.sql + seed.sql:
 --   teams                     5   GOV.1, GOV.3, GOV.4, TE-IMP, SYSTEM
