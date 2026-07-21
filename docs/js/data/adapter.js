@@ -37,11 +37,20 @@ export const adapter = {
   signIn:            (e, p)  => need().signIn(e, p),
   signOut:           ()      => need().signOut(),
 
+  // B1 teams
+  listTeams:         ()      => need().listTeams(),
+
   // B2 pending projects
   listPending:       (opt)   => need().listPending(opt),
   getPending:        (id)    => need().getPending(id),
   savePending:       (row)   => need().savePending(row),
+  // ทางลบปกติของ sale = archive (ลบถาวรได้เฉพาะ admin — ระบบทำแค่ backup ไม่มี rollback)
+  archivePending:    (id, a) => need().archivePending(id, a),
   deletePending:     (id)    => need().deletePending(id),
+
+  // B2 บันทึกติดตาม
+  listFollowLogs:    (pid)   => need().listFollowLogs(pid),
+  addFollowLog:      (log)   => need().addFollowLog(log),
 
   // B3 book 3 สี
   listCustomers:     (opt)   => need().listCustomers(opt),

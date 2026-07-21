@@ -5,6 +5,7 @@ const KEY = 'te-dashboard:v1';
 
 const EMPTY = {
   pending_projects: [],
+  follow_logs: [],
   customers: [],
   activities: [],
   session: null,
@@ -71,14 +72,82 @@ const localAdapter = {
   },
   async signOut() { db.session = null; save(); },
 
-  // B2
-  async listPending()   { return [...db.pending_projects]; },
-  async getPending(id)  { return db.pending_projects.find(r => r.id === id) || null; },
+  // B1
+  async listTeams() {
+    return [
+      { id: 'GOV.1',  code: 'GOV.1',  name: 'GOV.1' },
+      { id: 'GOV.3',  code: 'GOV.3',  name: 'GOV.3' },
+      { id: 'GOV.4',  code: 'GOV.4',  name: 'GOV.4' },
+      { id: 'TE-IMP', code: 'TE-IMP', name: 'TE-IMP' },
+      { id: 'SYSTEM', code: 'SYSTEM', name: 'System Project' },
+    ];
+  },
+
+  // B2 — กรอง/เรียงในหน่วยความจำ ให้ผลลัพธ์เหมือน supabase-adapter
+  async listPending(opt = {}) {
+    const {
+      activeOnly = true, teamId, stage, from, to, search,
+      sort = 'updated_at', dir = 'desc', limit = 500,
+    } = opt;
+
+    let rows = [...db.pending_projects];
+    if (activeOnly) rows = rows.filter(r => r.is_active !== false);
+    if (teamId)     rows = rows.filter(r => r.team_id === teamId);
+    if (stage)      rows = rows.filter(r => r.stage === stage);
+    if (from)       rows = rows.filter(r => r.close_month && r.close_month >= from);
+    if (to)         rows = rows.filter(r => r.close_month && r.close_month <= to);
+
+    const term = String(search || '').trim().toLowerCase();
+    if (term) {
+      rows = rows.filter(r =>
+        [r.project_name, r.customer_name, r.pending_no]
+          .some(v => String(v || '').toLowerCase().includes(term)));
+    }
+
+    // ค่าว่างไปท้ายตารางเสมอ (ให้ตรงกับ nullslast ของ PostgREST)
+    const sign = dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+      const x = a[sort], y = b[sort];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return x > y ? sign : x < y ? -sign : 0;
+    });
+
+    return rows.slice(0, limit);
+  },
+
+  async getPending(id) {
+    const row = db.pending_projects.find(r => r.id === id);
+    if (!row) return null;
+    return {
+      ...row,
+      follow_logs: db.follow_logs.filter(l => l.pending_id === id),
+      project_contacts: [],
+    };
+  },
   async savePending(r)  { return upsert('pending_projects', r); },
+
+  async archivePending(id, archived = true) {
+    const row = db.pending_projects.find(r => r.id === id);
+    if (!row) return null;
+    row.is_active   = !archived;
+    row.archived_at = archived ? new Date().toISOString() : null;
+    save();
+    return row;
+  },
+
   async deletePending(id) {
     db.pending_projects = db.pending_projects.filter(r => r.id !== id);
     save();
   },
+
+  async listFollowLogs(pendingId) {
+    return db.follow_logs
+      .filter(l => l.pending_id === pendingId)
+      .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)));
+  },
+  async addFollowLog(log) { return upsert('follow_logs', log); },
 
   // B3
   async listCustomers() { return [...db.customers]; },

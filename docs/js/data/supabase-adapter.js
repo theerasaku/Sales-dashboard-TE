@@ -140,7 +140,34 @@ function shapeUser(authUser, profile) {
   };
 }
 
-// ---------- adapter ----------
+// ---------- ตัวช่วยสร้าง query (Phase 1.3) ----------
+
+// คอลัมน์ที่ยอมให้เรียงได้ — ห้ามเอาค่าจาก UI ไปต่อ URL ตรง ๆ
+const SORTABLE = new Set([
+  'close_month', 'decision_day', 'purchased_day', 'next_date',
+  'value_baht', 'project_name', 'customer_name', 'stage', 'updated_at', 'created_at',
+]);
+
+// ฟิลด์ที่ DB จัดการเอง — ต้องตัดทิ้งก่อนส่งกลับไปเขียน ไม่งั้น PostgREST ตอบ 400
+const READONLY = new Set([
+  'created_at', 'updated_at', 'created_by',
+  'teams', 'follow_logs', 'project_contacts', 'profiles',
+]);
+
+const PENDING_SELECT = '*,teams(code,name)';
+
+/** ตัด field ที่เขียนไม่ได้ + ช่องว่างเปล่าให้เป็น null (ไม่งั้น date ว่างจะ error) */
+function cleanRow(row) {
+  const out = {};
+  for (const [k, v] of Object.entries(row || {})) {
+    if (READONLY.has(k)) continue;
+    out[k] = v === '' ? null : v;
+  }
+  return out;
+}
+
+/** กันอักขระที่มีความหมายพิเศษใน PostgREST (`,` แยกเงื่อนไข · `*` คือ wildcard) */
+const safeSearch = (s) => String(s || '').replace(/[,()*\\]/g, ' ').trim();
 
 const supabaseAdapter = {
   async init() {
@@ -210,12 +237,138 @@ const supabaseAdapter = {
     } catch { /* ออฟไลน์ก็ถือว่าออกจากระบบแล้ว */ }
   },
 
-  // ---------- ข้อมูล — Phase 1.3 ----------
+  // ---------- B1 Teams ----------
 
-  async listPending()   { return notReady('listPending'); },
-  async getPending()    { return notReady('getPending'); },
-  async savePending()   { return notReady('savePending'); },
-  async deletePending() { return notReady('deletePending'); },
+  async listTeams() {
+    return rest('/teams?select=id,code,name,description&is_active=eq.true&order=sort_order.asc');
+  },
+
+  // ---------- B2 Pending Projects ----------
+
+  /**
+   * opt:
+   *   activeOnly (true)  ซ่อนงานที่ archive แล้ว — ค่าเริ่มต้นซ่อน (step 2.5)
+   *   teamId, stage      กรอง
+   *   from, to           ช่วงเดือนคาดปิด 'YYYY-MM' (close_month)
+   *   search             ค้นชื่องาน/ลูกค้า/PENDING NO.
+   *   sort, dir          เรียง (ต้องอยู่ใน SORTABLE)
+   *   limit              กันดึงทั้งตารางบนมือถือ
+   *
+   * ไม่ต้องส่ง "ดูทีมไหนได้" มาเอง — RLS ฝั่ง DB ตัดสินให้แล้ว
+   */
+  async listPending(opt = {}) {
+    const {
+      activeOnly = true, teamId, stage, from, to, search,
+      sort = 'updated_at', dir = 'desc', limit = 500,
+    } = opt;
+
+    const p = new URLSearchParams();
+    p.set('select', PENDING_SELECT);
+
+    if (activeOnly) p.set('is_active', 'eq.true');
+    if (teamId)     p.set('team_id',   `eq.${teamId}`);
+    if (stage)      p.set('stage',     `eq.${stage}`);
+
+    // ช่วงเดือนคาดปิด — close_month เก็บเป็น 'YYYY-MM' เรียงตามตัวอักษร = เรียงตามเวลาพอดี
+    // ⚠️ step 1.4 ต้องเพิ่ม fallback ไปใช้ decision_day เมื่อยังไม่กรอก close_month
+    //    (ตอนนี้งานที่ไม่กรอกจะหายจากผลกรอง — ตั้งใจให้เห็นชัดว่ายังไม่ได้ทำ)
+    if (from) p.append('close_month', `gte.${from}`);
+    if (to)   p.append('close_month', `lte.${to}`);
+
+    const term = safeSearch(search);
+    if (term) {
+      p.set('or', `(project_name.ilike.*${term}*,customer_name.ilike.*${term}*,pending_no.ilike.*${term}*)`);
+    }
+
+    const col = SORTABLE.has(sort) ? sort : 'updated_at';
+    const way = dir === 'asc' ? 'asc' : 'desc';
+    // nullslast: งานที่ยังไม่กรอกวันที่ต้องไปอยู่ท้ายตาราง ไม่ใช่ลอยขึ้นหัว
+    p.set('order', `${col}.${way}.nullslast`);
+    p.set('limit', String(limit));
+
+    return rest('/pending_projects?' + p.toString());
+  },
+
+  /** งาน 1 ใบ + บันทึกติดตาม + ผู้ติดต่อ — ดึงทีเดียวจบ ไม่ต้องยิง 3 รอบ */
+  async getPending(id) {
+    const rows = await rest(
+      `/pending_projects?id=eq.${encodeURIComponent(id)}` +
+      '&select=*,teams(code,name),follow_logs(*),project_contacts(*)'
+    );
+    return rows?.[0] || null;
+  },
+
+  /** มี id = แก้ · ไม่มี = สร้างใหม่ */
+  async savePending(row) {
+    const body = cleanRow(row);
+    const me   = session?.user?.id || null;
+
+    if (body.id) {
+      const id = body.id;
+      delete body.id;
+      body.updated_by = me;
+      const rows = await rest(`/pending_projects?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(body),
+      });
+      return rows?.[0] || null;
+    }
+
+    body.created_by = me;
+    body.updated_by = me;
+    const rows = await rest('/pending_projects', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    return rows?.[0] || null;
+  },
+
+  /**
+   * ทางลบปกติของ sale — ไม่ได้ลบจริง แค่ย้ายเข้า archive
+   * (policy `pending_delete` เปิดให้ admin เท่านั้น เพราะระบบทำแค่ backup ไม่มี rollback)
+   */
+  async archivePending(id, archived = true) {
+    const rows = await rest(`/pending_projects?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        is_active:   !archived,
+        archived_at: archived ? new Date().toISOString() : null,
+        updated_by:  session?.user?.id || null,
+      }),
+    });
+    return rows?.[0] || null;
+  },
+
+  /** ลบถาวร — admin เท่านั้น (คนอื่นจะโดน RLS ปฏิเสธที่ฝั่ง DB) */
+  async deletePending(id) {
+    await rest(`/pending_projects?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  // ---------- B2 · บันทึกติดตาม ----------
+
+  async listFollowLogs(pendingId) {
+    return rest(
+      `/follow_logs?pending_id=eq.${encodeURIComponent(pendingId)}` +
+      '&select=*&order=log_date.desc'
+    );
+  },
+
+  async addFollowLog(log) {
+    const body = cleanRow(log);
+    body.created_by = session?.user?.id || null;
+    const rows = await rest('/follow_logs', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    return rows?.[0] || null;
+  },
+
+  // ---------- ยังไม่มีตารางรองรับ ----------
+  // customers/activities สร้างใน step 2.1 · dashboard views ใน step 1.5
 
   async listCustomers() { return notReady('listCustomers'); },
   async saveCustomer()  { return notReady('saveCustomer'); },
