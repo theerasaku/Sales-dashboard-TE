@@ -371,6 +371,109 @@ export default {
 };
 
 // ══════════════════════════════════════════════════════════
+// รายการบันทึกติดตาม + แก้ไขในที่ (ใช้ร่วมกันทั้งแผงเล็กและฟอร์มเต็ม)
+// ══════════════════════════════════════════════════════════
+
+/**
+ * ผู้ใช้ที่ล็อกอินอยู่ — ใช้ตัดสินว่าจะโชว์ปุ่มแก้ไขไหม
+ * ⚠️ ห้ามแคชไว้ระดับ module: ถ้าออกจากระบบแล้วคนอื่นล็อกอินบนเครื่องเดียวกัน
+ *    ค่าเก่าจะค้าง แล้วโชว์ปุ่มแก้ไขให้ผิดคน (DB ยังกันอยู่ แต่ผู้ใช้จะงง)
+ */
+async function whoAmI() {
+  try { return (await adapter.getSession())?.user || null; } catch { return null; }
+}
+
+/**
+ * ปุ่มแก้ไขโผล่เฉพาะบันทึกที่ตัวเองเขียน (หรือ admin)
+ * ให้ตรงกับ policy follow_update ฝั่ง DB — ถ้าโชว์ปุ่มให้คนที่กดไม่ผ่าน
+ * เขาจะกดแล้วเจอ error งง ๆ แทนที่จะไม่เห็นปุ่มตั้งแต่แรก
+ */
+const canEditLog = (l, me) =>
+  !!me && (!l.created_by || l.created_by === me.id || me.role === 'admin');
+
+function logListHtml(logs, me) {
+  if (!logs.length) return '<li class="log-empty">ยังไม่มีบันทึก</li>';
+  return logs.map(l => `
+    <li data-log-item="${esc(l.id)}">
+      <div class="log-view">
+        <div class="log-h">
+          <b>${esc(l.log_date)}</b> ${esc(l.by_name || '')}
+          ${canEditLog(l, me)
+            ? `<button type="button" class="btn-log log-edit" data-edit="${esc(l.id)}">แก้ไข</button>`
+            : ''}
+        </div>
+        ${l.response   ? `<div>${esc(l.response)}</div>` : ''}
+        ${l.next_doing ? `<div class="log-next">→ ${esc(l.next_doing)}</div>` : ''}
+      </div>
+    </li>`).join('');
+}
+
+/**
+ * เปิดโหมดแก้ไขในบรรทัดนั้นเลย ไม่เด้ง modal ซ้อน modal
+ * (modal ซ้อนกันบนมือถือกดปิดยาก และ backdrop ทับกันจนงง)
+ */
+function bindLogEditing(host, logs, onSaved) {
+  host.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.edit;
+      const l  = logs.find(x => String(x.id) === String(id));
+      const li = host.querySelector(`[data-log-item="${CSS.escape(String(id))}"]`);
+      if (!l || !li) return;
+
+      li.querySelector('.log-view').hidden = true;
+      const box = document.createElement('div');
+      box.className = 'log-edit-box';
+      box.innerHTML = `
+        <div class="fgrid">
+          <label class="fld"><span>DATE</span>
+            <input type="date" data-f="log_date" value="${esc(l.log_date || '')}"></label>
+          <label class="fld"><span>BY</span>
+            <input type="text" data-f="by_name" value="${esc(l.by_name || '')}"></label>
+          <label class="fld fld-wide"><span>RESPONSE</span>
+            <textarea data-f="response" rows="2">${esc(l.response || '')}</textarea></label>
+          <label class="fld fld-wide"><span>NEXT DOING</span>
+            <textarea data-f="next_doing" rows="2">${esc(l.next_doing || '')}</textarea></label>
+        </div>
+        <p class="login-err" data-err hidden></p>
+        <div class="log-edit-foot">
+          <button type="button" class="btn btn-ghost btn-sm" data-cancel>ยกเลิก</button>
+          <button type="button" class="btn btn-primary btn-sm" data-save>บันทึกการแก้ไข</button>
+        </div>`;
+      li.appendChild(box);
+
+      const err = box.querySelector('[data-err]');
+      box.querySelector('[data-cancel]').addEventListener('click', () => {
+        box.remove();
+        li.querySelector('.log-view').hidden = false;
+      });
+
+      box.querySelector('[data-save]').addEventListener('click', async () => {
+        err.hidden = true;
+        const patch = {};
+        box.querySelectorAll('[data-f]').forEach(f => { patch[f.dataset.f] = f.value; });
+
+        if (!String(patch.response).trim() && !String(patch.next_doing).trim()) {
+          err.textContent = 'ต้องมี RESPONSE หรือ NEXT DOING อย่างน้อยหนึ่งช่อง';
+          err.hidden = false;
+          return;
+        }
+
+        const sv = box.querySelector('[data-save]');
+        sv.disabled = true; sv.textContent = 'กำลังบันทึก…';
+        try {
+          await adapter.updateFollowLog(id, patch);
+          await onSaved();
+        } catch (e) {
+          err.textContent = e.message;
+          err.hidden = false;
+          sv.disabled = false; sv.textContent = 'บันทึกการแก้ไข';
+        }
+      });
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
 // บันทึกความคืบหน้าเร็ว — ใช้บ่อยสุดในงานประจำวัน
 // เปิดเฉพาะ 4 ช่องตามฟอร์มกระดาษ (DATE / BY / RESPONSE / NEXT DOING)
 // ══════════════════════════════════════════════════════════
@@ -379,6 +482,8 @@ async function openQuickLog(host, pendingId, onSaved) {
   let row = null;
   try { row = await adapter.getPending(pendingId); } catch { /* ไม่มีชื่องานก็ยังบันทึกได้ */ }
   const logs = row?.follow_logs || [];
+  const me   = await whoAmI();
+  const again = () => openQuickLog(host, pendingId, onSaved);
 
   host.innerHTML = `
     <div class="modal" id="qModal">
@@ -402,13 +507,7 @@ async function openQuickLog(host, pendingId, onSaved) {
 
           ${logs.length ? `
             <h3 class="q-h3">ประวัติที่ผ่านมา (${logs.length})</h3>
-            <ul class="loglist">
-              ${logs.map(l => `<li>
-                <div class="log-h"><b>${esc(l.log_date)}</b> ${esc(l.by_name || '')}</div>
-                ${l.response   ? `<div>${esc(l.response)}</div>` : ''}
-                ${l.next_doing ? `<div class="log-next">→ ${esc(l.next_doing)}</div>` : ''}
-              </li>`).join('')}
-            </ul>` : ''}
+            <ul class="loglist">${logListHtml(logs, me)}</ul>` : ''}
         </div>
         <p class="login-err" id="qErr" role="alert" hidden></p>
         <div class="modal-foot">
@@ -424,6 +523,9 @@ async function openQuickLog(host, pendingId, onSaved) {
   q('#qClose').addEventListener('click', close);
   q('#qCancel').addEventListener('click', close);
   q('#qModal').addEventListener('mousedown', (e) => { if (e.target.id === 'qModal') close(); });
+
+  // แก้ไขบันทึกเก่า → เขียนเสร็จรีเฟรชทั้งแผงและตารางข้างหลัง
+  bindLogEditing(host, logs, async () => { await onSaved(); await again(); });
 
   q('#qForm').addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -539,6 +641,7 @@ async function openDetail(host, id, onSaved, teams) {
   const logs     = row?.follow_logs || [];
   const contacts = row?.project_contacts || [];
   const archived = row?.is_active === false;
+  const me       = await whoAmI();
 
   host.innerHTML = `
     <div class="modal" id="pModal">
@@ -592,13 +695,7 @@ async function openDetail(host, id, onSaved, teams) {
               </div>
               <button type="button" class="btn btn-ghost btn-sm" id="lgAdd">+ เพิ่มบันทึก</button>
 
-              <ul class="loglist">
-                ${logs.map(l => `<li>
-                  <div class="log-h"><b>${esc(l.log_date)}</b> ${esc(l.by_name || '')}</div>
-                  ${l.response   ? `<div>${esc(l.response)}</div>` : ''}
-                  ${l.next_doing ? `<div class="log-next">→ ${esc(l.next_doing)}</div>` : ''}
-                </li>`).join('') || '<li class="log-empty">ยังไม่มีบันทึก</li>'}
-              </ul>
+              <ul class="loglist">${logListHtml(logs, me)}</ul>
             </section>`
           : `<section class="fgroup">
                <h3>บันทึกติดตาม (DATE / BY / RESPONSE / NEXT DOING)</h3>
@@ -628,6 +725,7 @@ async function openDetail(host, id, onSaved, teams) {
 
   q('#pClose').addEventListener('click', close);
   q('#pCancel').addEventListener('click', close);
+  bindLogEditing(host, logs, () => openDetail(host, id, onSaved, teams));
   // กดพื้นหลังนอกกล่อง = ปิด (mousedown กัน drag จากในกล่องแล้วปล่อยข้างนอกแล้วปิดทิ้ง)
   q('#pModal').addEventListener('mousedown', (e) => { if (e.target.id === 'pModal') close(); });
 

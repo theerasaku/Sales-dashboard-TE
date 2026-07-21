@@ -429,6 +429,28 @@ const supabaseAdapter = {
     return rows?.[0] || null;
   },
 
+  /**
+   * แก้บันทึกที่เขียนไปแล้ว
+   * RLS (policy follow_update) ปล่อยเฉพาะเจ้าของบันทึกหรือ admin
+   * → คนอื่นกดแก้ก็ไม่ผ่าน DB ถึงจะแก้ HTML ในเบราว์เซอร์ก็ตาม
+   * ไม่ให้แก้ pending_id / created_by — กันย้ายบันทึกข้ามงานหรือสวมชื่อคนเขียน
+   */
+  async updateFollowLog(id, patch) {
+    const body = cleanRow(patch);
+    delete body.id;
+    delete body.pending_id;
+    delete body.created_by;
+
+    const rows = await rest(`/follow_logs?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    // RLS ปฏิเสธเงียบ ๆ = ได้ 200 แต่ไม่มีแถวกลับมา ต้องดักเองไม่งั้นผู้ใช้นึกว่าบันทึกสำเร็จ
+    if (!rows?.length) throw new Error('แก้บันทึกนี้ไม่ได้ — แก้ได้เฉพาะบันทึกที่ตัวเองเขียน');
+    return rows[0];
+  },
+
   // ---------- B6 Dashboard ----------
 
   /**

@@ -164,7 +164,22 @@ const localAdapter = {
       .filter(l => l.pending_id === pendingId)
       .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)));
   },
-  async addFollowLog(log) { return upsert('follow_logs', log); },
+  async addFollowLog(log) {
+    return upsert('follow_logs', { ...log, created_by: db.session?.user?.id || null });
+  },
+
+  async updateFollowLog(id, patch) {
+    const row = db.follow_logs.find(l => l.id === id);
+    if (!row) throw new Error('ไม่พบบันทึกนี้');
+    // เลียนแบบ RLS ของ supabase: แก้ได้เฉพาะบันทึกที่ตัวเองเขียน
+    const me = db.session?.user;
+    if (row.created_by && me && row.created_by !== me.id && me.role !== 'admin')
+      throw new Error('แก้บันทึกนี้ไม่ได้ — แก้ได้เฉพาะบันทึกที่ตัวเองเขียน');
+    const { id: _i, pending_id: _p, created_by: _c, ...safe } = patch;
+    Object.assign(row, safe, { updated_at: new Date().toISOString() });
+    save();
+    return row;
+  },
 
   // B3
   async listCustomers() { return [...db.customers]; },

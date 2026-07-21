@@ -54,6 +54,7 @@ export const adapter = {
   // B2 บันทึกติดตาม
   listFollowLogs:    (pid)   => need().listFollowLogs(pid),
   addFollowLog:      (log)   => need().addFollowLog(log),
+  updateFollowLog:   (id, p) => need().updateFollowLog(id, p),
 
   // B3 book 3 สี
   listCustomers:     (opt)   => need().listCustomers(opt),
