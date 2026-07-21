@@ -483,7 +483,6 @@ async function openQuickLog(host, pendingId, onSaved) {
   try { row = await adapter.getPending(pendingId); } catch { /* ไม่มีชื่องานก็ยังบันทึกได้ */ }
   const logs = row?.follow_logs || [];
   const me   = await whoAmI();
-  const again = () => openQuickLog(host, pendingId, onSaved);
 
   host.innerHTML = `
     <div class="modal" id="qModal">
@@ -507,7 +506,7 @@ async function openQuickLog(host, pendingId, onSaved) {
 
           ${logs.length ? `
             <h3 class="q-h3">ประวัติที่ผ่านมา (${logs.length})</h3>
-            <ul class="loglist">${logListHtml(logs, me)}</ul>` : ''}
+            <ul class="loglist" id="qLogList">${logListHtml(logs, me)}</ul>` : ''}
         </div>
         <p class="login-err" id="qErr" role="alert" hidden></p>
         <div class="modal-foot">
@@ -524,8 +523,18 @@ async function openQuickLog(host, pendingId, onSaved) {
   q('#qCancel').addEventListener('click', close);
   q('#qModal').addEventListener('mousedown', (e) => { if (e.target.id === 'qModal') close(); });
 
-  // แก้ไขบันทึกเก่า → เขียนเสร็จรีเฟรชทั้งแผงและตารางข้างหลัง
-  bindLogEditing(host, logs, async () => { await onSaved(); await again(); });
+  // แก้ไขบันทึกเก่า → วาดใหม่เฉพาะรายการประวัติ
+  // (ห้ามเปิดแผงใหม่ทั้งใบ ไม่งั้นบันทึกใหม่ที่ผู้ใช้พิมพ์ค้างไว้ด้านบนจะหาย)
+  async function reloadQLogs() {
+    let fresh = [];
+    try { fresh = await adapter.listFollowLogs(pendingId); } catch { return; }
+    const ul = q('#qLogList');
+    if (!ul) return;
+    ul.innerHTML = logListHtml(fresh, me);
+    bindLogEditing(ul, fresh, reloadQLogs);
+    await onSaved();
+  }
+  if (logs.length) bindLogEditing(q('#qLogList'), logs, reloadQLogs);
 
   q('#qForm').addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -683,7 +692,7 @@ async function openDetail(host, id, onSaved, teams) {
 
           ${id ? `
             <section class="fgroup">
-              <h3>บันทึกติดตาม (${logs.length})</h3>
+              <h3>บันทึกติดตาม (<span id="logCount">${logs.length}</span>)</h3>
               <div class="fgrid">
                 <label class="fld"><span>วันที่</span>
                   <input type="date" id="lgDate" value="${new Date().toISOString().slice(0, 10)}"></label>
@@ -693,9 +702,12 @@ async function openDetail(host, id, onSaved, teams) {
                 <label class="fld fld-wide"><span>NEXT DOING — ทำอะไรต่อ</span>
                   <textarea id="lgNext" rows="2"></textarea></label>
               </div>
-              <button type="button" class="btn btn-ghost btn-sm" id="lgAdd">+ เพิ่มบันทึก</button>
+              <div class="lg-add-row">
+                <button type="button" class="btn btn-ghost btn-sm" id="lgAdd">+ เพิ่มบันทึก</button>
+                <span class="lg-hint">หรือกด "บันทึก" ด้านล่างก็เก็บให้เหมือนกัน</span>
+              </div>
 
-              <ul class="loglist">${logListHtml(logs, me)}</ul>
+              <ul class="loglist" id="logList">${logListHtml(logs, me)}</ul>
             </section>`
           : `<section class="fgroup">
                <h3>บันทึกติดตาม (DATE / BY / RESPONSE / NEXT DOING)</h3>
@@ -725,7 +737,44 @@ async function openDetail(host, id, onSaved, teams) {
 
   q('#pClose').addEventListener('click', close);
   q('#pCancel').addEventListener('click', close);
-  bindLogEditing(host, logs, () => openDetail(host, id, onSaved, teams));
+
+  /**
+   * รีเฟรชเฉพาะรายการบันทึก ไม่วาดทั้งแผงใหม่
+   * ⚠️ ห้ามเรียก openDetail() ซ้ำตรงนี้ — จะดึงข้อมูลจาก DB มาทับ
+   *    ทำให้สิ่งที่ผู้ใช้พิมพ์ค้างไว้ใน 42 ช่องหายหมดโดยไม่มีคำเตือน
+   */
+  async function reloadLogs() {
+    let fresh = [];
+    try { fresh = await adapter.listFollowLogs(id); } catch { return; }
+    const ul = q('#logList');
+    if (!ul) return;
+    ul.innerHTML = logListHtml(fresh, me);
+    const cnt = q('#logCount');
+    if (cnt) cnt.textContent = fresh.length;
+    bindLogEditing(ul, fresh, reloadLogs);
+    await onSaved();                       // อัปเดตตารางข้างหลังด้วย
+  }
+
+  if (id) bindLogEditing(q('#logList'), logs, reloadLogs);
+
+  /** อ่านช่องบันทึกติดตามที่พิมพ์ค้างไว้ — คืน null ถ้ายังไม่ได้พิมพ์อะไร */
+  function draftLog() {
+    if (!id) return null;
+    const res  = q('#lgRes')?.value.trim()  || '';
+    const next = q('#lgNext')?.value.trim() || '';
+    if (!res && !next) return null;
+    return {
+      pending_id: id,
+      log_date:   q('#lgDate')?.value || undefined,
+      by_name:    q('#lgBy')?.value.trim() || undefined,
+      response:   res  || undefined,
+      next_doing: next || undefined,
+    };
+  }
+
+  function clearDraft() {
+    ['#lgRes', '#lgNext', '#lgBy'].forEach(sel => { const e = q(sel); if (e) e.value = ''; });
+  }
   // กดพื้นหลังนอกกล่อง = ปิด (mousedown กัน drag จากในกล่องแล้วปล่อยข้างนอกแล้วปิดทิ้ง)
   q('#pModal').addEventListener('mousedown', (e) => { if (e.target.id === 'pModal') close(); });
 
@@ -759,6 +808,12 @@ async function openDetail(host, id, onSaved, teams) {
       // ผู้ติดต่อต้องรอ id ของงานก่อน (กรณีสร้างใหม่ id เพิ่งเกิดตอนนี้)
       const pid = id || saved?.id;
       if (pid) await adapter.saveContacts(pid, ctcList);
+
+      // ⭐ บันทึกติดตามที่พิมพ์ค้างไว้แต่ยังไม่ได้กด "+ เพิ่มบันทึก" ต้องถูกบันทึกด้วย
+      //    ไม่งั้นผู้ใช้พิมพ์แล้วกดปุ่มบันทึกใหญ่ ข้อความจะหายไปเงียบ ๆ
+      const d = draftLog();
+      if (d && pid) await adapter.addFollowLog({ ...d, pending_id: pid });
+
       close();
       await onSaved();
     } catch (e) {
@@ -776,18 +831,12 @@ async function openDetail(host, id, onSaved, teams) {
   });
 
   q('#lgAdd')?.addEventListener('click', async () => {
-    const res  = q('#lgRes').value.trim();
-    const next = q('#lgNext').value.trim();
-    if (!res && !next) return fail('กรอก RESPONSE หรือ NEXT DOING อย่างน้อยหนึ่งช่อง');
+    const d = draftLog();
+    if (!d) return fail('กรอก RESPONSE หรือ NEXT DOING อย่างน้อยหนึ่งช่อง');
     try {
-      await adapter.addFollowLog({
-        pending_id: id,
-        log_date:   q('#lgDate').value || undefined,
-        by_name:    q('#lgBy').value.trim() || undefined,
-        response:   res  || undefined,
-        next_doing: next || undefined,
-      });
-      await openDetail(host, id, onSaved, teams);   // เปิดใหม่ให้เห็นบันทึกที่เพิ่งเพิ่ม
+      await adapter.addFollowLog(d);
+      clearDraft();
+      await reloadLogs();          // วาดใหม่เฉพาะรายการบันทึก ไม่แตะ 42 ช่องที่กรอกค้างไว้
     } catch (e) { fail(e.message); }
   });
 }

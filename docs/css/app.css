@@ -615,3 +615,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .odlist li { grid-template-columns: 1fr; }
   .od-act { grid-column: 1; }
 }
+
+/* บอกผู้ใช้ว่ากดปุ่มไหนก็ได้ (เคยพิมพ์แล้วกดปุ่มบันทึกใหญ่ ข้อความหาย) */
+.lg-add-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lg-hint { font-size: 11.5px; color: var(--text-mute); }
