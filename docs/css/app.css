@@ -14,11 +14,16 @@
 
   --accent:      #5e6ad2;
   --accent-soft: #5e6ad226;
+  --accent-text: #c3c9f5;   /* ตัวหนังสือบนพื้น accent-soft */
 
   --green:  #3fb950;
   --yellow: #d29922;
   --red:    #f85149;
   --blue:   #58a6ff;
+
+  /* เส้นขอบโปร่งของสีสถานะ */
+  --green-line: #3fb95040;
+  --red-line:   #f8514940;
 
   --r-sm: 6px;
   --r-md: 10px;
@@ -86,7 +91,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 }
 .nav-item .ico { width: 16px; text-align: center; opacity: .8; font-size: 13px; }
 .nav-item:hover { background: var(--bg-hover); color: var(--text); }
-.nav-item.is-active { background: var(--accent-soft); color: #c3c9f5; }
+.nav-item.is-active { background: var(--accent-soft); color: var(--accent-text); }
 
 .sidebar-foot { margin-top: auto; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
 .mode-chip {
@@ -117,8 +122,8 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   color: var(--text-dim);
   white-space: nowrap;
 }
-.pill.ok  { color: var(--green);  border-color: #3fb95040; }
-.pill.err { color: var(--red);    border-color: #f8514940; }
+.pill.ok  { color: var(--green);  border-color: var(--green-line); }
+.pill.err { color: var(--red);    border-color: var(--red-line); }
 
 .content { padding: 24px 28px 40px; flex: 1; }
 
@@ -192,5 +197,5 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     border-radius: var(--r-sm);
   }
   .bn span { font-size: 15px; line-height: 1; }
-  .bn.is-active { color: #c3c9f5; background: var(--accent-soft); }
+  .bn.is-active { color: var(--accent-text); background: var(--accent-soft); }
 }

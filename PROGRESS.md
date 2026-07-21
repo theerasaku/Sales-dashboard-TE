@@ -2,7 +2,7 @@
 
 อ้างอิงแผนเต็ม: [`CLAUDE.md`](./CLAUDE.md) · แผนฉบับภาพ: [`plan/te-sales-dashboard-build-plan.html`](./plan/te-sales-dashboard-build-plan.html)
 
-> **v2 (20 ก.ค. 2026)** — requirement ปรับใหม่: เพิ่ม AI Intake · Archive · แถบ Supplier → roadmap ขยายจาก 18 เป็น 20 step
+> **v2 (20 ก.ค. 2026)** — requirement ปรับใหม่: เพิ่ม AI Intake · Archive · แถบ Supplier → roadmap ขยายจาก 18 เป็น 20 step · (21 ก.ค.) เพิ่ม 3.7 ธีม/สี → 21 step
 
 | Step | งาน | ขนาด | สถานะ |
 |---|---|---|---|
@@ -26,6 +26,7 @@
 | 3.4 | **B7 + F9 แถบ Supplier** (ใหม่ v2) | M | ⬜ |
 | 3.5 | **F10 AI Intake** (ใหม่ v2) | L | ⬜ |
 | 3.6 | export CSV/JSON ทุก module + backup + ทดสอบรวม | S | ⬜ |
+| 3.7 | **ธีม/สี — เลือกธีมสำเร็จรูป + สีเน้น** (ใหม่) | S | ⬜ |
 
 ## สิ่งที่ทำใน Phase 0.1
 

@@ -39,6 +39,13 @@
 - **Multi-user:** `admin` (เจ้าของ เห็น/แก้ทั้งหมด) + `sale` (เห็น/แก้เฉพาะงานทีมตัวเอง)
   - ทีม: **GOV.1** (ราชการ/ประมูล), **GOV.3** (ทหาร/HomePro/กรมทางหลวง), **GOV.4** (ท้องถิ่น/บาดาล), **TE-IMP** (เอกชน/โรงงาน), **System Project**
 
+## ธีม/สี — กติกาที่ห้ามพลาด (เตรียมไว้ให้ step 3.7)
+- **สีทุกสีต้องมาจากตัวแปรใน `:root` ของ `docs/css/app.css` เท่านั้น** ห้าม hardcode hex ในโค้ด/CSS ส่วนอื่น
+- **กราฟ SVG ต้องใช้ `fill="var(--chart-N)"` ห้ามฝัง hex** (prototype v3 ฝัง hex ไว้ — ยกมาต้องแปลงก่อน)
+  ถ้าฝัง hex เปลี่ยนธีมแล้วกราฟจะไม่เปลี่ยนตาม ต้องไล่แก้ทั้งหน้าทีหลัง
+- สวิตช์ธีมอยู่ที่ `<html data-theme="dark">` → เพิ่มโหมดสว่างโดยเขียนชุดตัวแปรใต้ `[data-theme="light"]`
+- ให้เลือกจาก **ธีมสำเร็จรูปที่คัดมาแล้ว** ไม่เปิดให้จิ้มสีอิสระ — กัน palette เสีย CVD-safe และคอนทราสต์ตก
+
 ## Mobile (mobile-first)
 - ≤430px (iPhone/S24): แท็บนำทางเป็น **bottom bar**, ตาราง → **การ์ด**, ปุ่ม/จุดแตะ ≥44px
 - 431–1024px (iPad): layout 2 คอลัมน์
@@ -92,7 +99,7 @@ tools/
 ## Frontend 10 module
 F1 App Shell + Login · F2 Data Adapter · F3 Dashboard ภาพรวม · F4 Pending Project UI (+toggle แสดง/ซ่อนงานจบแล้ว) · F5 Book 3 สี UI (+ปุ่มยกลูกค้า→Pending, +toggle ซ่อนลูกค้าไม่ active) · F6 แผนติดต่อลูกค้า · F7 แหล่งงาน+ทีม+กลยุทธ์ playbook · F8 PWA+Responsive · **F9 Supplier Tab (ใหม่ v2)** — แถบ Supplier กลุ่มย่อยกรองได้ เพิ่ม/แก้กลุ่มจากหน้าจอ · **F10 AI Intake (ใหม่ v2)** — ปุ่ม 🤖 AI Import ทุกแท็บ: รูปนามบัตร→Book 3 สี, รูปฟอร์มกระดาษ/ลายมือ→Pending, Obsidian, Notion — AI แกะเป็น JSON ตาม schema แล้วระบบแสดง preview + merge กันซ้ำ (จับคู่เบอร์โทร/ชื่อบริษัท/PENDING NO.) ก่อนบันทึกจริง + log ทุกการนำเข้า
 
-## Roadmap 20 step (S/M/L = ขนาดงาน; L = งานใหญ่ ยิงตอนโควตาเหลือเยอะ)
+## Roadmap 21 step (S/M/L = ขนาดงาน; L = งานใหญ่ ยิงตอนโควตาเหลือเยอะ)
 
 ### Phase 0 — เตรียมฐาน
 - **0.1 (S)** ยืนยันโครง repo นี้ + push ขึ้น GitHub + เปิด GitHub Pages จาก `docs/`
@@ -121,6 +128,8 @@ F1 App Shell + Login · F2 Data Adapter · F3 Dashboard ภาพรวม · F4
 - **3.4 (M, ใหม่ v2)** B7 + F9 แถบ Supplier — ตาราง suppliers/supplier_categories/project_suppliers + RLS, แถบใหม่กลุ่มย่อยกรองได้ (ผู้ขาย/ผู้รับเหมา/วัสดุก่อสร้าง/วัตถุดิบ/บริการ) เพิ่ม/แก้กลุ่มจากหน้าจอ, ปุ่มหา supplier จากหน้า Pending
 - **3.5 (L, ใหม่ v2)** F10 AI Intake — modal 🤖 AI Import 4 แหล่ง: รูปนามบัตร→Book 3 สี · รูปฟอร์มกระดาษ/ลายมือ→Pending · Obsidian (`raw/TE-Pending project`, `raw/TE-Book 3 สี`) · Notion — คำสั่งสำเร็จรูปให้ Claude คืน JSON ตาม schema, preview+merge กันซ้ำก่อนบันทึก, log ทุกการนำเข้า
 - **3.6 (S)** ปุ่ม export CSV/JSON ทุก module + วิธี backup รายสัปดาห์ + ทดสอบรวมทั้งระบบปิดโครงการ
+- **3.7 (S, ใหม่)** ธีม/สี — หน้าตั้งค่าเลือกธีมสำเร็จรูป (Linear Dark / สว่าง / คอนทราสต์สูง) + สีเน้น,
+  จำค่าไว้ใน localStorage, สลับด้วย `data-theme` (โครงเตรียมไว้แล้วตั้งแต่ 1.2/1.5)
 
 ## หมายเหตุการต่อยอด
 - prototype เดิม (v3) เป็น artifact ชื่อ `pending-project-dashboard` บน claude.ai — ยก UI/ฟอร์ม/กราฟ/palette CVD-safe มาใช้ได้ ประหยัดเวลา (ถ้าเข้าถึงไม่ได้ ให้เจ้าของแนบไฟล์ HTML prototype มา)
