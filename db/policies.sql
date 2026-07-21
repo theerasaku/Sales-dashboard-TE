@@ -72,8 +72,16 @@ security definer
 set search_path = public
 as $$
 begin
-  if is_admin() then
-    return new;                       -- admin แก้ได้ทุกอย่าง
+  -- auth.uid() เป็น null = คำสั่งไม่ได้มาจากผู้ใช้ที่ล็อกอิน แต่มาจาก SQL Editor /
+  -- service key / migration ซึ่งเป็นช่องทางที่เชื่อถือได้อยู่แล้ว → ปล่อยผ่าน
+  --
+  -- จำเป็นต้องมีเงื่อนไขนี้ ไม่งั้นจะตั้ง admin คนแรกไม่ได้เลย (ไก่กับไข่:
+  -- จะแก้ role ต้องเป็น admin ก่อน แต่ยังไม่มี admin สักคน)
+  --
+  -- ไม่ได้เปิดช่องโหว่ เพราะคนที่ยิงผ่าน REST API จะมี auth.uid() เสมอ
+  -- ส่วน anon ถูกบล็อกตั้งแต่ชั้น RLS + revoke grant ก่อนถึง trigger นี้แล้ว
+  if auth.uid() is null or is_admin() then
+    return new;
   end if;
 
   if new.role      is distinct from old.role
