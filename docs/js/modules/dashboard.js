@@ -31,7 +31,7 @@ export default {
     root.innerHTML = `
       ${warn}
       <div class="grid cols-4">
-        ${card('เป้ายอดขาย', `${CONFIG.TARGET_MB} MB`, 'เป้ารวมทั้งปี')}
+        ${card('เป้ายอดขาย', `${CONFIG.TARGET_MB} ล้านบาท`, CONFIG.TARGET_PERIOD)}
         ${card('Pending Project', n(s.pendingCount), 'โครงการที่ยังเดินอยู่')}
         ${card('ลูกค้า Book 3 สี', n(s.customerCount), 'ยังไม่มีตาราง — Phase 2.1')}
         ${card('กิจกรรมค้าง', n(s.activityCount), 'ยังไม่มีตาราง — Phase 2.1')}
