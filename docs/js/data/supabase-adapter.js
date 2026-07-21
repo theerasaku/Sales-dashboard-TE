@@ -177,7 +177,9 @@ const READONLY = new Set([
   'teams', 'follow_logs', 'project_contacts', 'profiles',
 ]);
 
-const PENDING_SELECT = '*,teams(code,name)';
+// ดึงบันทึกติดตามล่าสุด 1 รายการฝังมากับทุกแถว
+// เพื่อให้เห็นความคืบหน้าจากหน้าตารางเลย ไม่ต้องเปิดเข้าไปดูทีละงาน
+const PENDING_SELECT = '*,teams(code,name),follow_logs(log_date,by_name,response,next_doing)';
 
 /** ตัด field ที่เขียนไม่ได้ + ช่องว่างเปล่าให้เป็น null (ไม่งั้น date ว่างจะ error) */
 function cleanRow(row) {
@@ -309,7 +311,13 @@ const supabaseAdapter = {
     p.set('order', `${col}.${way}.nullslast`);
     p.set('limit', String(limit));
 
-    return rest('/pending_projects?' + p.toString());
+    // เอาเฉพาะบันทึกล่าสุด 1 อันของแต่ละงาน ไม่ต้องลากทั้งประวัติลงมือถือ
+    p.set('follow_logs.order', 'log_date.desc');
+    p.set('follow_logs.limit', '1');
+
+    const rows = await rest('/pending_projects?' + p.toString());
+    // แปลงให้ UI ใช้ง่าย: last_log = บันทึกล่าสุด หรือ null
+    return (rows || []).map(r => ({ ...r, last_log: r.follow_logs?.[0] || null }));
   },
 
   /** งาน 1 ใบ + บันทึกติดตาม + ผู้ติดต่อ — ดึงทีเดียวจบ ไม่ต้องยิง 3 รอบ */

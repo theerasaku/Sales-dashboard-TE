@@ -115,7 +115,13 @@ const localAdapter = {
       return x > y ? sign : x < y ? -sign : 0;
     });
 
-    return rows.slice(0, limit);
+    // แนบบันทึกล่าสุดให้เหมือน supabase-adapter (UI อ่าน row.last_log)
+    return rows.slice(0, limit).map(r => ({
+      ...r,
+      last_log: db.follow_logs
+        .filter(l => l.pending_id === r.id)
+        .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)))[0] || null,
+    }));
   },
 
   async getPending(id) {

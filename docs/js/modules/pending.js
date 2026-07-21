@@ -27,6 +27,7 @@ const COLUMNS = [
   { key: 'close_month',   label: 'คาดปิด',       w: 100 },
   { key: 'team',          label: 'ทีม',          w: 90  },
   { key: 'next_date',     label: 'ทำภายใน',      w: 110 },
+  { key: 'last_log',      label: 'ความคืบหน้าล่าสุด', w: 240, nosort: true },
 ];
 
 const LS_COLS = 'te-dashboard:pending-cols';
@@ -126,6 +127,23 @@ function dueCell(d) {
   return `<span class="${late ? 'due-late' : ''}">${esc(d)}${late ? ' ⚠' : ''}</span>`;
 }
 
+/** บันทึกความคืบหน้าล่าสุด — เห็นจากตารางเลย ไม่ต้องเปิดเข้าไปทีละงาน */
+function lastLogCell(row) {
+  const l = row.last_log;
+  // ปุ่มบันทึกเร็ว — งานประจำวันคือเพิ่มบันทึกบรรทัดเดียว ไม่ควรต้องเปิดฟอร์ม 42 ช่อง
+  const btn = `<button type="button" class="btn-log" data-log="${esc(row.id)}"
+                 title="บันทึกความคืบหน้าวันนี้">＋ บันทึก</button>`;
+  if (!l) return `<div class="lastlog"><span class="nolog">— ยังไม่มีบันทึก —</span>${btn}</div>`;
+
+  const text = l.response || l.next_doing || '';
+  return `<div class="lastlog">
+    <div class="lastlog-txt">
+      <span class="lastlog-h">${esc(l.log_date || '')}${l.by_name ? ' · ' + esc(l.by_name) : ''}</span>
+      <span class="lastlog-t" title="${esc(text)}">${esc(text)}</span>
+    </div>${btn}
+  </div>`;
+}
+
 function cellOf(row, key) {
   switch (key) {
     case 'value_baht':  return baht(row.value_baht);
@@ -133,6 +151,7 @@ function cellOf(row, key) {
     case 'close_month': return esc(monthLabel(row.close_month));
     case 'team':        return esc(row.teams?.code || '');
     case 'next_date':   return dueCell(row.next_date);
+    case 'last_log':    return lastLogCell(row);
     default:            return esc(row[key]);
   }
 }
@@ -249,8 +268,10 @@ export default {
         <div class="tbl-wrap">
           <table class="tbl">
             <thead><tr>
-              ${show.map(c => `<th data-sort="${c.key}" style="min-width:${c.w}px"
-                    class="${c.num ? 'num' : ''}">${esc(c.label)}${arrow(c.key)}</th>`).join('')}
+              ${show.map(c => c.nosort
+                ? `<th style="min-width:${c.w}px" class="nosort">${esc(c.label)}</th>`
+                : `<th data-sort="${c.key}" style="min-width:${c.w}px"
+                       class="${c.num ? 'num' : ''}">${esc(c.label)}${arrow(c.key)}</th>`).join('')}
             </tr></thead>
             <tbody>
               ${rows.map(r => `
@@ -263,7 +284,7 @@ export default {
 
         <div class="cards">
           ${rows.map(r => `
-            <button class="pcard" data-id="${esc(r.id)}">
+            <div class="pcard" data-id="${esc(r.id)}" role="button" tabindex="0">
               <div class="pcard-top">
                 <strong>${esc(r.project_name)}</strong>
                 ${stagePill(r.stage)}
@@ -274,7 +295,8 @@ export default {
                 <span>${esc(monthLabel(r.close_month) || 'ยังไม่ระบุเดือน')}</span>
               </div>
               ${r.next_date ? `<div class="pcard-due">ทำภายใน ${dueCell(r.next_date)}</div>` : ''}
-            </button>`).join('')}
+              <div class="pcard-log">${lastLogCell(r)}</div>
+            </div>`).join('')}
         </div>`;
     }
 
@@ -311,6 +333,13 @@ export default {
     });
 
     listEl.addEventListener('click', (e) => {
+      // ปุ่มบันทึกเร็วต้องเช็กก่อนแถว ไม่งั้นโดนแถวดักไปเปิดฟอร์มเต็มแทน
+      const lg = e.target.closest('[data-log]');
+      if (lg) {
+        e.stopPropagation();
+        return openQuickLog(root.querySelector('#pPanel'), lg.dataset.log, reload);
+      }
+
       const th = e.target.closest('th[data-sort]');
       if (th) {
         const k = th.dataset.sort;
@@ -323,6 +352,16 @@ export default {
       if (hit) openDetail(root.querySelector('#pPanel'), hit.dataset.id, reload, teams);
     });
 
+    // การ์ดเป็น div (ไม่ใช่ button — จะซ้อนปุ่มบันทึกข้างในไม่ได้)
+    // จึงต้องรับคีย์บอร์ดเองให้ใช้งานได้เท่าเดิม
+    listEl.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const card = e.target.closest('.pcard');
+      if (!card) return;
+      e.preventDefault();
+      openDetail(root.querySelector('#pPanel'), card.dataset.id, reload, teams);
+    });
+
     $('pNew').addEventListener('click', () =>
       openDetail(root.querySelector('#pPanel'), null, reload, teams));
     $('pCsv').addEventListener('click', () => exportCsv(rows));
@@ -330,6 +369,84 @@ export default {
     await reload();
   },
 };
+
+// ══════════════════════════════════════════════════════════
+// บันทึกความคืบหน้าเร็ว — ใช้บ่อยสุดในงานประจำวัน
+// เปิดเฉพาะ 4 ช่องตามฟอร์มกระดาษ (DATE / BY / RESPONSE / NEXT DOING)
+// ══════════════════════════════════════════════════════════
+
+async function openQuickLog(host, pendingId, onSaved) {
+  let row = null;
+  try { row = await adapter.getPending(pendingId); } catch { /* ไม่มีชื่องานก็ยังบันทึกได้ */ }
+  const logs = row?.follow_logs || [];
+
+  host.innerHTML = `
+    <div class="modal" id="qModal">
+      <form class="modal-box modal-sm" id="qForm">
+        <div class="modal-head">
+          <strong>บันทึกความคืบหน้า</strong>
+          <button type="button" class="btn btn-ghost btn-sm" id="qClose">ปิด</button>
+        </div>
+        <div class="modal-body">
+          <p class="q-sub">${esc(row?.project_name || '')}</p>
+          <div class="fgrid">
+            <label class="fld"><span>DATE — วันที่</span>
+              <input type="date" name="log_date" value="${new Date().toISOString().slice(0, 10)}"></label>
+            <label class="fld"><span>BY — ใครติดตาม</span>
+              <input type="text" name="by_name"></label>
+            <label class="fld fld-wide"><span>RESPONSE — ผลที่ได้</span>
+              <textarea name="response" rows="3" placeholder="เช่น เข้าพบ ผอ. แล้ว ขอให้ส่งสเปกเพิ่ม"></textarea></label>
+            <label class="fld fld-wide"><span>NEXT DOING — ทำอะไรต่อ</span>
+              <textarea name="next_doing" rows="2" placeholder="เช่น ส่งสเปกวันจันทร์"></textarea></label>
+          </div>
+
+          ${logs.length ? `
+            <h3 class="q-h3">ประวัติที่ผ่านมา (${logs.length})</h3>
+            <ul class="loglist">
+              ${logs.map(l => `<li>
+                <div class="log-h"><b>${esc(l.log_date)}</b> ${esc(l.by_name || '')}</div>
+                ${l.response   ? `<div>${esc(l.response)}</div>` : ''}
+                ${l.next_doing ? `<div class="log-next">→ ${esc(l.next_doing)}</div>` : ''}
+              </li>`).join('')}
+            </ul>` : ''}
+        </div>
+        <p class="login-err" id="qErr" role="alert" hidden></p>
+        <div class="modal-foot">
+          <span class="spacer"></span>
+          <button type="button" class="btn btn-ghost" id="qCancel">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary" id="qSave">บันทึก</button>
+        </div>
+      </form>
+    </div>`;
+
+  const q = (s) => host.querySelector(s);
+  const close = () => { host.innerHTML = ''; };
+  q('#qClose').addEventListener('click', close);
+  q('#qCancel').addEventListener('click', close);
+  q('#qModal').addEventListener('mousedown', (e) => { if (e.target.id === 'qModal') close(); });
+
+  q('#qForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    q('#qErr').hidden = true;
+    const d = Object.fromEntries(new FormData(ev.target).entries());
+    if (!String(d.response || '').trim() && !String(d.next_doing || '').trim()) {
+      q('#qErr').textContent = 'กรอก RESPONSE หรือ NEXT DOING อย่างน้อยหนึ่งช่อง';
+      q('#qErr').hidden = false;
+      return;
+    }
+    const btn = q('#qSave');
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
+    try {
+      await adapter.addFollowLog({ pending_id: pendingId, ...d });
+      close();
+      await onSaved();
+    } catch (e) {
+      q('#qErr').textContent = e.message;
+      q('#qErr').hidden = false;
+      btn.disabled = false; btn.textContent = 'บันทึก';
+    }
+  });
+}
 
 // ══════════════════════════════════════════════════════════
 // แผงรายละเอียด / ฟอร์มเต็ม (ตามฟอร์มกระดาษ 2 หน้า)
@@ -482,7 +599,14 @@ async function openDetail(host, id, onSaved, teams) {
                   ${l.next_doing ? `<div class="log-next">→ ${esc(l.next_doing)}</div>` : ''}
                 </li>`).join('') || '<li class="log-empty">ยังไม่มีบันทึก</li>'}
               </ul>
-            </section>` : ''}
+            </section>`
+          : `<section class="fgroup">
+               <h3>บันทึกติดตาม (DATE / BY / RESPONSE / NEXT DOING)</h3>
+               <div class="empty" style="padding:20px">
+                 บันทึกความคืบหน้ารายวันเพิ่มได้หลังกด "บันทึก" งานนี้แล้ว
+                 <br>จากนั้นใช้ปุ่ม <b>＋ บันทึก</b> ในตารางได้เลย ไม่ต้องเปิดฟอร์มเต็มทุกครั้ง
+               </div>
+             </section>`}
         </div>
 
         <p class="login-err" id="pErr" role="alert" hidden></p>
