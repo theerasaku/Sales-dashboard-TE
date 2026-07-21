@@ -10,8 +10,8 @@ const notReady = (what) => {
 
 const supabaseAdapter = {
   async init() {
-    if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
-      throw new Error('ยังไม่ได้กรอก SUPABASE_URL / SUPABASE_ANON_KEY ใน config.js');
+    if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_PUBLISHABLE_KEY) {
+      throw new Error('ยังไม่ได้กรอก SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY ใน config.js');
     }
   },
 

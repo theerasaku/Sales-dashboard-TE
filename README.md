@@ -46,8 +46,9 @@ python3 -m http.server 8080 --directory docs
 ## ⚠️ ความปลอดภัย
 
 Repo นี้เป็น **public** — ห้าม commit:
-- `service_role` key ของ Supabase (ใช้ได้เฉพาะ `anon` key)
-- ข้อมูลลูกค้าจริง / ข้อมูลโครงการจริง
+- key ลับของ Supabase: `sb_secret_...` (รุ่นใหม่) หรือ `service_role` key (รุ่นเดิม)
+  → ใน `config.js` ใส่ได้เฉพาะ `sb_publishable_...` / `anon` key ซึ่งออกแบบมาให้เปิดเผยได้
+- ข้อมูลลูกค้าจริง / ข้อมูลโครงการจริง (prototype v3 อยู่ใน `_local/` ที่ gitignore ไว้)
 
 ความปลอดภัยจริงอยู่ที่ RLS ที่ฝั่ง database
 
