@@ -11,7 +11,35 @@
 </head>
 <body>
 
-<div id="app" class="app">
+<!-- ─── หน้าเข้าสู่ระบบ · แสดงเมื่อยังไม่ล็อกอิน ─── -->
+<div id="login" class="login" hidden>
+  <form class="login-box" id="loginForm" autocomplete="on">
+    <div class="brand-mark login-mark">TE</div>
+    <h1>TE Sales Dashboard</h1>
+    <p class="login-sub">ระบบติดตามงานขาย Thammasorn Engineering</p>
+
+    <label class="fld">
+      <span>อีเมล</span>
+      <input type="email" id="loginEmail" required autocomplete="username"
+             inputmode="email" autocapitalize="off" spellcheck="false" placeholder="you@dos.co.th">
+    </label>
+
+    <label class="fld">
+      <span>รหัสผ่าน</span>
+      <input type="password" id="loginPass" required autocomplete="current-password" placeholder="••••••••">
+    </label>
+
+    <p class="login-err" id="loginErr" role="alert" hidden></p>
+
+    <button class="btn btn-primary" type="submit" id="loginBtn">เข้าสู่ระบบ</button>
+
+    <p class="login-note">
+      ระบบนี้ปิดรับสมัครสาธารณะ — ใช้บัญชีที่ผู้ดูแลเชิญเท่านั้น
+    </p>
+  </form>
+</div>
+
+<div id="app" class="app" hidden>
 
   <aside class="sidebar" id="sidebar">
     <div class="brand">
@@ -32,8 +60,16 @@
     </nav>
 
     <div class="sidebar-foot">
+      <div class="who" id="who">
+        <div class="who-avatar" id="whoAvatar">—</div>
+        <div class="who-text">
+          <strong id="whoName">—</strong>
+          <span id="whoMeta">—</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">ออกจากระบบ</button>
       <div class="mode-chip" id="modeChip">mode: —</div>
-      <div class="ver">v0.1 · Phase 0</div>
+      <div class="ver">v0.2 · Phase 1</div>
     </div>
   </aside>
 
@@ -45,6 +81,8 @@
       </div>
       <div class="topbar-right">
         <span class="pill" id="statusPill">กำลังโหลด…</span>
+        <!-- iPad/มือถือซ่อน sidebar-foot → ต้องมีทางออกจากระบบตรงนี้ด้วย -->
+        <button class="btn btn-ghost btn-sm only-compact" id="logoutBtnTop">ออกจากระบบ</button>
       </div>
     </header>
 

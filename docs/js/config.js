@@ -8,15 +8,14 @@
 
 export const CONFIG = {
   APP_NAME: 'TE Sales Dashboard',
-  VERSION: '0.1.0',
+  VERSION: '0.2.0',
 
-  // 'local'    = เก็บใน localStorage (ทำงานได้เลย ไม่ต้องมี backend)
-  // 'supabase' = ต่อ Supabase จริง
+  // 'local'    = เก็บใน localStorage (ไม่ต้องมี backend · ใช้ตอน dev/ออฟไลน์)
+  // 'supabase' = ต่อ Supabase จริง (ต้องล็อกอินก่อนถึงใช้งานได้)
   //
-  // ⚠️ ยังต้องเป็น 'local' อยู่ จะสลับเป็น 'supabase' ได้เมื่อครบ 2 อย่าง:
-  //    1) รัน db/schema.sql → policies.sql → seed.sql ใน Supabase แล้ว
-  //    2) ทำ step 1.3 (เขียน supabase-adapter.js ของจริง) เสร็จ — ตอนนี้ยังเป็นโครงเปล่า
-  DATA_MODE: 'local',
+  // Phase 1.2: auth ใช้งานได้จริงแล้ว · การดึงข้อมูลตาราง (pending/customers)
+  // ยังเป็นโครงอยู่ จะเติมใน Phase 1.3
+  DATA_MODE: 'supabase',
 
   // === Phase 0.2 ✅ กรอกแล้ว (project: Sales TE · region Singapore) ===
   SUPABASE_URL: 'https://ejszfgsecuuysaamvtcn.supabase.co',

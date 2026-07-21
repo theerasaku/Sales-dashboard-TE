@@ -1,8 +1,11 @@
-// F1 — App Shell + router
-// Phase 0: โครงเปล่า สลับ view ได้ + init adapter ได้ (login เติมใน 1.2)
+// F1 — App Shell + Login + router (Phase 1.2)
+//
+// ลำดับการทำงาน: initAdapter → เช็ก session
+//   มี session   → เข้าแอป
+//   ไม่มี        → หน้าเข้าสู่ระบบ (เข้าหน้าอื่นไม่ได้เลย)
 
 import { CONFIG } from './config.js';
-import { initAdapter } from './data/adapter.js';
+import { initAdapter, adapter } from './data/adapter.js';
 
 import dashboard  from './modules/dashboard.js';
 import pending    from './modules/pending.js';
@@ -14,14 +17,53 @@ import suppliers  from './modules/suppliers.js';
 const VIEWS = { dashboard, pending, book3, activities, sources, suppliers };
 
 const el = {
+  login:      document.getElementById('login'),
+  loginForm:  document.getElementById('loginForm'),
+  loginEmail: document.getElementById('loginEmail'),
+  loginPass:  document.getElementById('loginPass'),
+  loginErr:   document.getElementById('loginErr'),
+  loginBtn:   document.getElementById('loginBtn'),
+
+  app:        document.getElementById('app'),
   content:    document.getElementById('content'),
   title:      document.getElementById('viewTitle'),
   sub:        document.getElementById('viewSub'),
   statusPill: document.getElementById('statusPill'),
   modeChip:   document.getElementById('modeChip'),
+
+  whoAvatar:  document.getElementById('whoAvatar'),
+  whoName:    document.getElementById('whoName'),
+  whoMeta:    document.getElementById('whoMeta'),
 };
 
 let current = null;
+
+// ---------- สลับหน้าจอ ----------
+
+function showLogin() {
+  el.app.hidden = true;
+  el.login.hidden = false;
+  el.loginEmail?.focus();
+}
+
+function showApp(user) {
+  el.login.hidden = true;
+  el.app.hidden = false;
+  paintUser(user);
+}
+
+function paintUser(user) {
+  if (!user) return;
+  const name = user.full_name || user.email || '—';
+  el.whoName.textContent = name;
+  el.whoAvatar.textContent = (name.trim()[0] || '?').toUpperCase();
+  el.whoName.title = user.email || '';
+
+  const roleLabel = user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ฝ่ายขาย';
+  el.whoMeta.textContent = user.team ? `${roleLabel} · ${user.team}` : roleLabel;
+}
+
+// ---------- router ----------
 
 function setActive(name) {
   document.querySelectorAll('.nav-item, .bn').forEach(b => {
@@ -43,11 +85,18 @@ async function render(name) {
     await view.render(el.content);
   } catch (e) {
     console.error(e);
+    // เซสชันหมดกลางคัน → เด้งกลับหน้าล็อกอิน ไม่ปล่อยให้ค้างหน้าเปล่า
+    if (String(e.message).includes('เซสชันหมดอายุ')) return signOut();
     el.content.innerHTML =
-      `<div class="empty"><strong>โหลดหน้านี้ไม่สำเร็จ</strong>${e.message}</div>`;
+      `<div class="empty"><strong>โหลดหน้านี้ไม่สำเร็จ</strong>${escapeHtml(e.message)}</div>`;
   }
 
   if (location.hash.slice(1) !== name) location.hash = name;
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 
 function bindNav() {
@@ -55,13 +104,60 @@ function bindNav() {
     btn.addEventListener('click', () => render(btn.dataset.view));
   });
   window.addEventListener('hashchange', () => {
+    if (el.app.hidden) return;                 // ยังไม่ล็อกอิน อย่าให้เปลี่ยนหน้าได้
     const name = location.hash.slice(1) || 'dashboard';
     if (name !== current) render(name);
   });
 }
 
+// ---------- auth ----------
+
+function showLoginError(msg) {
+  el.loginErr.textContent = msg;
+  el.loginErr.hidden = false;
+}
+
+async function onLoginSubmit(e) {
+  e.preventDefault();
+  el.loginErr.hidden = true;
+
+  const email = el.loginEmail.value.trim();
+  const pass  = el.loginPass.value;
+  if (!email || !pass) return showLoginError('กรอกอีเมลและรหัสผ่านให้ครบ');
+
+  el.loginBtn.disabled = true;
+  el.loginBtn.textContent = 'กำลังเข้าสู่ระบบ…';
+
+  try {
+    const s = await adapter.signIn(email, pass);
+    el.loginPass.value = '';                   // อย่าค้างรหัสผ่านไว้ใน DOM
+    showApp(s.user);
+    await render(location.hash.slice(1) || 'dashboard');
+  } catch (err) {
+    console.warn('login failed:', err.message);
+    showLoginError(err.message);
+    el.loginPass.select();
+  } finally {
+    el.loginBtn.disabled = false;
+    el.loginBtn.textContent = 'เข้าสู่ระบบ';
+  }
+}
+
+async function signOut() {
+  try { await adapter.signOut(); } catch (e) { console.warn(e); }
+  current = null;
+  el.content.innerHTML = '';
+  location.hash = '';
+  showLogin();
+}
+
+// ---------- boot ----------
+
 async function boot() {
   bindNav();
+  el.loginForm.addEventListener('submit', onLoginSubmit);
+  document.getElementById('logoutBtn')?.addEventListener('click', signOut);
+  document.getElementById('logoutBtnTop')?.addEventListener('click', signOut);
 
   try {
     const info = await initAdapter();
@@ -73,9 +169,24 @@ async function boot() {
     el.modeChip.textContent   = 'mode: error';
     el.statusPill.textContent = 'ต่อข้อมูลไม่ได้';
     el.statusPill.className   = 'pill err';
+    showLoginError('ระบบตั้งค่าไม่ครบ: ' + e.message);
+    return showLogin();
   }
 
-  await render(location.hash.slice(1) || 'dashboard');
+  // มี session ค้างอยู่ไหม (เปิดเบราว์เซอร์ใหม่แล้วไม่ต้องล็อกอินซ้ำ)
+  let session = null;
+  try {
+    session = await adapter.getSession();
+  } catch (e) {
+    showLoginError(e.message);                 // เช่น บัญชีถูกปิดใช้งาน
+  }
+
+  if (session?.user) {
+    showApp(session.user);
+    await render(location.hash.slice(1) || 'dashboard');
+  } else {
+    showLogin();
+  }
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});

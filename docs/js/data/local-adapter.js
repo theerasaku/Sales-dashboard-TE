@@ -52,10 +52,20 @@ const localAdapter = {
 
   info: () => ({ mode: 'local', label: 'โหมดออฟไลน์ (localStorage)', online: false }),
 
-  // auth — โหมด local ไม่มี auth จริง สมมติเป็น admin
+  // auth — โหมด local ไม่มี auth จริง สมมติเป็น admin (รูปข้อมูลต้องตรงกับ supabase-adapter)
   async getSession() { return db.session; },
   async signIn(email) {
-    db.session = { user: { id: 'local-user', email: email || 'local@te', role: 'admin', team: null } };
+    db.session = {
+      user: {
+        id: 'local-user',
+        email: email || 'local@te',
+        full_name: 'โหมดออฟไลน์',
+        role: 'admin',
+        team_id: null,
+        team: null,
+        team_name: null,
+      },
+    };
     save();
     return db.session;
   },
