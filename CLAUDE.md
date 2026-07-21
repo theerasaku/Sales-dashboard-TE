@@ -28,7 +28,7 @@
 - **Backend/DB:** เส้นทางหลัก = **Supabase** (PostgreSQL + Auth + Row Level Security)
   - schema เขียนเป็น **SQL มาตรฐาน** ใน `db/` เพื่อให้ย้ายไป SQLite/PocketBase บน VPS Hostinger ได้ภายหลัง
 - **Multi-user:** `admin` (เจ้าของ เห็น/แก้ทั้งหมด) + `sale` (เห็น/แก้เฉพาะงานทีมตัวเอง)
-  - ทีม: **GOV.1** (ราชการ/ประมูล), **TE-IMP** (เอกชน/โรงงาน), **GOV.4** (ท้องถิ่น/บาดาล), **System Project**
+  - ทีม: **GOV.1** (ราชการ/ประมูล), **GOV.3**, **GOV.4** (ท้องถิ่น/บาดาล), **TE-IMP** (เอกชน/โรงงาน), **System Project**
 
 ## Mobile (mobile-first)
 - ≤430px (iPhone/S24): แท็บนำทางเป็น **bottom bar**, ตาราง → **การ์ด**, ปุ่ม/จุดแตะ ≥44px
@@ -66,7 +66,7 @@ db/
   schema.sql                  ← B1–B5 ตาราง (SQL มาตรฐาน)
   policies.sql                ← RLS สิทธิ์ admin/sale
   views.sql                   ← B6 สรุปตัวเลข dashboard
-  seed.sql                    ← ข้อมูลตั้งต้น (4 ทีม, 8 แหล่งงาน)
+  seed.sql                    ← ข้อมูลตั้งต้น (5 ทีม, 8 แหล่งงาน)
 tools/
   import-json.html            ← ย้ายข้อมูล JSON v1/v2/v3 เดิม → DB
 ```
@@ -107,7 +107,7 @@ F1 App Shell + Login · F2 Data Adapter · F3 Dashboard ภาพรวม · F4
 
 ### Phase 3 — ครบระบบ + Supplier + AI Intake + PWA
 - **3.1 (M)** B5 + F7 แหล่งงาน 8 เส้นทาง (ลิงก์แก้ได้) + หน้า Thai Water Expo (★ prospect ขึ้นก่อน, ปุ่ม → Pending)
-- **3.2 (S)** หน้าทีมขาย 4 ทีม + playbook กลยุทธ์ 8 เส้นทาง + เช็กลิสต์ชนะงาน 7 ข้อ
+- **3.2 (S)** หน้าทีมขาย 5 ทีม + playbook กลยุทธ์ 8 เส้นทาง + เช็กลิสต์ชนะงาน 7 ข้อ
 - **3.3 (M)** F8 PWA (manifest + sw + icons) → ติดตั้งบน iPhone/iPad/S24
 - **3.4 (M, ใหม่ v2)** B7 + F9 แถบ Supplier — ตาราง suppliers/supplier_categories/project_suppliers + RLS, แถบใหม่กลุ่มย่อยกรองได้ (ผู้ขาย/ผู้รับเหมา/วัสดุก่อสร้าง/วัตถุดิบ/บริการ) เพิ่ม/แก้กลุ่มจากหน้าจอ, ปุ่มหา supplier จากหน้า Pending
 - **3.5 (L, ใหม่ v2)** F10 AI Intake — modal 🤖 AI Import 4 แหล่ง: รูปนามบัตร→Book 3 สี · รูปฟอร์มกระดาษ/ลายมือ→Pending · Obsidian (`raw/TE-Pending project`, `raw/TE-Book 3 สี`) · Notion — คำสั่งสำเร็จรูปให้ Claude คืน JSON ตาม schema, preview+merge กันซ้ำก่อนบันทึก, log ทุกการนำเข้า

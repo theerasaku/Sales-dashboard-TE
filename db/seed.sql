@@ -3,21 +3,24 @@
 -- ⚠️ ห้ามใส่ข้อมูลลูกค้าจริงในไฟล์นี้เด็ดขาด — repo เป็น public
 --    ข้อมูลจริงเข้าทาง tools/import-json.html (step 1.6) → Supabase ที่มี RLS
 --
--- ขอบเขต step 1.1: teams 4 ทีม
+-- ขอบเขต step 1.1: teams 5 ทีม
 -- lead_sources 8 เส้นทาง + app_settings (เป้า 80MB) มาใน step 3.1 (B5)
 --
 -- วิธีรัน: รัน schema.sql → policies.sql ให้เสร็จก่อน แล้ววางไฟล์นี้ → Run
 -- รันซ้ำได้: on conflict do update ทำให้ข้อมูลไม่ซ้ำและอัปเดตชื่อได้
 
 -- ══════════════════════════════════════════════════════════
--- ทีมขาย 4 ทีม
+-- ทีมขาย 5 ทีม
 -- ══════════════════════════════════════════════════════════
 
 insert into teams (code, name, description, sort_order) values
   ('GOV.1',  'GOV.1',          'งานราชการ / ประมูล e-bidding',        1),
-  ('TE-IMP', 'TE-IMP',         'งานเอกชน / โรงงาน / นำเข้า',          2),
+  -- ⚠️ GOV.3 ยังไม่ได้ระบุขอบเขตงาน — เติม description ทีหลังได้ที่หน้า Admin (step 2.4)
+  --    หรือแก้บรรทัดนี้แล้วรัน seed.sql ซ้ำ (on conflict do update จะอัปเดตให้)
+  ('GOV.3',  'GOV.3',          null,                                  2),
   ('GOV.4',  'GOV.4',          'งานท้องถิ่น / น้ำบาดาล',              3),
-  ('SYSTEM', 'System Project', 'งานระบบ / โครงการพิเศษ',              4)
+  ('TE-IMP', 'TE-IMP',         'งานเอกชน / โรงงาน / นำเข้า',          4),
+  ('SYSTEM', 'System Project', 'งานระบบ / โครงการพิเศษ',              5)
 on conflict (code) do update
   set name        = excluded.name,
       description = excluded.description,
@@ -42,7 +45,7 @@ on conflict (code) do update
 -- ตรวจผลหลังรันครบ 3 ไฟล์
 -- ══════════════════════════════════════════════════════════
 
--- ทีมครบ 4 ทีมไหม
+-- ทีมครบ 5 ทีมไหม
 -- select code, name, sort_order from teams order by sort_order;
 
 -- RLS เปิดครบทุกตารางไหม (rowsecurity ต้องเป็น true ทั้ง 5 แถว)

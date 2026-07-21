@@ -23,7 +23,7 @@ export const CONFIG = {
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_0h8gVNyQ6hKJFPM6-_zgOw_uPI5v1V-',
 
   // ทีมขาย
-  TEAMS: ['GOV.1', 'TE-IMP', 'GOV.4', 'System Project'],
+  TEAMS: ['GOV.1', 'GOV.3', 'GOV.4', 'TE-IMP', 'System Project'],
 
   // เป้ายอดขายรวม (ล้านบาท)
   TARGET_MB: 80,

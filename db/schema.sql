@@ -33,10 +33,10 @@ $$;
 -- B1 · Users & Teams
 -- ══════════════════════════════════════════════════════════
 
--- ทีมขาย 4 ทีม (ข้อมูลตั้งต้นอยู่ใน seed.sql)
+-- ทีมขาย 5 ทีม (ข้อมูลตั้งต้นอยู่ใน seed.sql)
 create table if not exists teams (
   id          uuid primary key default gen_random_uuid(),
-  code        text not null unique,              -- GOV.1 / TE-IMP / GOV.4 / SYSTEM
+  code        text not null unique,              -- GOV.1 / GOV.3 / GOV.4 / TE-IMP / SYSTEM
   name        text not null,                     -- ชื่อที่แสดงบนหน้าจอ
   description text,                              -- ขอบเขตงานของทีม
   sort_order  int  not null default 0,
