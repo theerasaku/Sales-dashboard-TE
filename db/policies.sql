@@ -176,9 +176,14 @@ create policy pending_update on pending_projects
   using (can_access_team(team_id))
   with check (can_access_team(team_id));   -- กันย้ายงานไปทีมที่ตัวเองไม่มีสิทธิ์
 
+-- ⚠️ ลบถาวร = admin เท่านั้น (แก้ 21 ก.ค. 2026)
+--    เดิมเป็น can_access_team() → sale ลบงานของทีมตัวเองหายถาวรได้
+--    แต่ระบบเราทำแค่ backup ไม่ทำ rollback รายแถว → Supabase backup วันละครั้ง
+--    กู้เคส "กดลบผิดตอนบ่าย" ไม่ได้ (ต้องย้อนทั้ง project = งานทีมอื่นหายด้วย)
+--    sale ให้ใช้ soft delete แทน: set is_active = false (ผ่าน pending_update)
 create policy pending_delete on pending_projects
   for delete to authenticated
-  using (can_access_team(team_id));
+  using (is_admin());
 
 -- ── follow_logs ── สิทธิ์ตามงานแม่
 create policy follow_select on follow_logs
@@ -201,6 +206,7 @@ create policy follow_update on follow_logs
   using (created_by = auth.uid() or is_admin())
   with check (created_by = auth.uid() or is_admin());
 
+-- TODO step 2.6: เมื่อหัวหน้าเซ็นรับทราบงานแล้ว ต้องล็อกไม่ให้ลบบันทึกติดตามย้อนหลัง
 create policy follow_delete on follow_logs
   for delete to authenticated
   using (created_by = auth.uid() or is_admin());
