@@ -370,6 +370,37 @@ const supabaseAdapter = {
     await rest(`/pending_projects?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
   },
 
+  // ---------- B2 · ผู้ติดต่อ 1–3 ----------
+
+  /**
+   * เขียนทับผู้ติดต่อทั้งชุด — upsert ทีละช่องด้วย unique(pending_id, slot)
+   * ช่องที่ผู้ใช้ล้างจนว่างหมดให้ลบทิ้ง ไม่เก็บแถวเปล่าไว้ในตาราง
+   */
+  async saveContacts(pendingId, contacts) {
+    const pid   = encodeURIComponent(pendingId);
+    const keep  = [];
+    const drop  = [];
+
+    for (const c of contacts) {
+      const filled = ['name', 'status', 'address', 'phone', 'email']
+        .some(k => String(c[k] ?? '').trim());
+      (filled ? keep : drop).push(c);
+    }
+
+    for (const c of drop) {
+      await rest(`/project_contacts?pending_id=eq.${pid}&slot=eq.${Number(c.slot)}`,
+                 { method: 'DELETE' });
+    }
+
+    if (keep.length) {
+      await rest('/project_contacts?on_conflict=pending_id,slot', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify(keep.map(c => ({ ...cleanRow(c), pending_id: pendingId }))),
+      });
+    }
+  },
+
   // ---------- B2 · บันทึกติดตาม ----------
 
   async listFollowLogs(pendingId) {

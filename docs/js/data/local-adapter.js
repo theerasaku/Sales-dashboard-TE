@@ -6,6 +6,7 @@ const KEY = 'te-dashboard:v1';
 const EMPTY = {
   pending_projects: [],
   follow_logs: [],
+  project_contacts: [],
   customers: [],
   activities: [],
   session: null,
@@ -123,7 +124,7 @@ const localAdapter = {
     return {
       ...row,
       follow_logs: db.follow_logs.filter(l => l.pending_id === id),
-      project_contacts: [],
+      project_contacts: db.project_contacts.filter(c => c.pending_id === id),
     };
   },
   async savePending(r)  { return upsert('pending_projects', r); },
@@ -139,6 +140,16 @@ const localAdapter = {
 
   async deletePending(id) {
     db.pending_projects = db.pending_projects.filter(r => r.id !== id);
+    save();
+  },
+
+  async saveContacts(pendingId, contacts) {
+    db.project_contacts = db.project_contacts.filter(c => c.pending_id !== pendingId);
+    for (const c of contacts) {
+      const filled = ['name', 'status', 'address', 'phone', 'email']
+        .some(k => String(c[k] ?? '').trim());
+      if (filled) db.project_contacts.push({ ...c, pending_id: pendingId, id: uid() });
+    }
     save();
   },
 

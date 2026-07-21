@@ -48,6 +48,9 @@ export const adapter = {
   archivePending:    (id, a) => need().archivePending(id, a),
   deletePending:     (id)    => need().deletePending(id),
 
+  // B2 ผู้ติดต่อ 1–3
+  saveContacts:      (pid, c) => need().saveContacts(pid, c),
+
   // B2 บันทึกติดตาม
   listFollowLogs:    (pid)   => need().listFollowLogs(pid),
   addFollowLog:      (log)   => need().addFollowLog(log),
