@@ -15,9 +15,7 @@
 
 insert into teams (code, name, description, sort_order) values
   ('GOV.1',  'GOV.1',          'งานราชการ / ประมูล e-bidding',        1),
-  -- ⚠️ GOV.3 ยังไม่ได้ระบุขอบเขตงาน — เติม description ทีหลังได้ที่หน้า Admin (step 2.4)
-  --    หรือแก้บรรทัดนี้แล้วรัน seed.sql ซ้ำ (on conflict do update จะอัปเดตให้)
-  ('GOV.3',  'GOV.3',          null,                                  2),
+  ('GOV.3',  'GOV.3',          'งานทหาร / HomePro / กรมทางหลวง',      2),
   ('GOV.4',  'GOV.4',          'งานท้องถิ่น / น้ำบาดาล',              3),
   ('TE-IMP', 'TE-IMP',         'งานเอกชน / โรงงาน / นำเข้า',          4),
   ('SYSTEM', 'System Project', 'งานระบบ / โครงการพิเศษ',              5)
