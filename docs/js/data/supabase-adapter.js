@@ -166,6 +166,14 @@ function shapeUser(authUser, profile) {
 // ---------- ตัวช่วยสร้าง query (Phase 1.3) ----------
 
 // คอลัมน์ที่ยอมให้เรียงได้ — ห้ามเอาค่าจาก UI ไปต่อ URL ตรง ๆ
+const CUST_SORTABLE = new Set([
+  'name', 'org', 'color', 'updated_at', 'created_at', 'birthday',
+]);
+
+const ACT_SORTABLE = new Set([
+  'due_date', 'status', 'title', 'updated_at', 'created_at',
+]);
+
 const SORTABLE = new Set([
   'close_month', 'decision_day', 'purchased_day', 'next_date',
   'value_baht', 'project_name', 'customer_name', 'stage', 'updated_at', 'created_at',
@@ -469,21 +477,196 @@ const supabaseAdapter = {
    * คืน null สำหรับตัวที่ยังไม่มี เพื่อให้ UI แสดง "—" ได้ ไม่ใช่พังทั้งหน้า
    */
   async getDashboardStats() {
+    // ตารางของ Phase 2 อาจยังไม่ถูกสร้าง (เจ้าของยังไม่ได้รัน phase2.sql)
+    // → นับไม่ได้ก็คืน null ให้ UI แสดง "—" ไม่ใช่พังทั้งหน้า
+    const safe = async (fn) => { try { return await fn(); } catch { return null; } };
+
     return {
       pendingCount:  await countRows('/pending_projects?select=id&is_active=eq.true'),
-      customerCount: null,
-      activityCount: null,
+      customerCount: await safe(() => countRows('/customers?select=id&is_active=eq.true')),
+      activityCount: await safe(() => countRows('/activities?select=id&is_active=eq.true&status=eq.plan')),
       pipelineValue: null,
     };
   },
 
-  // ---------- ยังไม่มีตารางรองรับ (สร้างใน step 2.1) ----------
+  // ---------- B3 · Book 3 สี (step 2.1) ----------
 
-  async listCustomers() { return notReady('listCustomers', '2.1'); },
-  async saveCustomer()  { return notReady('saveCustomer',  '2.1'); },
+  /**
+   * opt:
+   *   status ('active')  active / archived / all  — เหมือน listPending
+   *   color              'green' | 'yellow' | 'red'  (สีความสัมพันธ์ คนละเรื่องกับ status)
+   *   teamId, saleId     กรอง
+   *   search             ชื่อ / หน่วยงาน / เบอร์โทร
+   */
+  async listCustomers(opt = {}) {
+    const {
+      status = 'active', color, teamId, saleId, search,
+      sort = 'updated_at', dir = 'desc', limit = 1000,
+    } = opt;
 
-  async listActivities() { return notReady('listActivities', '2.1'); },
-  async saveActivity()   { return notReady('saveActivity',   '2.1'); },
+    const p = new URLSearchParams();
+    p.set('select', '*,teams(code,name),customer_logs(log_date,by_name,response,next_doing)');
+
+    if (status === 'active')        p.set('is_active', 'eq.true');
+    else if (status === 'archived') p.set('is_active', 'eq.false');
+
+    if (color)  p.set('color',   `eq.${color}`);
+    if (teamId) p.set('team_id', `eq.${teamId}`);
+    if (saleId) p.set('sale_id', `eq.${saleId}`);
+
+    const term = safeSearch(search);
+    if (term) p.set('or', `(name.ilike.*${term}*,org.ilike.*${term}*,tel.ilike.*${term}*)`);
+
+    const col = CUST_SORTABLE.has(sort) ? sort : 'updated_at';
+    p.set('order', `${col}.${dir === 'asc' ? 'asc' : 'desc'}.nullslast`);
+    p.set('limit', String(limit));
+    p.set('customer_logs.order', 'log_date.desc');
+    p.set('customer_logs.limit', '1');
+
+    const rows = await rest('/customers?' + p.toString());
+    return (rows || []).map(r => ({ ...r, last_log: r.customer_logs?.[0] || null }));
+  },
+
+  async getCustomer(id) {
+    const rows = await rest(
+      `/customers?id=eq.${encodeURIComponent(id)}&select=*,teams(code,name),customer_logs(*)`
+    );
+    return rows?.[0] || null;
+  },
+
+  async saveCustomer(row) {
+    const body = cleanRow(row);
+    const me = session?.user?.id || null;
+
+    if (body.id) {
+      const id = body.id;
+      delete body.id;
+      body.updated_by = me;
+      const rows = await rest(`/customers?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(body),
+      });
+      return rows?.[0] || null;
+    }
+
+    body.created_by = me;
+    body.updated_by = me;
+    const rows = await rest('/customers', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    return rows?.[0] || null;
+  },
+
+  /** ทางลบปกติของ sale — ลบถาวรได้เฉพาะ admin (กติกาเดียวกับ pending) */
+  async archiveCustomer(id, archived = true) {
+    const rows = await rest(`/customers?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        is_active:   !archived,
+        archived_at: archived ? new Date().toISOString() : null,
+        updated_by:  session?.user?.id || null,
+      }),
+    });
+    return rows?.[0] || null;
+  },
+
+  async countCustomers(status = 'active') {
+    const flag = status === 'archived' ? 'eq.false' : 'eq.true';
+    return countRows(`/customers?select=id&is_active=${flag}`);
+  },
+
+  // ---------- B3 · บันทึกติดตามลูกค้า ----------
+
+  async listCustomerLogs(customerId) {
+    return rest(`/customer_logs?customer_id=eq.${encodeURIComponent(customerId)}` +
+                '&select=*&order=log_date.desc');
+  },
+
+  async addCustomerLog(log) {
+    const body = cleanRow(log);
+    body.created_by = session?.user?.id || null;
+    const rows = await rest('/customer_logs', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    return rows?.[0] || null;
+  },
+
+  async updateCustomerLog(id, patch) {
+    const body = cleanRow(patch);
+    delete body.id; delete body.customer_id; delete body.created_by;
+    const rows = await rest(`/customer_logs?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    if (!rows?.length) throw new Error('แก้บันทึกนี้ไม่ได้ — แก้ได้เฉพาะบันทึกที่ตัวเองเขียน');
+    return rows[0];
+  },
+
+  // ---------- B4 · Activities (step 2.1) ----------
+
+  /** opt: status ('plan'|'done'|'cancel') · from/to = ช่วง due_date · pendingId · customerId */
+  async listActivities(opt = {}) {
+    const { status, from, to, pendingId, customerId, ownerId,
+            sort = 'due_date', dir = 'asc', limit = 500 } = opt;
+
+    const p = new URLSearchParams();
+    p.set('select', '*,teams(code,name)');
+    p.set('is_active', 'eq.true');
+
+    if (status)     p.set('status',      `eq.${status}`);
+    if (pendingId)  p.set('pending_id',  `eq.${pendingId}`);
+    if (customerId) p.set('customer_id', `eq.${customerId}`);
+    if (ownerId)    p.set('owner_id',    `eq.${ownerId}`);
+    if (from) p.append('due_date', `gte.${from}`);
+    if (to)   p.append('due_date', `lte.${to}`);
+
+    const col = ACT_SORTABLE.has(sort) ? sort : 'due_date';
+    p.set('order', `${col}.${dir === 'asc' ? 'asc' : 'desc'}.nullslast`);
+    p.set('limit', String(limit));
+
+    return rest('/activities?' + p.toString());
+  },
+
+  async saveActivity(row) {
+    const body = cleanRow(row);
+    const me = session?.user?.id || null;
+
+    // ทำเสร็จแล้วต้องประทับเวลาให้อัตโนมัติ · ย้อนกลับเป็น plan ต้องล้างทิ้ง
+    if (body.status === 'done' && !body.done_at) body.done_at = new Date().toISOString();
+    if (body.status && body.status !== 'done')   body.done_at = null;
+
+    if (body.id) {
+      const id = body.id;
+      delete body.id;
+      body.updated_by = me;
+      const rows = await rest(`/activities?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(body),
+      });
+      return rows?.[0] || null;
+    }
+
+    body.created_by = me;
+    body.updated_by = me;
+    const rows = await rest('/activities', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    return rows?.[0] || null;
+  },
+
+  async countActivities(status = 'plan') {
+    return countRows(`/activities?select=id&is_active=eq.true&status=eq.${encodeURIComponent(status)}`);
+  },
 };
 
 const notReady = (what, phase) => {

@@ -59,11 +59,20 @@ export const adapter = {
 
   // B3 book 3 สี
   listCustomers:     (opt)   => need().listCustomers(opt),
+  getCustomer:       (id)    => need().getCustomer(id),
   saveCustomer:      (row)   => need().saveCustomer(row),
+  archiveCustomer:   (id, a) => need().archiveCustomer(id, a),
+  countCustomers:    (st)    => need().countCustomers(st),
+
+  // B3 บันทึกติดตามลูกค้า
+  listCustomerLogs:  (cid)   => need().listCustomerLogs(cid),
+  addCustomerLog:    (log)   => need().addCustomerLog(log),
+  updateCustomerLog: (id, p) => need().updateCustomerLog(id, p),
 
   // B4 activities
   listActivities:    (opt)   => need().listActivities(opt),
   saveActivity:      (row)   => need().saveActivity(row),
+  countActivities:   (st)    => need().countActivities(st),
 
   // B6 dashboard
   getDashboardStats: ()      => need().getDashboardStats(),

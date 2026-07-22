@@ -14,6 +14,7 @@ const emptyDb = () => ({
   follow_logs: [],
   project_contacts: [],
   customers: [],
+  customer_logs: [],
   activities: [],
   session: null,
 });
@@ -193,20 +194,122 @@ const localAdapter = {
     return row;
   },
 
-  // B3
-  async listCustomers() { return [...db.customers]; },
+  // B3 — กรอง/เรียงในหน่วยความจำ ให้ผลตรงกับ supabase-adapter
+  async listCustomers(opt = {}) {
+    const { status = 'active', color, teamId, saleId, search,
+            sort = 'updated_at', dir = 'desc', limit = 1000 } = opt;
+
+    let rows = [...db.customers];
+    if (status === 'active')        rows = rows.filter(r => r.is_active !== false);
+    else if (status === 'archived') rows = rows.filter(r => r.is_active === false);
+    if (color)  rows = rows.filter(r => r.color === color);
+    if (teamId) rows = rows.filter(r => r.team_id === teamId);
+    if (saleId) rows = rows.filter(r => r.sale_id === saleId);
+
+    const term = String(search || '').trim().toLowerCase();
+    if (term) rows = rows.filter(r =>
+      [r.name, r.org, r.tel].some(v => String(v || '').toLowerCase().includes(term)));
+
+    const sign = dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+      const x = a[sort], y = b[sort];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return x > y ? sign : x < y ? -sign : 0;
+    });
+
+    return rows.slice(0, limit).map(r => ({
+      ...r,
+      last_log: db.customer_logs
+        .filter(l => l.customer_id === r.id)
+        .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)))[0] || null,
+    }));
+  },
+
+  async getCustomer(id) {
+    const row = db.customers.find(r => r.id === id);
+    if (!row) return null;
+    return { ...row, customer_logs: db.customer_logs.filter(l => l.customer_id === id) };
+  },
+
   async saveCustomer(r) { return upsert('customers', r); },
 
+  async archiveCustomer(id, archived = true) {
+    const row = db.customers.find(r => r.id === id);
+    if (!row) return null;
+    row.is_active   = !archived;
+    row.archived_at = archived ? new Date().toISOString() : null;
+    save();
+    return row;
+  },
+
+  async countCustomers(status = 'active') {
+    return db.customers.filter(r =>
+      status === 'archived' ? r.is_active === false : r.is_active !== false).length;
+  },
+
+  async listCustomerLogs(customerId) {
+    return db.customer_logs
+      .filter(l => l.customer_id === customerId)
+      .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)));
+  },
+  async addCustomerLog(log) {
+    return upsert('customer_logs', { ...log, created_by: db.session?.user?.id || null });
+  },
+  async updateCustomerLog(id, patch) {
+    const row = db.customer_logs.find(l => l.id === id);
+    if (!row) throw new Error('ไม่พบบันทึกนี้');
+    const me = db.session?.user;
+    if (row.created_by && me && row.created_by !== me.id && me.role !== 'admin')
+      throw new Error('แก้บันทึกนี้ไม่ได้ — แก้ได้เฉพาะบันทึกที่ตัวเองเขียน');
+    const { id: _i, customer_id: _c, created_by: _b, ...safeP } = patch;
+    Object.assign(row, safeP, { updated_at: new Date().toISOString() });
+    save();
+    return row;
+  },
+
   // B4
-  async listActivities() { return [...db.activities]; },
-  async saveActivity(r)  { return upsert('activities', r); },
+  async listActivities(opt = {}) {
+    const { status, from, to, pendingId, customerId, ownerId,
+            sort = 'due_date', dir = 'asc', limit = 500 } = opt;
+
+    let rows = db.activities.filter(r => r.is_active !== false);
+    if (status)     rows = rows.filter(r => r.status === status);
+    if (pendingId)  rows = rows.filter(r => r.pending_id === pendingId);
+    if (customerId) rows = rows.filter(r => r.customer_id === customerId);
+    if (ownerId)    rows = rows.filter(r => r.owner_id === ownerId);
+    if (from)       rows = rows.filter(r => r.due_date && r.due_date >= from);
+    if (to)         rows = rows.filter(r => r.due_date && r.due_date <= to);
+
+    const sign = dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+      const x = a[sort], y = b[sort];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return x > y ? sign : x < y ? -sign : 0;
+    });
+    return rows.slice(0, limit);
+  },
+
+  async saveActivity(r) {
+    const row = { ...r };
+    if (row.status === 'done' && !row.done_at) row.done_at = new Date().toISOString();
+    if (row.status && row.status !== 'done')   row.done_at = null;
+    return upsert('activities', row);
+  },
+
+  async countActivities(status = 'plan') {
+    return db.activities.filter(r => r.is_active !== false && r.status === status).length;
+  },
 
   // B6 — Phase 1.5 จะคำนวณจริง (รูปข้อมูลต้องตรงกับ supabase-adapter: null = ยังนับไม่ได้)
   async getDashboardStats() {
     return {
       pendingCount:   db.pending_projects.filter(r => r.is_active !== false).length,
-      customerCount:  db.customers.length,
-      activityCount:  db.activities.length,
+      customerCount:  db.customers.filter(r => r.is_active !== false).length,
+      activityCount:  db.activities.filter(r => r.is_active !== false && r.status === 'plan').length,
       pipelineValue:  null,
     };
   },
