@@ -302,11 +302,11 @@ const localAdapter = {
     return rows.slice(0, limit).map(r => ({
       ...r,
       pending_projects: r.pending_id
-        ? (({ project_name }) => ({ project_name }))(
+        ? (({ project_name, is_active }) => ({ project_name, is_active }))(
             db.pending_projects.find(p => p.id === r.pending_id) || {})
         : null,
       customers: r.customer_id
-        ? (({ name, org }) => ({ name, org }))(
+        ? (({ name, org, is_active }) => ({ name, org, is_active }))(
             db.customers.find(c => c.id === r.customer_id) || {})
         : null,
     }));

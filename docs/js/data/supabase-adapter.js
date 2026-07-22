@@ -217,7 +217,9 @@ const PENDING_SELECT = '*,teams(code,name),follow_logs(log_date,by_name,response
 //    activities ชี้ไป profiles ถึง 3 ทาง (owner_id / created_by / updated_by)
 //    PostgREST จะไม่รู้ว่าเอาอันไหน แล้วตอบ 300 "more than one relationship found"
 //    ถ้าวันหลังอยากได้ชื่อเจ้าของ ต้องระบุชื่อ constraint: profiles!activities_owner_id_fkey(full_name)
-const ACT_SELECT = '*,teams(code,name),pending_projects(project_name),customers(name,org)';
+// is_active ของงานแม่ต้องดึงมาด้วย — ใช้ซ่อนกิจกรรมของงานที่เก็บเข้าคลังแล้ว (step 2.5)
+const ACT_SELECT =
+  '*,teams(code,name),pending_projects(project_name,is_active),customers(name,org,is_active)';
 
 /** ตัด field ที่เขียนไม่ได้ + ช่องว่างเปล่าให้เป็น null (ไม่งั้น date ว่างจะ error) */
 function cleanRow(row) {

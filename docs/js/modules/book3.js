@@ -413,7 +413,8 @@ async function openDetail(host, id, onSaved, teams) {
       <form class="modal-box" id="bForm">
         <div class="modal-head">
           <strong>${id ? 'แก้ไขข้อมูลลูกค้า' : 'เพิ่มลูกค้าใหม่'}</strong>
-          ${archived ? '<span class="tag" style="--tag-c:var(--text-mute)">เก็บเข้าคลังแล้ว</span>' : ''}
+          ${archived ? `<span class="tag" style="--tag-c:var(--text-mute)">เก็บเข้าคลังแล้ว${
+              row?.archived_at ? ' · ' + esc(thaiDate(String(row.archived_at).slice(0, 10))) : ''}</span>` : ''}
           <button type="button" class="btn btn-ghost btn-sm" id="bClose">ปิด</button>
         </div>
 

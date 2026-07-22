@@ -51,12 +51,25 @@ export const BUCKETS = [
   { id: 'cancel',  label: 'ยกเลิก',           tone: 'mute' },
 ];
 
+/**
+ * งานแม่ถูกเก็บเข้าคลังแล้วหรือยัง (step 2.5)
+ *
+ * ⚠️ ถ้าไม่เช็กตรงนี้ ผู้ใช้จะโดนเตือน "เลยกำหนด" จากงานที่ปิดไปแล้วตลอดไป
+ *    เช่น ปิดการขายสำเร็จ → กดเก็บเข้าคลัง → แต่กิจกรรม "โทรตามใบเสนอราคา"
+ *    ที่ผูกไว้ยังค้างอยู่ แล้วขึ้นเตือนทุกวันทั้งที่งานจบไปแล้ว
+ *
+ * ไม่ได้ไปแก้ข้อมูลกิจกรรม แค่ไม่แสดง — ปลุกงานแม่กลับมา กิจกรรมก็กลับมาเองครบ
+ */
+export const isParentArchived = (r) =>
+  r?.pending_projects?.is_active === false || r?.customers?.is_active === false;
+
 export function bucketize(rows, today = todayISO()) {
   const week = shiftDay(today, 7);
   const out = Object.fromEntries(BUCKETS.map(b => [b.id, []]));
 
   for (const r of rows || []) {
     if (r.is_active === false) continue;
+    if (isParentArchived(r))   continue;
     if (r.status === 'done')   { out.done.push(r);   continue; }
     if (r.status === 'cancel') { out.cancel.push(r); continue; }
 
@@ -155,7 +168,7 @@ export default {
 
     const $ = (id) => root.querySelector('#' + id);
     const listEl = $('aList');
-    let rows = [], buckets = null;
+    let rows = [], buckets = null, hidden = 0;
 
     async function reload() {
       saveView(view);
@@ -175,6 +188,7 @@ export default {
         return;
       }
       buckets = bucketize(rows);
+      hidden  = rows.filter(isParentArchived).length;
       paint();
       refreshCounts();
     }
@@ -199,6 +213,16 @@ export default {
       return BUCKETS.map(b => b.id);
     }
 
+    /**
+     * บอกให้รู้ว่ามีของถูกซ่อนอยู่ — ห้ามซ่อนเงียบ ๆ
+     * ผู้ใช้ที่เพิ่งเก็บงานเข้าคลังต้องเข้าใจว่ากิจกรรมหายไปไหน ไม่ใช่คิดว่าข้อมูลหาย
+     */
+    function hiddenNote() {
+      if (!hidden) return '';
+      return `<p class="sec-foot">ซ่อน ${hidden} รายการที่อยู่ในงาน/ลูกค้าซึ่งเก็บเข้าคลังไปแล้ว —
+              ปลุกงานนั้นกลับมา รายการจะกลับมาเองครบ</p>`;
+    }
+
     function paint() {
       const show = visibleBuckets().filter(id => buckets[id].length);
       const total = show.reduce((a, id) => a + buckets[id].length, 0);
@@ -211,11 +235,16 @@ export default {
 
       if (!total) {
         const filtered = view.range !== 'all' || view.status !== 'plan';
+        // ถ้าที่เหลือทั้งหมดถูกซ่อนเพราะงานแม่เก็บเข้าคลัง ต้องไม่บอกว่า "ยังไม่มีกิจกรรม"
+        // ไม่งั้นข้อความจะขัดกันเอง — บอกว่าไม่มี แต่บรรทัดล่างบอกว่าซ่อนไว้ 1 รายการ
+        const allHidden = !filtered && hidden > 0;
         listEl.innerHTML = `<div class="empty">
-            <strong>${filtered ? 'ไม่มีกิจกรรมที่ตรงกับเงื่อนไข' : 'ยังไม่มีกิจกรรม'}</strong>
-            ${filtered ? 'ลองเปลี่ยนตัวกรองด้านบน'
-                       : 'พิมพ์สิ่งที่ต้องทำในช่องด้านบนแล้วกด "+ เพิ่ม" ได้เลย'}
-          </div>`;
+            <strong>${allHidden ? 'ไม่มีอะไรต้องทำแล้ว'
+                     : filtered ? 'ไม่มีกิจกรรมที่ตรงกับเงื่อนไข' : 'ยังไม่มีกิจกรรม'}</strong>
+            ${allHidden ? `กิจกรรมที่เหลือ ${hidden} รายการอยู่ในงาน/ลูกค้าที่เก็บเข้าคลังไปแล้ว`
+                        : filtered ? 'ลองเปลี่ยนตัวกรองด้านบน'
+                        : 'พิมพ์สิ่งที่ต้องทำในช่องด้านบนแล้วกด "+ เพิ่ม" ได้เลย'}
+          </div>` + (allHidden ? '' : hiddenNote());
         return;
       }
 
@@ -228,7 +257,7 @@ export default {
             </h3>
             <ul class="alist">${buckets[id].map(r => rowHtml(r, id)).join('')}</ul>
           </section>`;
-      }).join('');
+      }).join('') + hiddenNote();
     }
 
     // ── เหตุการณ์ ──

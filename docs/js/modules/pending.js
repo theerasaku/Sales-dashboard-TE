@@ -454,6 +454,19 @@ async function openQuickLog(host, pendingId, onSaved) {
 
   const q = (s) => host.querySelector(s);
   const close = () => { host.innerHTML = ''; };
+
+  // ── ปิดงานแล้วเตือนให้เก็บเข้าคลัง (step 2.5) ──
+  // ไม่เก็บให้อัตโนมัติ เพราะบางทีปิดการขายแล้วยังต้องตามส่งของ/วางบิลอีกหลายเดือน
+  // แค่บอกให้เห็นว่ามีทางเก็บ ไม่งั้นงานที่ปิดแล้วค้างปนกับงานที่ยังเดินอยู่เรื่อย ๆ
+  const stageSel = q('[name="stage"]');
+  const archHint = q('#pArchHint');
+  const syncArchHint = () => {
+    if (!archHint || archived) return;
+    const st = stageSel?.value;
+    archHint.hidden = !(id && (st === 'won' || st === 'lost'));
+  };
+  stageSel?.addEventListener('change', syncArchHint);
+  syncArchHint();
   q('#qClose').addEventListener('click', close);
   q('#qCancel').addEventListener('click', close);
   q('#qModal').addEventListener('mousedown', (e) => { if (e.target.id === 'qModal') close(); });
@@ -595,7 +608,8 @@ async function openDetail(host, id, onSaved, teams) {
       <form class="modal-box" id="pForm">
         <div class="modal-head">
           <strong>${id ? 'แก้ไขงาน' : 'เพิ่มงานใหม่'}</strong>
-          ${archived ? '<span class="tag" style="--tag-c:var(--text-mute)">จบแล้ว</span>' : ''}
+          ${archived ? `<span class="tag" style="--tag-c:var(--text-mute)">จบแล้ว${
+              row?.archived_at ? ' · ' + esc(thaiDate(String(row.archived_at).slice(0, 10))) : ''}</span>` : ''}
           <button type="button" class="btn btn-ghost btn-sm" id="pClose">ปิด</button>
         </div>
 
@@ -658,6 +672,11 @@ async function openDetail(host, id, onSaved, teams) {
 
         <p class="login-err" id="pErr" role="alert" hidden></p>
 
+        <p class="arch-hint" id="pArchHint" hidden>
+          งานนี้ปิดจบแล้ว — กด <b>"Project จบแล้ว"</b> เก็บเข้าคลังได้เลย
+          จะได้ไม่มาปนกับงานที่ยังเดินอยู่ (กิจกรรมที่ผูกไว้จะหยุดเตือนด้วย)
+        </p>
+
         <div class="modal-foot">
           ${id ? `<button type="button" id="pArch"
                     class="btn btn-sm ${archived ? 'btn-ghost' : 'btn-danger'}">
@@ -672,6 +691,19 @@ async function openDetail(host, id, onSaved, teams) {
 
   const q = (s) => host.querySelector(s);
   const close = () => { host.innerHTML = ''; };
+
+  // ── ปิดงานแล้วเตือนให้เก็บเข้าคลัง (step 2.5) ──
+  // ไม่เก็บให้อัตโนมัติ เพราะบางทีปิดการขายแล้วยังต้องตามส่งของ/วางบิลอีกหลายเดือน
+  // แค่บอกให้เห็นว่ามีทางเก็บ ไม่งั้นงานที่ปิดแล้วค้างปนกับงานที่ยังเดินอยู่เรื่อย ๆ
+  const stageSel = q('[name="stage"]');
+  const archHint = q('#pArchHint');
+  const syncArchHint = () => {
+    if (!archHint || archived) return;
+    const st = stageSel?.value;
+    archHint.hidden = !(id && (st === 'won' || st === 'lost'));
+  };
+  stageSel?.addEventListener('change', syncArchHint);
+  syncArchHint();
   const fail  = (msg) => { const e = q('#pErr'); e.textContent = msg; e.hidden = false; };
 
   q('#pClose').addEventListener('click', close);
