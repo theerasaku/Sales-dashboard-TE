@@ -290,13 +290,34 @@ const localAdapter = {
       if (y == null) return -1;
       return x > y ? sign : x < y ? -sign : 0;
     });
-    return rows.slice(0, limit);
+
+    // พ่วงชื่องาน/ลูกค้าที่ผูกไว้ ให้รูปข้อมูลตรงกับ embed ของ supabase-adapter เป๊ะ ๆ
+    return rows.slice(0, limit).map(r => ({
+      ...r,
+      pending_projects: r.pending_id
+        ? (({ project_name }) => ({ project_name }))(
+            db.pending_projects.find(p => p.id === r.pending_id) || {})
+        : null,
+      customers: r.customer_id
+        ? (({ name, org }) => ({ name, org }))(
+            db.customers.find(c => c.id === r.customer_id) || {})
+        : null,
+    }));
   },
 
   async saveActivity(r) {
     const row = { ...r };
     if (row.status === 'done' && !row.done_at) row.done_at = new Date().toISOString();
     if (row.status && row.status !== 'done')   row.done_at = null;
+    // เลียนแบบ supabase-adapter: เติมทีม/เจ้าของจาก session (ดูเหตุผลเรื่อง RLS ที่ไฟล์นั้น)
+    if (!row.id || 'team_id' in row) {
+      if (!row.team_id) row.team_id = db.session?.user?.team_id || null;
+    }
+    if (!row.id && !row.owner_id) row.owner_id = db.session?.user?.id || null;
+    // embed เป็นของอ่านอย่างเดียว ห้ามเก็บลงตาราง (supabase ตัดทิ้งด้วย READONLY)
+    delete row.pending_projects;
+    delete row.customers;
+    delete row.teams;
     return upsert('activities', row);
   },
 

@@ -9,7 +9,7 @@
 //   2. วาดใหม่ทั้งแผงหลังบันทึก → ทับสิ่งที่ผู้ใช้พิมพ์ค้างไว้ในฟอร์มใหญ่
 //      → ผู้เรียกต้องวาดใหม่เฉพาะรายการบันทึก ไม่ใช่ทั้งแผง
 
-import { dateField, thaiDate } from './datepicker.js';
+import { dateField, thaiDate, todayISO } from './datepicker.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -114,7 +114,7 @@ export function logFormHtml(idPrefix = 'lg') {
   return `
     <div class="fgrid">
       <label class="fld"><span>DATE — วันที่</span>
-        ${dateField('', new Date().toISOString().slice(0, 10), { id: idPrefix + 'Date', label: 'วันที่บันทึก' })}</label>
+        ${dateField('', todayISO(), { id: idPrefix + 'Date', label: 'วันที่บันทึก' })}</label>
       <label class="fld"><span>BY — ใครติดตาม</span>
         <input type="text" id="${idPrefix}By"></label>
       <label class="fld fld-wide"><span>RESPONSE — ผลที่ได้</span>

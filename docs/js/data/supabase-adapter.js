@@ -180,14 +180,25 @@ const SORTABLE = new Set([
 ]);
 
 // ฟิลด์ที่ DB จัดการเอง — ต้องตัดทิ้งก่อนส่งกลับไปเขียน ไม่งั้น PostgREST ตอบ 400
+// ⚠️ ต้องมีชื่อ "ตารางที่ embed มา" ครบทุกตัวที่ select ไว้ข้างล่าง
+//    ไม่งั้นพอเอาแถวที่โหลดมาส่งกลับไปบันทึก จะติดคอลัมน์ที่ไม่มีจริงไปด้วย
 const READONLY = new Set([
   'created_at', 'updated_at', 'created_by',
   'teams', 'follow_logs', 'project_contacts', 'profiles',
+  'customers', 'customer_logs', 'pending_projects',
 ]);
 
 // ดึงบันทึกติดตามล่าสุด 1 รายการฝังมากับทุกแถว
 // เพื่อให้เห็นความคืบหน้าจากหน้าตารางเลย ไม่ต้องเปิดเข้าไปดูทีละงาน
 const PENDING_SELECT = '*,teams(code,name),follow_logs(log_date,by_name,response,next_doing)';
+
+// กิจกรรมพ่วงชื่องาน/ชื่อลูกค้าที่ผูกไว้มาด้วย — ไม่งั้นหน้าแผนติดต่อจะเห็นแต่ชื่อกิจกรรมลอย ๆ
+//
+// ⚠️ ห้าม embed profiles(...) ตรง ๆ ตรงนี้
+//    activities ชี้ไป profiles ถึง 3 ทาง (owner_id / created_by / updated_by)
+//    PostgREST จะไม่รู้ว่าเอาอันไหน แล้วตอบ 300 "more than one relationship found"
+//    ถ้าวันหลังอยากได้ชื่อเจ้าของ ต้องระบุชื่อ constraint: profiles!activities_owner_id_fkey(full_name)
+const ACT_SELECT = '*,teams(code,name),pending_projects(project_name),customers(name,org)';
 
 /** ตัด field ที่เขียนไม่ได้ + ช่องว่างเปล่าให้เป็น null (ไม่งั้น date ว่างจะ error) */
 function cleanRow(row) {
@@ -617,7 +628,7 @@ const supabaseAdapter = {
             sort = 'due_date', dir = 'asc', limit = 500 } = opt;
 
     const p = new URLSearchParams();
-    p.set('select', '*,teams(code,name)');
+    p.set('select', ACT_SELECT);
     p.set('is_active', 'eq.true');
 
     if (status)     p.set('status',      `eq.${status}`);
@@ -642,6 +653,14 @@ const supabaseAdapter = {
     if (body.status === 'done' && !body.done_at) body.done_at = new Date().toISOString();
     if (body.status && body.status !== 'done')   body.done_at = null;
 
+    // ⚠️ team_id ว่าง = can_access_team() คืน false กับทุกคนที่ไม่ใช่ admin
+    //    ปล่อยว่างไว้ sale จะกดบันทึกไม่ผ่านโดยไม่รู้สาเหตุ → เติมทีมของตัวเองให้
+    //    เช็ก 'team_id' in body ด้วย เพราะการอัปเดตบางครั้งส่งมาแค่ { id, status }
+    //    ถ้าเติมทุกครั้งจะไปแก้ทีมของแถวที่ผู้ใช้ไม่ได้ตั้งใจแตะ
+    if (!body.id || 'team_id' in body) {
+      if (!body.team_id) body.team_id = session?.profile?.team_id || null;
+    }
+
     if (body.id) {
       const id = body.id;
       delete body.id;
@@ -651,9 +670,12 @@ const supabaseAdapter = {
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify(body),
       });
-      return rows?.[0] || null;
+      // RLS ปฏิเสธเงียบ ๆ = ได้ 200 แต่ไม่มีแถวกลับมา (บทเรียนเดียวกับ updateFollowLog)
+      if (!rows?.length) throw new Error('แก้กิจกรรมนี้ไม่ได้ — อยู่นอกทีมที่คุณมีสิทธิ์');
+      return rows[0];
     }
 
+    if (!body.owner_id) body.owner_id = me;
     body.created_by = me;
     body.updated_by = me;
     const rows = await rest('/activities', {

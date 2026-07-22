@@ -19,10 +19,27 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m =>
 
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
-const todayISO = () => {
+
+/**
+ * วันนี้ตามนาฬิกาของเครื่องผู้ใช้ — เขียนเป็น 'YYYY-MM-DD'
+ *
+ * ⚠️ ห้ามใช้ new Date().toISOString().slice(0,10) แทน
+ *    toISOString แปลงเป็นเวลา UTC ก่อน · ไทยเร็วกว่า UTC 7 ชั่วโมง
+ *    → ก่อน 07:00 น. ตามเวลาไทย จะได้ "เมื่อวาน" ออกมา
+ *    ผลคือกิจกรรมที่กำหนดวันนี้ ขึ้นเป็น "เลยกำหนด" ให้คนที่เปิดดูตอนเช้า
+ */
+export const todayISO = () => {
   const t = new Date();
   return iso(t.getFullYear(), t.getMonth(), t.getDate());
 };
+
+/** เลื่อนวันไปข้างหน้า/หลัง n วัน — คำนวณบน UTC ล้วน เลี่ยงปัญหาวันเวลาออมแสง */
+export function shiftDay(ymd, n) {
+  const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + n));
+  return d.toISOString().slice(0, 10);
+}
 
 /** '2026-08-15' → '15 ส.ค. 2569' (ค่าที่คนอ่าน) */
 export function thaiDate(v) {

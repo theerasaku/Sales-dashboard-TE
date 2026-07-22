@@ -722,3 +722,82 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .t2 { font-size: 11.5px; color: var(--text-mute); margin-top: 2px; }
 .btn-log.is-done { color: var(--green); border-color: var(--green-line); }
 #bColor .seg-badge { margin-left: 2px; }
+
+/* ---------- F6 แผนติดต่อลูกค้า (2.3) ---------- */
+
+/* แถบเพิ่มเร็ว — สิ่งที่ใช้บ่อยที่สุดในหน้านี้ ต้องอยู่บนสุดและกรอกได้ในบรรทัดเดียว */
+.qadd { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.qadd .inp { flex: 1 1 260px; min-width: 0; }
+.qadd-date { flex: 0 0 auto; width: 150px; }
+
+.sum-risk { color: var(--red); }
+
+.agrp { margin-bottom: 16px; }
+.agrp-h {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: .02em;
+  text-transform: none; margin-bottom: 6px; color: var(--text-dim);
+}
+.agrp-h::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor; flex: 0 0 auto;
+}
+.agrp-n {
+  font-size: 11px; color: var(--text-mute); font-weight: 400;
+  background: var(--bg-elev); border-radius: 999px; padding: 1px 7px;
+}
+.agrp-red    { color: var(--red); }
+.agrp-accent { color: var(--accent-text); }
+.agrp-blue   { color: var(--blue); }
+.agrp-green  { color: var(--green); }
+.agrp-mute   { color: var(--text-mute); }
+
+.alist { list-style: none; }
+.arow {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--border-soft);
+  border-radius: var(--r-md); background: var(--bg-panel);
+  margin-bottom: 6px; cursor: pointer;
+}
+.arow:hover { background: var(--bg-hover); border-color: var(--border); }
+.arow.is-overdue { border-color: var(--red-line); }
+.arow.is-done .atitle, .arow.is-cancel .atitle { text-decoration: line-through; color: var(--text-mute); }
+.arow.is-done, .arow.is-cancel { opacity: .7; }
+
+/* ปุ่มติ๊กเสร็จ — จุดแตะ 44px ตามกติกา mobile ถึงวงกลมจะเล็กกว่านั้น */
+.achk {
+  flex: 0 0 auto; width: 22px; height: 22px; margin-top: 1px;
+  border-radius: 50%; border: 1.5px solid var(--border);
+  background: transparent; color: var(--green);
+  font-size: 13px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.achk:hover { border-color: var(--green); background: var(--bg-elev); }
+.achk[aria-pressed="true"] { border-color: var(--green); background: var(--green-line); }
+.achk:disabled { opacity: .5; cursor: default; }
+
+.amain { flex: 1; min-width: 0; }
+.atitle { font-size: 13.5px; color: var(--text); word-break: break-word; }
+.ameta {
+  display: flex; flex-wrap: wrap; gap: 6px 10px;
+  margin-top: 3px; font-size: 11.5px; color: var(--text-mute);
+}
+.alink { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.ateam {
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 0 5px; font-size: 10.5px;
+}
+.adate {
+  flex: 0 0 auto; font-size: 11.5px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 2px;
+}
+.arow.is-overdue .adate { color: var(--red); }
+
+@media (max-width: 430px) {
+  .qadd-date { width: 100%; }
+  .achk { width: 26px; height: 26px; }
+  .arow { padding: 12px; }
+}
+.od-date.is-today { color: var(--accent-text); }
+.lnk { color: var(--accent-text); text-decoration: none; }
+.lnk:hover { text-decoration: underline; }

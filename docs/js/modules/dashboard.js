@@ -9,7 +9,8 @@
 import { adapter } from '../data/adapter.js';
 import { CONFIG } from '../config.js';
 import { STAGES } from './pending.js';
-import { thaiDate } from '../ui/datepicker.js';
+import { bucketize, dueNow, ACT_TYPES } from './activities.js';
+import { thaiDate, todayISO } from '../ui/datepicker.js';
 
 // ── ตัวช่วย ──
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m =>
@@ -55,7 +56,7 @@ const probOf = (id) => (STAGES.find(s => s.id === id)?.prob ?? 0) / 100;
 export function summarize(rows, opt = {}) {
   const from   = opt.from   || CONFIG.TARGET_FROM;
   const to     = opt.to     || CONFIG.TARGET_TO;
-  const today  = opt.today  || new Date().toISOString().slice(0, 10);
+  const today  = opt.today  || todayISO();
   const target = (opt.targetMB ?? CONFIG.TARGET_MB) * 1e6;
 
   const months = monthRange(from, to);
@@ -193,6 +194,43 @@ function funnelHtml(funnel) {
 
 // ══════════════════════════════════════════════════════════
 
+/**
+ * แถบ "สิ่งที่ต้องทำ" จากแผนติดต่อลูกค้า (F6)
+ * คืนสตริงว่างเมื่อยังไม่ได้สร้างตาราง — dashboard ต้องใช้งานได้ต่อโดยไม่มีส่วนนี้
+ *
+ * ⚠️ ต้องนับด้วย bucketize() ตัวเดียวกับหน้าแผนติดต่อลูกค้า
+ *    ถ้าเขียนเงื่อนไข "เลยกำหนด" ซ้ำอีกที่ เลขสองหน้าจะเพี้ยนจากกันวันใดวันหนึ่ง
+ *    (บทเรียนจาก 1.5: การ์ด "ปิดได้แล้ว" กับ funnel นับคนละแบบ)
+ */
+function actSection(acts) {
+  if (!acts) return '';
+  const now = dueNow(acts);
+  const t0 = todayISO();
+  const typeLabel = (id) => ACT_TYPES.find(t => t.id === id)?.label || '';
+
+  return `
+    <div class="card sec">
+      <h3 class="sec-h">
+        สิ่งที่ต้องทำวันนี้
+        ${acts.overdue.length ? `<span class="badge-risk">${acts.overdue.length}</span>` : ''}
+        <span class="sec-sub">
+          เลยกำหนด ${acts.overdue.length} · วันนี้ ${acts.today.length} · ใน 7 วัน ${acts.soon.length}
+        </span>
+      </h3>
+      ${now.length ? `<ul class="odlist">
+        ${now.slice(0, 8).map(r => `<li>
+          <span class="od-date ${r.due_date === t0 ? 'is-today' : ''}">${esc(thaiDate(r.due_date) || '—')}</span>
+          <span class="od-name">${esc(r.title)}</span>
+          <span class="od-act">${esc([typeLabel(r.act_type),
+            r.pending_projects?.project_name || r.customers?.name || ''].filter(Boolean).join(' · '))}</span>
+        </li>`).join('')}
+      </ul>
+      ${now.length > 8 ? `<p class="sec-foot">และอีก ${now.length - 8} รายการ — ดูทั้งหมดในแถบแผนติดต่อลูกค้า</p>` : ''}`
+      : `<p class="sec-foot">ไม่มีอะไรค้างวันนี้ 👍${acts.soon.length ? ` · มี ${acts.soon.length} รายการรออยู่ใน 7 วันข้างหน้า` : ''}</p>`}
+      <p class="sec-foot"><a class="lnk" href="#activities">เปิดแผนติดต่อลูกค้า →</a></p>
+    </div>`;
+}
+
 const card = (label, value, note, cls = '') => `
   <div class="card ${cls}">
     <div class="stat-label">${label}</div>
@@ -214,6 +252,11 @@ export default {
       return;
     }
 
+    // แผนติดต่อลูกค้าเป็นส่วนเสริม — ถ้ายังไม่ได้รัน phase2.sql ต้องไม่ทำ dashboard ทั้งหน้าล่ม
+    let acts = null;
+    try { acts = bucketize(await adapter.listActivities({ status: 'plan', limit: 500 })); }
+    catch { acts = null; }
+
     if (!rows.length) {
       root.innerHTML = `
         <div class="grid cols-4">
@@ -222,7 +265,8 @@ export default {
         <div class="empty" style="margin-top:20px">
           <strong>ยังไม่มีข้อมูลให้สรุป</strong>
           เพิ่มงานในแถบ Pending Project แล้วตัวเลขจะขึ้นที่นี่อัตโนมัติ
-        </div>`;
+        </div>
+        ${actSection(acts)}`;
       return;
     }
 
@@ -275,10 +319,13 @@ export default {
         </div>
       </div>
 
+      ${actSection(acts)}
+
       <div class="card sec">
         <h3 class="sec-h">
-          งานเลยกำหนดติดตาม
+          งาน Pending ที่เลยกำหนดติดตาม
           ${s.overdue.length ? `<span class="badge-risk">${s.overdue.length}</span>` : ''}
+          <span class="sec-sub">จากช่อง NEXT DATE ของงาน</span>
         </h3>
         ${s.overdue.length ? `<ul class="odlist">
           ${s.overdue.slice(0, 8).map(r => `<li>
