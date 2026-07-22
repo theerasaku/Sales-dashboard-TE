@@ -7,6 +7,7 @@ import { adapter } from '../data/adapter.js';
 import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
 import { logListHtml, bindLogEditing, logFormHtml, readLogForm, clearLogForm } from '../ui/loglist.js';
 import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
+import { printCustomer } from '../ui/formprint.js';
 
 // ── สี 3 ระดับ ── (ความหมายจากฟอร์มกระดาษ)
 export const COLORS = [
@@ -350,6 +351,7 @@ const FORM = [
   { group: 'ข้อมูลลูกค้า', fields: [
     ['no',       'No. (รหัสในสมุด)', 'text'],
     ['name',     'ชื่อ-สกุล *',       'text'],
+    ['nickname', 'ชื่อเล่น',           'text'],
     ['position', 'POSITION (ตำแหน่ง)', 'text'],
     ['org',      'หน่วยงาน / บริษัท',  'text'],
     ['birthday', 'BIRTHDAY (วันเกิด)', 'date'],
@@ -463,6 +465,8 @@ async function openDetail(host, id, onSaved, teams) {
 
         <div class="modal-foot">
           ${id ? `
+            <button type="button" class="btn btn-ghost btn-sm" id="bPrint"
+                    title="พิมพ์ตามฟอร์ม Potential ต้นฉบับ หรือบันทึกเป็น PDF">🖨 พิมพ์ / PDF</button>
             <button type="button" class="btn btn-ghost btn-sm" id="bToPending"
                     title="สร้างงานใหม่ในแถบ Pending Project จากลูกค้ารายนี้">↗ ยกขึ้นเป็น Pending Project</button>
             <button type="button" id="bArch"
@@ -561,6 +565,19 @@ async function openDetail(host, id, onSaved, teams) {
   });
 
   // ── ยกลูกค้าขึ้นเป็น Pending Project ──
+  // พิมพ์ตามฟอร์ม Potential ต้นฉบับ / บันทึกเป็น PDF (step 3.9)
+  q('#bPrint')?.addEventListener('click', async () => {
+    const b = q('#bPrint');
+    b.disabled = true; b.textContent = 'กำลังเตรียม…';
+    try {
+      await printCustomer(id);
+    } catch (e) {
+      fail('พิมพ์ไม่สำเร็จ: ' + e.message);
+    } finally {
+      b.disabled = false; b.textContent = '🖨 พิมพ์ / PDF';
+    }
+  });
+
   q('#bToPending')?.addEventListener('click', async () => {
     const name = q('[name="name"]').value.trim();
     const org  = q('[name="org"]').value.trim();

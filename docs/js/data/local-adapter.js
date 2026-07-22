@@ -19,6 +19,7 @@ const emptyDb = () => ({
   profiles: [],
   team_access: [],
   signoffs: [],
+  pending_products: [],
   lead_sources: [],
   expo_customers: [],
   teams_custom: [],
@@ -158,6 +159,7 @@ const localAdapter = {
       ...row,
       follow_logs: db.follow_logs.filter(l => l.pending_id === id),
       project_contacts: db.project_contacts.filter(c => c.pending_id === id),
+      pending_products: (db.pending_products || []).filter(p => p.pending_id === id),
     };
   },
   async savePending(r)  { return upsert('pending_projects', r); },
@@ -182,6 +184,23 @@ const localAdapter = {
       const filled = ['name', 'status', 'address', 'phone', 'email']
         .some(k => String(c[k] ?? '').trim());
       if (filled) db.project_contacts.push({ ...c, pending_id: pendingId, id: uid() });
+    }
+    save();
+  },
+
+  // ── รายการสินค้าในฟอร์ม Pending (step 3.9) ──
+  async listPendingProducts(pendingId) {
+    return (db.pending_products || [])
+      .filter(r => r.pending_id === pendingId)
+      .sort((a, b) => (a.line_no || 0) - (b.line_no || 0));
+  },
+
+  async savePendingProducts(pendingId, rows) {
+    const FIELDS = ['product', 'amount', 'price_unit', 'total', 'discount', 'net', 'note'];
+    db.pending_products = (db.pending_products || []).filter(r => r.pending_id !== pendingId);
+    for (const r of rows || []) {
+      const filled = FIELDS.some(k => String(r[k] ?? '').trim() !== '');
+      if (filled) db.pending_products.push({ ...r, pending_id: pendingId, id: uid() });
     }
     save();
   },

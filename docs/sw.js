@@ -9,7 +9,7 @@
 //
 // สิ่งที่ cache มีไว้ทำอย่างเดียว: เปิดแอปได้ตอนเน็ตล่ม (ลิฟต์ ชั้นใต้ดิน ต่างจังหวัด)
 
-const VERSION = 'v0.11.0';
+const VERSION = 'v0.12.0';
 const CACHE = `te-dashboard-${VERSION}`;
 
 // โหลดล่วงหน้าตอนติดตั้ง — ต้องครบทุกไฟล์ที่แอปต้องใช้ ไม่งั้นเน็ตล่มครั้งแรกจะเปิดไม่ขึ้น
@@ -19,6 +19,7 @@ const SHELL = [
   './index.html',
   './manifest.json',
   './css/app.css',
+  './css/print.css',
 
   './js/app.js',
   './js/config.js',
@@ -40,6 +41,7 @@ const SHELL = [
   './js/ui/loglist.js',
   './js/ui/signoff.js',
   './js/ui/pwa.js',
+  './js/ui/formprint.js',
 
   './icons/icon-192.png',
   './icons/apple-touch-icon.png',

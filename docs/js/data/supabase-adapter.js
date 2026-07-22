@@ -744,6 +744,44 @@ const supabaseAdapter = {
     return rows[0];
   },
 
+  // ── B2 รายการสินค้าในฟอร์ม Pending (step 3.9) ── สูงสุด 9 แถวตามฟอร์มกระดาษ
+  async listPendingProducts(pendingId) {
+    const p = new URLSearchParams();
+    p.set('select', '*');
+    p.set('pending_id', `eq.${pendingId}`);
+    p.set('order', 'line_no.asc');
+    return rest('/pending_products?' + p.toString());
+  },
+
+  /**
+   * บันทึกทั้งชุด — แถวที่ว่างเปล่าจะถูกลบทิ้ง (แบบเดียวกับ saveContacts)
+   * ⚠️ ต้องลบก่อนแล้วค่อย upsert ไม่งั้นแถวที่ผู้ใช้ล้างข้อมูลออกจะค้างอยู่ใน DB
+   *    แล้วตอนพิมพ์ PDF จะมีแถวผีโผล่มาในตาราง
+   */
+  async savePendingProducts(pendingId, rows) {
+    const pid = encodeURIComponent(pendingId);
+    const FIELDS = ['product', 'amount', 'price_unit', 'total', 'discount', 'net', 'note'];
+    const keep = [], drop = [];
+
+    for (const r of rows || []) {
+      const filled = FIELDS.some(k => String(r[k] ?? '').trim() !== '');
+      (filled ? keep : drop).push(r);
+    }
+
+    for (const r of drop) {
+      await rest(`/pending_products?pending_id=eq.${pid}&line_no=eq.${Number(r.line_no)}`,
+                 { method: 'DELETE' });
+    }
+
+    if (keep.length) {
+      await rest('/pending_products?on_conflict=pending_id,line_no', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify(keep.map(r => ({ ...cleanRow(r), pending_id: pendingId }))),
+      });
+    }
+  },
+
   /** opt: prospect (true = เฉพาะ ★) · status · search */
   async listExpoCustomers(opt = {}) {
     const { prospect, status, search, event, limit = 500 } = opt;

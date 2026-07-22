@@ -1,0 +1,157 @@
+/* ══════════════════════════════════════════════════════════
+   พิมพ์ / บันทึกเป็น PDF ตามฟอร์มกระดาษต้นฉบับ (step 3.9)
+
+   ⚠️ ไฟล์นี้เป็นข้อยกเว้นเดียวของกติกา "ห้าม hardcode สี"
+      ฟอร์มต้องออกมา "ดำบนขาว" เสมอ แม้ธีมบนจอเป็นสีเข้ม
+      ถ้าใช้ var(--text) ที่เป็นสีอ่อน พิมพ์ออกมาจะจางจนอ่านไม่ออก
+      → ตรงนี้จึงเขียน #000 / #fff ตรง ๆ โดยตั้งใจ ไม่ใช่ความพลาด
+   ══════════════════════════════════════════════════════════ */
+
+#printRoot { display: none; }
+
+@media print {
+  /* ซ่อนแอปทั้งหมด เหลือแต่ฟอร์ม */
+  #app, #login, #pwaBar { display: none !important; }
+
+  #printRoot { display: block !important; }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10pt;
+    line-height: 1.5;
+    /* ⚠️ ต้องระบุฟอนต์เองตรงนี้ ห้ามพึ่ง app.css
+       ตอนพิมพ์ ถ้าไม่ระบุ เบราว์เซอร์จะตกไปใช้ฟอนต์ serif เริ่มต้น
+       แล้วตัวอังกฤษบนฟอร์มออกมาเป็นตัวมีเชิง ไม่เหมือนต้นฉบับที่เป็นตัวเกลี้ยง
+       (เจอตอนสั่งพิมพ์จากหน้าที่โหลดแค่ print.css) */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai",
+                 "Sarabun", Roboto, Arial, sans-serif;
+  }
+
+  /* 1 section = 1 หน้ากระดาษ */
+  .pf-page {
+    page-break-after: always;
+    break-after: page;
+  }
+  .pf-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* ── บรรทัดฟอร์ม: ป้ายซ้าย + ค่าบนเส้นใต้ ── */
+  .pf-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    margin-bottom: 7px;
+    min-height: 16pt;
+  }
+
+  /* ป้ายกำกับกว้างคงที่ ให้เส้นใต้ของทุกบรรทัดเริ่มตรงกัน เหมือนฟอร์มพิมพ์ */
+  .pf-l {
+    flex: 0 0 auto;
+    min-width: 34mm;
+    font-size: 9pt;
+    letter-spacing: .2px;
+    white-space: nowrap;
+  }
+  .pf-n { flex: 0 0 auto; font-size: 9pt; }
+  .pf-sp { flex: 1 1 auto; }
+
+  /* ⚠️ min-width:0 จำเป็น ไม่งั้นข้อความยาวดันบรรทัดทะลุขอบกระดาษ
+     (บทเรียนเดียวกับ .topbar-left บนหน้าจอ — flex item ไม่ยอมหดถ้าไม่ใส่) */
+  .pf-v {
+    flex: 1 1 auto;
+    min-width: 0;
+    border-bottom: 1px solid #000;
+    padding: 0 3px 1px;
+    word-break: break-word;
+  }
+
+  .pf-center { justify-content: center; }
+  .pf-hdr-r  { text-align: right; display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 10px; }
+  .pf-hdr-c  { display: flex; justify-content: center; gap: 6px; margin-bottom: 12px; }
+  .pf-hdr-r .pf-v, .pf-hdr-c .pf-v { flex: 0 0 40mm; }
+
+  /* ── ตาราง ── */
+  .pf-tbl {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 14px;
+    font-size: 9pt;
+  }
+  .pf-tbl th, .pf-tbl td {
+    border: 1px solid #000;
+    padding: 3px 4px;
+    vertical-align: top;
+  }
+  .pf-tbl th {
+    text-align: center;
+    font-weight: normal;
+    font-size: 8.5pt;
+  }
+  .pf-c { text-align: center; }
+  .pf-r { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ตารางสินค้า — สัดส่วนคอลัมน์ตามต้นฉบับ */
+  .pf-prod td { height: 17pt; }
+  .pf-prod th:nth-child(1), .pf-prod td:nth-child(1) { width: 26%; }
+  .pf-prod th:nth-child(2), .pf-prod td:nth-child(2) { width: 8%; }
+  .pf-prod th:nth-child(3), .pf-prod td:nth-child(3) { width: 12%; }
+  .pf-prod th:nth-child(4), .pf-prod td:nth-child(4) { width: 12%; }
+  .pf-prod th:nth-child(5), .pf-prod td:nth-child(5) { width: 12%; }
+  .pf-prod th:nth-child(6), .pf-prod td:nth-child(6) { width: 12%; }
+  .pf-prod th:nth-child(7), .pf-prod td:nth-child(7) { width: 18%; }
+
+  /* ช่องยอดรวมของต้นฉบับลอยอยู่ใต้คอลัมน์ NET ไม่มีกรอบรอบด้าน */
+  .pf-noborder { border: none !important; }
+  .pf-sum-l { border: none !important; font-size: 8.5pt; }
+  .pf-sum   { font-weight: 600; }
+
+  /* ตารางบันทึกติดตาม */
+  .pf-log td { height: 15pt; }
+  .pf-log th:nth-child(1), .pf-log td:nth-child(1) { width: 16%; }
+  .pf-log th:nth-child(2), .pf-log td:nth-child(2) { width: 14%; }
+  .pf-log th:nth-child(4), .pf-log td:nth-child(4) { width: 22%; }
+  .pf-wide { width: 48%; }
+
+  /* ── หัวฟอร์ม Potential ── */
+  .pf-potential {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12mm;
+    margin-bottom: 10px;
+  }
+  .pf-pot-t { flex: 1 1 auto; min-width: 0; text-align: center; }
+  .pf-pot-t h1 {
+    font-size: 20pt;
+    font-weight: normal;
+    margin-bottom: 4px;
+  }
+  .pf-pot-t .pf-l { min-width: auto; }
+  .pf-pot-t .pf-v { flex: 0 0 45mm; }
+
+  .pf-photo {
+    flex: 0 0 34mm;
+    height: 34mm;
+    border: 1px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .pf-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .pf-photo-x { font-size: 8pt; color: #888; }
+
+  /* กันเบราว์เซอร์ตัดสีพื้น/ขอบทิ้งตอนพิมพ์ */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ตอนกำลังพิมพ์ ห้ามให้หน้าจอเลื่อนตามเนื้อหาที่เพิ่งใส่เข้าไป */
+html.is-printing { overflow: hidden; }

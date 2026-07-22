@@ -1111,3 +1111,30 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 @media (max-width: 430px) {
   .pwabar { padding-inline: 12px; font-size: 12px; }
 }
+
+/* ── ตารางรายการสินค้าในฟอร์ม Pending (step 3.9) ── */
+.fg-note { font-size: 11px; color: var(--text-mute); font-weight: normal; margin-left: 6px; }
+
+/* ตารางกว้างกว่าจอมือถือแน่นอน → ต้องเลื่อนในกล่องตัวเอง
+   ⚠️ ห้ามปล่อยให้ล้นออกมา ไม่งั้นทั้งหน้าเลื่อนซ้ายขวาได้ (กติกาเดิมของโปรเจกต์) */
+.prodwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.prodtbl { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 12px; }
+.prodtbl th {
+  text-align: left; font-weight: 500; font-size: 10.5px; color: var(--text-mute);
+  padding: 4px 4px 6px; white-space: nowrap;
+}
+.prodtbl td { padding: 2px; }
+.prodtbl input {
+  width: 100%; min-width: 60px;
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text);
+  padding: 7px 8px; font-size: 12.5px; min-height: 38px;
+}
+.prodtbl input:focus { outline: none; border-color: var(--accent); }
+.prodtbl th:nth-child(1), .prodtbl td:nth-child(1) { min-width: 150px; }
+.prodtbl th:last-child,   .prodtbl td:last-child   { width: 34px; }
+
+@media (max-width: 430px) {
+  .prodtbl input { min-height: 44px; }   /* จุดแตะบนมือถือ */
+}

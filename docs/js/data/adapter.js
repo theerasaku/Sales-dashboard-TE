@@ -52,6 +52,10 @@ export const adapter = {
   // B2 ผู้ติดต่อ 1–3
   saveContacts:      (pid, c) => need().saveContacts(pid, c),
 
+  // B2 รายการสินค้าในฟอร์ม (step 3.9) — สูงสุด 9 แถวตามฟอร์มกระดาษ
+  listPendingProducts: (pid)    => need().listPendingProducts(pid),
+  savePendingProducts: (pid, r) => need().savePendingProducts(pid, r),
+
   // B2 บันทึกติดตาม
   listFollowLogs:    (pid)   => need().listFollowLogs(pid),
   addFollowLog:      (log)   => need().addFollowLog(log),

@@ -7,6 +7,7 @@ import { adapter } from '../data/adapter.js';
 import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
 import { logListHtml, bindLogEditing } from '../ui/loglist.js';
 import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
+import { printPending } from '../ui/formprint.js';
 
 // ── ขั้นตอนงานขาย ── ยกจาก prototype v3 แต่เปลี่ยน hex เป็นตัวแปร CSS ตามกติกาธีม
 export const STAGES = [
@@ -629,6 +630,24 @@ async function openDetail(host, id, onSaved, teams) {
             </section>`).join('')}
 
           <section class="fgroup">
+            <h3>PRODUCT — รายการสินค้า
+              <span class="fg-note">สูงสุด 9 แถว เท่าฟอร์มกระดาษ</span></h3>
+            <div class="prodwrap">
+              <table class="prodtbl" id="prodTbl">
+                <thead><tr>
+                  <th>PRODUCT</th><th>AMOUNT</th><th>PRICE/UNIT</th>
+                  <th>TOTAL</th><th>DISCOUNT</th><th>NET</th><th>NOTE</th><th></th>
+                </tr></thead>
+                <tbody id="prodBody"></tbody>
+              </table>
+            </div>
+            <div class="lg-add-row">
+              <button type="button" class="btn btn-ghost btn-sm" id="prodAdd">+ เพิ่มแถว</button>
+              <span class="lg-hint" id="prodHint"></span>
+            </div>
+          </section>
+
+          <section class="fgroup">
             <h3>CONTACT TO — ผู้ติดต่อ 1–3</h3>
             ${[1, 2, 3].map(i => {
               const c = contacts.find(x => Number(x.slot) === i) || {};
@@ -686,7 +705,9 @@ async function openDetail(host, id, onSaved, teams) {
         </p>
 
         <div class="modal-foot">
-          ${id ? `<button type="button" id="pArch"
+          ${id ? `<button type="button" class="btn btn-ghost btn-sm" id="pPrint"
+                    title="พิมพ์ตามฟอร์มกระดาษต้นฉบับ หรือบันทึกเป็น PDF">🖨 พิมพ์ / PDF</button>
+                  <button type="button" id="pArch"
                     class="btn btn-sm ${archived ? 'btn-ghost' : 'btn-danger'}">
                     ${archived ? '↩ ปลุกกลับมาทำต่อ' : 'Project จบแล้ว — เก็บเข้าคลัง Archives'}
                   </button>` : ''}
@@ -794,6 +815,11 @@ async function openDetail(host, id, onSaved, teams) {
       // ผู้ติดต่อต้องรอ id ของงานก่อน (กรณีสร้างใหม่ id เพิ่งเกิดตอนนี้)
       const pid = id || saved?.id;
       if (pid) await adapter.saveContacts(pid, ctcList);
+      // รายการสินค้าเก็บคนละตารางเหมือนผู้ติดต่อ — ต้องรอ id ของงานก่อนเช่นกัน
+      if (pid) {
+        try { await adapter.savePendingProducts(pid, readProducts()); }
+        catch (e) { console.warn('บันทึกรายการสินค้าไม่สำเร็จ:', e.message); }
+      }
 
       // ⭐ บันทึกติดตามที่พิมพ์ค้างไว้แต่ยังไม่ได้กด "+ เพิ่มบันทึก" ต้องถูกบันทึกด้วย
       //    ไม่งั้นผู้ใช้พิมพ์แล้วกดปุ่มบันทึกใหญ่ ข้อความจะหายไปเงียบ ๆ
@@ -813,6 +839,98 @@ async function openDetail(host, id, onSaved, teams) {
    * ส่วนทางกลับ (ปลุกกลับมาทำต่อ) ไม่อันตราย กดครั้งเดียวพอ
    */
   let armed = false;
+  // ── ตารางรายการสินค้า (step 3.9) ──
+  //
+  // ⭐ เพดาน 9 แถวมาจากฟอร์มกระดาษ ไม่ใช่ตัวเลขที่ตั้งขึ้นลอย ๆ
+  //    ใส่เกินแล้วตอนพิมพ์ตารางจะทะลุหน้า ฟอร์มเพี้ยนทั้งหน้า
+  //    DB ก็บังคับไว้อีกชั้น (check line_no between 1 and 9) เผื่อมีใครยิง API ตรง
+  const MAX_PROD = 9;
+  const prodBody = q('#prodBody');
+
+  const prodRowHtml = (r = {}) => `
+    <tr class="prodrow">
+      <td><input type="text" data-f="product" value="${esc(r.product)}"></td>
+      <td><input type="text" data-f="amount" inputmode="decimal" value="${esc(r.amount)}"></td>
+      <td><input type="text" data-f="price_unit" inputmode="decimal" value="${esc(r.price_unit)}"></td>
+      <td><input type="text" data-f="total" inputmode="decimal" value="${esc(r.total)}"></td>
+      <td><input type="text" data-f="discount" inputmode="decimal" value="${esc(r.discount)}"></td>
+      <td><input type="text" data-f="net" inputmode="decimal" value="${esc(r.net)}"></td>
+      <td><input type="text" data-f="note" value="${esc(r.note)}"></td>
+      <td><button type="button" class="btn btn-ghost btn-sm" data-rm-prod title="ลบแถวนี้">✕</button></td>
+    </tr>`;
+
+  function paintProdHint() {
+    const n = prodBody.querySelectorAll('.prodrow').length;
+    q('#prodHint').textContent = `${n} / ${MAX_PROD} แถว`;
+    q('#prodAdd').disabled = n >= MAX_PROD;
+  }
+
+  if (id) {
+    adapter.listPendingProducts(id)
+      .then(rows => {
+        prodBody.innerHTML = (rows || []).slice(0, MAX_PROD).map(prodRowHtml).join('');
+        paintProdHint();
+      })
+      .catch(() => { paintProdHint(); });   // ยังไม่ได้รัน phase3-9.sql ก็ไม่ต้องพัง
+  } else {
+    paintProdHint();
+  }
+
+  q('#prodAdd')?.addEventListener('click', () => {
+    if (prodBody.querySelectorAll('.prodrow').length >= MAX_PROD) return;
+    prodBody.insertAdjacentHTML('beforeend', prodRowHtml());
+    paintProdHint();
+  });
+
+  prodBody?.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-rm-prod]')) return;
+    e.target.closest('.prodrow')?.remove();
+    paintProdHint();
+  });
+
+  // คิด TOTAL / NET ให้อัตโนมัติ แต่พิมพ์ทับได้ (ฟอร์มกระดาษยอมให้ตกลงราคาพิเศษ)
+  prodBody?.addEventListener('input', (e) => {
+    const f = e.target.dataset?.f;
+    if (f !== 'amount' && f !== 'price_unit' && f !== 'discount') return;
+    const tr = e.target.closest('.prodrow');
+    const g  = (k) => Number(tr.querySelector(`[data-f="${k}"]`).value) || 0;
+    const total = g('amount') * g('price_unit');
+    if (total) tr.querySelector('[data-f="total"]').value = total;
+    const net = (Number(tr.querySelector('[data-f="total"]').value) || 0) - g('discount');
+    if (net || total) tr.querySelector('[data-f="net"]').value = net;
+  });
+
+  const readProducts = () =>
+    [...prodBody.querySelectorAll('.prodrow')].map((tr, i) => {
+      const g = (k) => tr.querySelector(`[data-f="${k}"]`).value.trim();
+      const nOrNull = (v) => v === '' ? null : Number(v);
+      return {
+        line_no: i + 1,
+        product: g('product') || null,
+        amount:     nOrNull(g('amount')),
+        price_unit: nOrNull(g('price_unit')),
+        total:      nOrNull(g('total')),
+        discount:   nOrNull(g('discount')),
+        net:        nOrNull(g('net')),
+        note: g('note') || null,
+      };
+    });
+
+  // พิมพ์ตามฟอร์มกระดาษต้นฉบับ / บันทึกเป็น PDF (step 3.9)
+  // ⚠️ ต้องดัก error เอง — เป็น async handler ถ้าโยนออกไปจะกลายเป็น unhandled rejection
+  //    ที่เงียบสนิท ผู้ใช้กดแล้วไม่มีอะไรเกิดขึ้นและไม่รู้ว่าทำไม
+  q('#pPrint')?.addEventListener('click', async () => {
+    const b = q('#pPrint');
+    b.disabled = true; b.textContent = 'กำลังเตรียม…';
+    try {
+      await printPending(id);
+    } catch (e) {
+      fail('พิมพ์ไม่สำเร็จ: ' + e.message);
+    } finally {
+      b.disabled = false; b.textContent = '🖨 พิมพ์ / PDF';
+    }
+  });
+
   const arch = q('#pArch');
   arch?.addEventListener('click', async () => {
     if (!archived && !armed) {
