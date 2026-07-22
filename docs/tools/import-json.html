@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>นำเข้า / กู้คืนข้อมูล — TE Sales Dashboard</title>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px; }
+  .head { margin-bottom: 20px; }
+  .head h1 { font-size: 22px; font-weight: 600; }
+  .head p { color: var(--text-mute); font-size: 13px; margin-top: 4px; }
+  .step { margin-top: 18px; }
+  .drop {
+    border: 1px dashed var(--border); border-radius: var(--r-lg);
+    padding: 28px 20px; text-align: center; color: var(--text-mute); font-size: 13px;
+  }
+  .drop.over { border-color: var(--accent); color: var(--accent-text); }
+  textarea.json {
+    width: 100%; min-height: 130px; margin-top: 10px;
+    background: var(--bg-elev); border: 1px solid var(--border); color: var(--text);
+    border-radius: var(--r-sm); padding: 10px; font-family: ui-monospace, monospace; font-size: 12px;
+  }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .warns li { color: var(--yellow); font-size: 12.5px; margin-top: 4px; }
+  .st-new  { color: var(--green); }
+  .st-dup  { color: var(--yellow); }
+  .prog-bar { height: 8px; background: var(--bg-elev); border: 1px solid var(--border);
+              border-radius: 999px; overflow: hidden; margin-top: 10px; }
+  .prog-bar i { display: block; height: 100%; background: var(--chart-3); width: 0; transition: width .2s; }
+  .runlog { max-height: 220px; overflow: auto; margin-top: 10px; font-size: 12px;
+            font-family: ui-monospace, monospace; color: var(--text-dim); }
+  .runlog .err { color: var(--red); }
+  a.back { color: var(--text-dim); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <a class="back" href="../index.html">← กลับหน้าหลัก</a>
+    <h1>นำเข้า / กู้คืนข้อมูล</h1>
+    <p>
+      ใช้ได้ 2 อย่าง: ย้ายข้อมูลจาก prototype เดิม · กู้คืนจากไฟล์สำรอง
+      <br>เครื่องมือนี้ <b>เพิ่มข้อมูลอย่างเดียว ไม่ลบของเดิม</b>
+    </p>
+  </div>
+
+  <!-- 1 · เข้าสู่ระบบ -->
+  <div class="card step" id="authCard">
+    <h3 class="sec-h">1 · เข้าสู่ระบบ</h3>
+    <div id="authBox"><div class="skeleton">กำลังตรวจสอบ…</div></div>
+  </div>
+
+  <!-- 2 · เลือกไฟล์ -->
+  <div class="card step" id="fileCard" hidden>
+    <h3 class="sec-h">2 · เลือกไฟล์ JSON</h3>
+    <div class="drop" id="drop">
+      ลากไฟล์ .json มาวางตรงนี้ หรือ
+      <label class="btn btn-ghost btn-sm" style="margin-left:6px">
+        เลือกไฟล์<input type="file" id="file" accept=".json,application/json" hidden>
+      </label>
+    </div>
+    <textarea class="json" id="paste" placeholder="…หรือวางเนื้อหา JSON ตรงนี้"></textarea>
+    <div class="row">
+      <button class="btn btn-primary btn-sm" id="btnParse">ตรวจไฟล์</button>
+      <span class="sec-foot" id="fileInfo"></span>
+    </div>
+    <p class="login-err" id="fileErr" role="alert" hidden></p>
+  </div>
+
+  <!-- 3 · ตรวจก่อนนำเข้า -->
+  <div class="card step" id="prevCard" hidden>
+    <h3 class="sec-h">3 · ตรวจก่อนนำเข้า</h3>
+    <div class="sum" id="prevSum"></div>
+    <ul class="warns" id="prevWarn"></ul>
+
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="optDup"> อัปเดตทับงานที่ซ้ำ (ค่าเริ่มต้น: ข้าม)</label>
+      <label class="chk"><input type="checkbox" id="optLogs" checked> นำเข้าบันทึกติดตามด้วย</label>
+      <label class="chk"><input type="checkbox" id="optCtc" checked> นำเข้าผู้ติดต่อด้วย</label>
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:12px;max-height:340px;overflow:auto">
+      <table class="tbl"><thead><tr>
+        <th style="min-width:70px">สถานะ</th>
+        <th style="min-width:110px">PENDING NO.</th>
+        <th style="min-width:220px">ชื่องาน</th>
+        <th style="min-width:150px">ลูกค้า</th>
+        <th class="num" style="min-width:110px">มูลค่า</th>
+        <th style="min-width:90px">คาดปิด</th>
+        <th style="min-width:70px">บันทึก</th>
+      </tr></thead><tbody id="prevBody"></tbody></table>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="btn btn-primary" id="btnRun">เริ่มนำเข้า</button>
+      <button class="btn btn-ghost btn-sm" id="btnReset">เลือกไฟล์ใหม่</button>
+    </div>
+  </div>
+
+  <!-- 4 · ผลลัพธ์ -->
+  <div class="card step" id="runCard" hidden>
+    <h3 class="sec-h">4 · กำลังนำเข้า</h3>
+    <div class="prog-bar"><i id="progBar"></i></div>
+    <div class="sum" id="runSum"></div>
+    <div class="runlog" id="runLog"></div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initAdapter, adapter } from '../js/data/adapter.js';
+import { parseImport, markDuplicates, detectFormat } from '../js/data/import-map.js';
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const baht = (n) => Number(n || 0).toLocaleString('th-TH');
+
+let teamByCode = {};
+let parsed = null;
+
+// ── 1 · auth ──
+async function boot() {
+  try {
+    await initAdapter();
+  } catch (e) {
+    $('authBox').innerHTML = `<div class="empty">ตั้งค่าไม่ครบ: ${esc(e.message)}</div>`;
+    return;
+  }
+
+  let session = null;
+  try { session = await adapter.getSession(); } catch { /* ยังไม่ล็อกอิน */ }
+
+  if (session?.user) return afterLogin(session.user);
+
+  $('authBox').innerHTML = `
+    <form id="loginForm" class="row">
+      <input class="inp" id="em" type="email" placeholder="อีเมล" autocomplete="username" required>
+      <input class="inp" id="pw" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" required>
+      <button class="btn btn-primary btn-sm" type="submit">เข้าสู่ระบบ</button>
+      <span class="login-err" id="loginErr" hidden></span>
+    </form>`;
+
+  $('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('loginErr'); err.hidden = true;
+    try {
+      const s = await adapter.signIn($('em').value.trim(), $('pw').value);
+      afterLogin(s.user);
+    } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+  });
+}
+
+async function afterLogin(user) {
+  $('authBox').innerHTML =
+    `<div class="sum">เข้าสู่ระบบแล้ว: <b>${esc(user.full_name || user.email)}</b>
+     ${user.role === 'admin' ? '(ผู้ดูแลระบบ)' : ''}</div>`;
+  try {
+    const teams = await adapter.listTeams();
+    teamByCode = Object.fromEntries(teams.map(t => [t.code, t.id]));
+  } catch { /* ไม่มีทีมก็ยังนำเข้าได้ แค่ไม่ระบุทีม */ }
+  $('fileCard').hidden = false;
+}
+
+// ── 2 · รับไฟล์ ──
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files?.[0]; if (f) readFile(f); });
+$('file').addEventListener('change', e => { const f = e.target.files?.[0]; if (f) readFile(f); });
+
+function readFile(f) {
+  const r = new FileReader();
+  r.onload = () => { $('paste').value = r.result; $('fileInfo').textContent = `${f.name} (${Math.round(f.size / 1024)} KB)`; doParse(); };
+  r.readAsText(f, 'utf-8');       // บังคับ UTF-8 ไม่งั้นภาษาไทยเพี้ยน
+}
+
+$('btnParse').addEventListener('click', doParse);
+$('btnReset').addEventListener('click', () => {
+  parsed = null; $('paste').value = ''; $('fileInfo').textContent = '';
+  $('prevCard').hidden = true; $('runCard').hidden = true;
+});
+
+function doParse() {
+  const err = $('fileErr'); err.hidden = true;
+  let data;
+  try {
+    data = JSON.parse($('paste').value);
+  } catch {
+    err.textContent = 'ไฟล์นี้ไม่ใช่ JSON ที่อ่านได้ — ตรวจว่าก๊อปมาครบทั้งไฟล์หรือยัง';
+    err.hidden = false; return;
+  }
+
+  try {
+    const res = parseImport(data, teamByCode);
+    preview(res);
+  } catch (e) {
+    err.textContent = e.message; err.hidden = false;
+  }
+}
+
+// ── 3 · preview + กันซ้ำ ──
+async function preview(res) {
+  let existing = [];
+  try {
+    existing = await adapter.listPending({ status: 'all', limit: 1000 });
+  } catch (e) {
+    $('fileErr').textContent = 'อ่านข้อมูลเดิมเพื่อกันซ้ำไม่ได้: ' + e.message;
+    $('fileErr').hidden = false; return;
+  }
+
+  const items = markDuplicates(res.items, existing);
+  parsed = { ...res, items };
+
+  const dup = items.filter(i => i.dup).length;
+  const fresh = items.length - dup;
+  const logs = items.reduce((a, i) => a + i.logs.length, 0);
+  const ctc  = items.reduce((a, i) => a + i.contacts.length, 0);
+
+  const kind = { backup: 'ไฟล์สำรองของระบบ', prototype: 'JSON จาก prototype เดิม', rows: 'รายการงานล้วน' }[res.format.kind];
+  $('prevSum').innerHTML =
+    `รูปแบบ: <b>${esc(kind)}</b> · พบ <b>${items.length}</b> งาน
+     (ใหม่ <b class="st-new">${fresh}</b> · ซ้ำ <b class="st-dup">${dup}</b>)
+     · บันทึกติดตาม <b>${logs}</b> · ผู้ติดต่อ <b>${ctc}</b>`;
+
+  $('prevWarn').innerHTML = res.warnings.map(w => `<li>⚠ ${esc(w)}</li>`).join('');
+
+  $('prevBody').innerHTML = items.map(i => `
+    <tr>
+      <td class="${i.dup ? 'st-dup' : 'st-new'}">${i.dup ? 'ซ้ำ' : 'ใหม่'}</td>
+      <td>${esc(i.row.pending_no || '')}</td>
+      <td>${esc(i.row.project_name)}</td>
+      <td>${esc(i.row.customer_name || '')}</td>
+      <td class="num">${baht(i.row.value_baht)}</td>
+      <td>${esc(i.row.close_month || '—')}</td>
+      <td>${i.logs.length || ''}</td>
+    </tr>`).join('');
+
+  $('prevCard').hidden = false;
+  $('runCard').hidden = true;
+}
+
+// ── 4 · นำเข้าจริง ──
+$('btnRun').addEventListener('click', async () => {
+  if (!parsed) return;
+  const updateDup = $('optDup').checked;
+  const withLogs  = $('optLogs').checked;
+  const withCtc   = $('optCtc').checked;
+
+  const todo = parsed.items.filter(i => !i.dup || updateDup);
+  $('runCard').hidden = false;
+  $('btnRun').disabled = true;
+  $('runLog').innerHTML = '';
+
+  let done = 0, okCount = 0, skip = parsed.items.length - todo.length, failCount = 0;
+  let logCount = 0, ctcCount = 0;
+
+  const say = (msg, cls = '') => {
+    const d = document.createElement('div');
+    if (cls) d.className = cls;
+    d.textContent = msg;
+    $('runLog').appendChild(d);
+    $('runLog').scrollTop = $('runLog').scrollHeight;
+  };
+
+  for (const it of todo) {
+    try {
+      const payload = { ...it.row };
+      if (it.dup) payload.id = it.dup.id;               // อัปเดตทับของเดิม
+      const saved = await adapter.savePending(payload);
+      const pid = saved?.id || it.dup?.id;
+      okCount++;
+
+      if (pid && withCtc && it.contacts.length) {
+        await adapter.saveContacts(pid, it.contacts);
+        ctcCount += it.contacts.length;
+      }
+
+      if (pid && withLogs) {
+        for (const l of it.logs) {
+          await adapter.addFollowLog({ ...l, pending_id: pid });
+          logCount++;
+        }
+      }
+      say(`✓ ${it.row.project_name}${it.dup ? ' (อัปเดตทับ)' : ''}`);
+    } catch (e) {
+      failCount++;
+      say(`✗ ${it.row.project_name} — ${e.message}`, 'err');
+    }
+    done++;
+    $('progBar').style.width = `${(done / todo.length * 100).toFixed(1)}%`;
+    $('runSum').innerHTML =
+      `สำเร็จ <b>${okCount}</b> · ข้าม <b>${skip}</b> · ผิดพลาด <b>${failCount}</b>
+       · บันทึกติดตาม <b>${logCount}</b> · ผู้ติดต่อ <b>${ctcCount}</b>`;
+  }
+
+  say('— จบการนำเข้า —');
+  $('btnRun').disabled = false;
+  if (failCount === 0) say('เปิดหน้าหลักเพื่อดูข้อมูลที่นำเข้าได้เลย');
+});
+
+boot();
+</script>
+</body>
+</html>

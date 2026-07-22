@@ -3,23 +3,29 @@
 
 const KEY = 'te-dashboard:v1';
 
-const EMPTY = {
+/**
+ * ⚠️ ต้องเป็นฟังก์ชัน ห้ามเป็นค่าคงที่แล้วใช้ { ...EMPTY }
+ *    spread คัดลอกแค่ชั้นนอก — อาร์เรย์ข้างในยังเป็นตัวเดียวกัน
+ *    ผลคือ push ข้อมูลใหม่ไปเปื้อนค่าตั้งต้น พอ "ล้างข้อมูล" แล้วของเก่าไม่หาย
+ *    (เจอตอนทดสอบ step 1.6: ล้าง localStorage แล้วยังเหลือ 2 งานค้างอยู่)
+ */
+const emptyDb = () => ({
   pending_projects: [],
   follow_logs: [],
   project_contacts: [],
   customers: [],
   activities: [],
   session: null,
-};
+});
 
-let db = { ...EMPTY };
+let db = emptyDb();
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    db = raw ? { ...EMPTY, ...JSON.parse(raw) } : { ...EMPTY };
+    db = raw ? { ...emptyDb(), ...JSON.parse(raw) } : emptyDb();
   } catch {
-    db = { ...EMPTY };
+    db = emptyDb();
   }
 }
 

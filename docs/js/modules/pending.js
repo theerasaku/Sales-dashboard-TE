@@ -745,7 +745,7 @@ async function openDetail(host, id, onSaved, teams) {
         <div class="modal-foot">
           ${id ? `<button type="button" id="pArch"
                     class="btn btn-sm ${archived ? 'btn-ghost' : 'btn-danger'}">
-                    ${archived ? '↩ ปลุกกลับมาทำต่อ' : 'เก็บเข้า Archive'}
+                    ${archived ? '↩ ปลุกกลับมาทำต่อ' : 'Project จบแล้ว — เก็บเข้าคลัง Archives'}
                   </button>` : ''}
           <span class="spacer"></span>
           <button type="button" class="btn btn-ghost" id="pCancel">ยกเลิก</button>
@@ -860,7 +860,7 @@ async function openDetail(host, id, onSaved, teams) {
       setTimeout(() => {
         if (!armed) return;
         armed = false;
-        arch.textContent = 'เก็บเข้า Archive';
+        arch.textContent = 'Project จบแล้ว — เก็บเข้าคลัง Archives';
         arch.classList.remove('is-armed');
       }, 4000);
       return;
