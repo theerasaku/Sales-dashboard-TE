@@ -724,6 +724,70 @@ const supabaseAdapter = {
     return countRows(`/activities?select=id&is_active=eq.true&status=eq.${encodeURIComponent(status)}`);
   },
 
+  // ---------- B5 · แหล่งงาน + ลูกค้างานแสดงสินค้า (step 3.1) ----------
+
+  async listLeadSources() {
+    return rest('/lead_sources?select=*&is_active=eq.true&order=sort_order.asc');
+  },
+
+  /** แก้ได้เฉพาะ admin/หัวหน้า — ถ้าไม่ใช่ RLS จะปฏิเสธเงียบ ๆ ต้องดักเอง */
+  async saveLeadSource(id, patch) {
+    const body = cleanRow(patch);
+    delete body.id; delete body.code;
+    body.updated_by = session?.user?.id || null;
+    const rows = await rest(`/lead_sources?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    if (!rows?.length) throw new Error('แก้แหล่งงานไม่ได้ — ลิงก์เป็นของกลาง แก้ได้เฉพาะหัวหน้างานหรือผู้ดูแลระบบ');
+    return rows[0];
+  },
+
+  /** opt: prospect (true = เฉพาะ ★) · status · search */
+  async listExpoCustomers(opt = {}) {
+    const { prospect, status, search, event, limit = 500 } = opt;
+    const p = new URLSearchParams();
+    p.set('select', '*,teams(code,name)');
+    p.set('is_active', 'eq.true');
+    if (prospect) p.set('is_prospect', 'eq.true');
+    if (status)   p.set('status', `eq.${status}`);
+    if (event)    p.set('event_name', `eq.${event}`);
+
+    const term = safeSearch(search);
+    if (term) p.set('or', `(name.ilike.*${term}*,org.ilike.*${term}*,contact.ilike.*${term}*)`);
+
+    // ★ prospect ขึ้นก่อนเสมอ แล้วค่อยเรียงชื่อ — คนที่ควรโทรก่อนต้องอยู่บนสุด
+    p.set('order', 'is_prospect.desc,name.asc');
+    p.set('limit', String(limit));
+    return rest('/expo_customers?' + p.toString());
+  },
+
+  async saveExpoCustomer(row) {
+    const body = cleanRow(row);
+    const me = session?.user?.id || null;
+    if (body.id) {
+      const id = body.id;
+      delete body.id;
+      body.updated_by = me;
+      const rows = await rest(`/expo_customers?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(body),
+      });
+      if (!rows?.length) throw new Error('แก้รายชื่อนี้ไม่ได้');
+      return rows[0];
+    }
+    body.created_by = me;
+    body.updated_by = me;
+    const rows = await rest('/expo_customers', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    return rows?.[0] || null;
+  },
+
   // ---------- B8 · Sign-off หัวหน้าเซ็นรับทราบ (step 2.6) ----------
 
   /**

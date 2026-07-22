@@ -74,6 +74,12 @@ export const adapter = {
   saveActivity:      (row)   => need().saveActivity(row),
   countActivities:   (st)    => need().countActivities(st),
 
+  // B5 แหล่งงาน + ลูกค้างานแสดงสินค้า (step 3.1)
+  listLeadSources:   ()        => need().listLeadSources(),
+  saveLeadSource:    (id, p)   => need().saveLeadSource(id, p),
+  listExpoCustomers: (opt)     => need().listExpoCustomers(opt),
+  saveExpoCustomer:  (row)     => need().saveExpoCustomer(row),
+
   // B8 sign-off — หัวหน้าเซ็นรับทราบ (step 2.6)
   listSignoffs:      (t, ids)  => need().listSignoffs(t, ids),
   addSignoff:        (t, id, n)=> need().addSignoff(t, id, n),

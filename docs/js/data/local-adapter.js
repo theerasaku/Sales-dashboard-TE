@@ -19,6 +19,8 @@ const emptyDb = () => ({
   profiles: [],
   team_access: [],
   signoffs: [],
+  lead_sources: [],
+  expo_customers: [],
   teams_custom: [],
   app_settings: {},
   session: null,
@@ -335,6 +337,64 @@ const localAdapter = {
 
   async countActivities(status = 'plan') {
     return db.activities.filter(r => r.is_active !== false && r.status === status).length;
+  },
+
+  // B5 — แหล่งงาน + ลูกค้างานแสดงสินค้า (step 3.1)
+  async listLeadSources() {
+    // โหมดออฟไลน์ยังไม่มี seed → ปั้นชุดย่อให้พอทดสอบ UI ได้ (ของจริงมาจาก phase3-1.sql)
+    if (!db.lead_sources.length) {
+      db.lead_sources = [
+        { id: 'gproc', code: 'gproc', icon: '🏛️', name: 'ประมูลงานราชการ — G-Procurement / G-LEAD',
+          descr: 'เฝ้าประกาศ e-bidding คัดงานประปา/บำบัดน้ำเสีย', cadence: 'ตรวจทุกวันทำการ (เช้า)',
+          owner_name: '', sort_order: 10, subs: [],
+          links: [{ label: 'ระบบ e-GP กรมบัญชีกลาง', url: 'https://www.gprocurement.go.th' },
+                  { label: 'G-LEAD Lightwork', url: 'https://lightworkai.com' }] },
+        { id: 'thaiwater', code: 'thaiwater', icon: '🌊', name: 'ลูกค้าจากงาน Thai Water Expo 2026',
+          descr: 'ติดตามลูกค้าจากบูธ เน้นกลุ่ม Prospect ก่อน', cadence: 'รีวิวรายสัปดาห์',
+          owner_name: '', sort_order: 70, subs: [],
+          links: [{ label: 'เว็บงาน Thai Water Expo', url: 'https://www.thai-water.com' }] },
+        { id: 'other', code: 'other', icon: '🤝', name: 'ลูกค้าแหล่งอื่น ๆ',
+          descr: 'ลูกค้าแนะนำ / โทรเข้าบริษัท / agent', cadence: 'บันทึกทันที',
+          owner_name: '', sort_order: 80, links: [],
+          subs: ['ลูกค้าแนะนำ (referral)', 'โทรเข้าบริษัท', 'Agent / ทีมขายหามาให้'] },
+      ];
+      save();
+    }
+    return [...db.lead_sources].sort((a, b) => a.sort_order - b.sort_order);
+  },
+
+  async saveLeadSource(id, patch) {
+    const row = db.lead_sources.find(r => r.id === id);
+    if (!row) throw new Error('ไม่พบแหล่งงานนี้');
+    const me = db.session?.user;
+    // เลียนแบบ policy ls_write: แก้ได้เฉพาะ admin/หัวหน้า
+    if (!me || !['admin', 'manager'].includes(me.role))
+      throw new Error('แก้แหล่งงานไม่ได้ — ลิงก์เป็นของกลาง แก้ได้เฉพาะหัวหน้างานหรือผู้ดูแลระบบ');
+    const { id: _i, code: _c, ...safeP } = patch;
+    Object.assign(row, safeP, { updated_at: new Date().toISOString() });
+    save();
+    return row;
+  },
+
+  async listExpoCustomers(opt = {}) {
+    const { prospect, status, search, event, limit = 500 } = opt;
+    let rows = db.expo_customers.filter(r => r.is_active !== false);
+    if (prospect) rows = rows.filter(r => r.is_prospect);
+    if (status)   rows = rows.filter(r => r.status === status);
+    if (event)    rows = rows.filter(r => r.event_name === event);
+
+    const term = String(search || '').trim().toLowerCase();
+    if (term) rows = rows.filter(r =>
+      [r.name, r.org, r.contact].some(v => String(v || '').toLowerCase().includes(term)));
+
+    // ★ prospect ขึ้นก่อน แล้วเรียงชื่อ (ให้ตรงกับ order ของ supabase-adapter)
+    rows.sort((a, b) => (b.is_prospect ? 1 : 0) - (a.is_prospect ? 1 : 0)
+                     || String(a.name || '').localeCompare(String(b.name || '')));
+    return rows.slice(0, limit);
+  },
+
+  async saveExpoCustomer(row) {
+    return upsert('expo_customers', { ...row, updated_by: db.session?.user?.id || null });
   },
 
   // B8 — Sign-off (step 2.6) · จำลอง trigger ฝั่ง DB ให้พฤติกรรมตรงกัน
