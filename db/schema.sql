@@ -1,6 +1,6 @@
 -- TE Sales Dashboard — schema (step 1.1)
 -- ขอบเขต: B1 Users & Teams · B2 Pending Projects
--- B3/B4 (customers, activities) มาใน step 2.1 · B5 ใน 3.1 · B7 Supplier ใน 3.4
+-- B3/B4 (customers, activities) มาใน step 2.1 · B5 ใน 3.1 · B7 Supplier พักไว้ (ดู CLAUDE.md "แผนอัปเดตอนาคต")
 --
 -- เขียนเป็น SQL มาตรฐานให้ย้ายค่ายได้ (Supabase / Postgres ทั่วไป)
 -- จุดที่ผูกกับ Supabase มีจุดเดียว: profiles.id → auth.users(id)
