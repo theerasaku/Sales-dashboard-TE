@@ -1,14 +1,19 @@
-// F7 — แหล่งงาน 8 เส้นทาง + ลูกค้าจากงานแสดงสินค้า (Phase 3.1)
+// F7 — แหล่งงาน + ทีมขาย + playbook กลยุทธ์ (Phase 3.1 → 3.2)
 //
-// 2 แถบในหน้าเดียว:
+// 4 แถบในหน้าเดียว:
 //   "เส้นทางหางาน"   — 8 เส้นทาง พร้อมลิงก์ที่กดเข้าไปทำงานได้เลย (หัวหน้าแก้ลิงก์ได้)
 //   "Thai Water Expo" — กองลีดจากงานแสดงสินค้า ★ ตัวที่ควรโทรก่อนขึ้นบนสุด
+//   "ทีมขาย"          — 5 ทีม พร้อมตัวเลขจริงของแต่ละทีม (step 3.2)
+//   "กลยุทธ์"         — playbook รายเส้นทาง + เช็กลิสต์ชนะงาน 7 ข้อ (step 3.2)
 //
 // ⚠️ รายชื่อลูกค้าจริงไม่ได้อยู่ในโค้ดหรือใน repo — นำเข้าผ่าน tools/import-json.html
 //    หรือกรอกเองจากหน้านี้ ข้อมูลอยู่ใน Supabase เท่านั้น (repo เป็น public)
 
 import { adapter } from '../data/adapter.js';
+import { CONFIG } from '../config.js';
 import { canSign } from '../ui/signoff.js';
+import { monthOf } from './dashboard.js';
+import { todayISO } from '../ui/datepicker.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -35,9 +40,128 @@ const safeUrl = (u) => {
   } catch { return ''; }
 };
 
+const MB = (v) => Number(v || 0) / 1e6;
+const fmtMB = (v) => MB(v).toLocaleString('th-TH', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const has = (v) => String(v ?? '').trim() !== '';
+
+// ══════════════════════════════════════════════════════════
+// เช็กลิสต์ชนะงาน 7 ข้อ — ตรรกะบริสุทธิ์ แยกไว้ให้ทดสอบได้
+//
+// ทุกข้อต้องผูกกับ "ช่องที่มีอยู่จริงในฟอร์ม Pending" เท่านั้น
+// ถ้าตั้งข้อที่ระบบตรวจเองไม่ได้ มันจะกลายเป็นโปสเตอร์ติดผนัง ไม่ใช่เครื่องมือ
+// ══════════════════════════════════════════════════════════
+
+export const WIN_CHECKS = [
+  { id: 'owner',  label: 'รู้ว่าใครเป็นเจ้าของงานตัวจริง',
+    hint: 'ช่อง OWNER เจ้าของโครงการ — คนที่เซ็นอนุมัติ ไม่ใช่คนที่เราคุยด้วย',
+    ok: (r) => has(r.project_owner) },
+
+  { id: 'spec',   label: 'เข้าถึงผู้ออกแบบหรือที่ปรึกษาแล้ว',
+    hint: 'ช่อง DESIGNER หรือ CONSULT — ว่างทั้งคู่แปลว่าเรามาทีหลังสเปกถูกล็อกไปแล้ว',
+    ok: (r) => has(r.designer) || has(r.consultant) },
+
+  { id: 'compet', label: 'รู้ว่าแข่งกับใคร',
+    hint: 'ช่อง COMPETITOR คู่แข่ง — ไม่รู้ว่าแข่งกับใคร แปลว่าตั้งราคาโดยเดา',
+    ok: (r) => has(r.competitors) },
+
+  { id: 'need',   label: 'รู้ความต้องการจริง และรู้จุดแข็งของเรา',
+    hint: 'ต้องมีครบทั้งช่อง "ความต้องการจริงของลูกค้า" และ "จุดแข็งของเราในงานนี้"',
+    ok: (r) => has(r.customer_needs) && has(r.our_strengths) },
+
+  { id: 'plan',   label: 'มีแผนชนะงานเขียนไว้',
+    hint: 'ช่อง Win plan — เขียนไว้แล้วคนอื่นรับช่วงต่อได้ตอนเราลาหรือย้ายงาน',
+    ok: (r) => has(r.win_plan) },
+
+  { id: 'when',   label: 'รู้ว่าตัดสินใจเมื่อไหร่',
+    hint: 'ช่อง DECISION DAY หรือเดือนที่คาดปิด — ไม่มีวัน งานจะค้างข้ามไตรมาสโดยไม่มีใครเร่ง',
+    ok: (r) => has(r.decision_day) || has(r.close_month) },
+
+  // ข้อเดียวที่ "เคยผ่านแล้วกลับมาไม่ผ่านได้" — นัดที่เลยกำหนดถือว่าไม่มีนัด
+  { id: 'next',   label: 'มีนัดถัดไปที่ยังไม่เลยกำหนด',
+    hint: 'ช่อง "งานถัดไปที่ต้องทำ" + "กำหนดทำภายใน" ที่ยังไม่เลยวันนี้',
+    ok: (r, today) => has(r.next_action) && has(r.next_date) && String(r.next_date) >= today },
+];
+
+/** งานเดี่ยว ๆ ผ่านกี่ข้อจาก 7 */
+export function winScore(row, today = todayISO()) {
+  const missing = WIN_CHECKS.filter(c => !c.ok(row, today)).map(c => c.id);
+  return { passed: WIN_CHECKS.length - missing.length, total: WIN_CHECKS.length, missing };
+}
+
+/**
+ * นับทั้งกอง: แต่ละข้อมีงานที่ยัง "ขาด" อยู่กี่งาน คิดเป็นเงินเท่าไหร่
+ *
+ * นับเฉพาะงานที่ยังเดินอยู่ — งานที่ปิดหรือแพ้ไปแล้วไม่ต้องมี Win plan อีกแล้ว
+ * ถ้าเอามานับด้วย ตัวเลข "ยังขาด" จะพองจนไม่มีใครอยากแตะ
+ */
+export function checkGaps(rows, today = todayISO()) {
+  const open = (rows || []).filter(r =>
+    r.is_active !== false && r.stage !== 'won' && r.stage !== 'lost');
+
+  return WIN_CHECKS.map(c => {
+    const miss = open.filter(r => !c.ok(r, today));
+    return {
+      id: c.id, label: c.label, hint: c.hint,
+      total: open.length,
+      done:  open.length - miss.length,
+      miss:  miss.length,
+      missValue: miss.reduce((a, r) => a + Number(r.value_baht || 0), 0),
+    };
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// ตัวเลขรายทีม
+// ══════════════════════════════════════════════════════════
+
+/**
+ * รวมตัวเลขของแต่ละทีมจากรายการ pending ชุดเดียว
+ *
+ * @param visible  Set ของ team_id ที่ผู้ใช้คนนี้มีสิทธิ์เห็น (null = เห็นหมด เช่น admin)
+ *                 ทีมที่ไม่มีสิทธิ์จะได้ locked: true → หน้าจอต้องขึ้น "ดูไม่ได้"
+ *                 ⚠️ ห้ามปล่อยให้ขึ้นเลข 0 เฉย ๆ — RLS กรองแถวออกแบบเงียบ ๆ
+ *                    คนอ่านจะเข้าใจว่าทีมนั้นไม่มีงานเลย ทั้งที่จริงแค่ตัวเองไม่มีสิทธิ์เห็น
+ */
+export function teamRollup(rows, teams, opt = {}) {
+  const from    = opt.from ?? CONFIG.TARGET_FROM;
+  const to      = opt.to   ?? CONFIG.TARGET_TO;
+  const visible = opt.visible ?? null;
+  const live    = (rows || []).filter(r => r.is_active !== false);
+  const inRange = (ym) => !!ym && ym >= from && ym <= to;
+
+  const roll = (list) => {
+    const openRows = list.filter(r => r.stage !== 'won' && r.stage !== 'lost');
+    const wonRows  = list.filter(r => r.stage === 'won' && inRange(monthOf(r)));
+    return {
+      openCount: openRows.length,
+      pipeline:  openRows.reduce((a, r) => a + Number(r.value_baht || 0), 0),
+      wonCount:  wonRows.length,
+      won:       wonRows.reduce((a, r) => a + Number(r.value_baht || 0), 0),
+    };
+  };
+
+  const list = (teams || []).map(t => ({
+    id: t.id, code: t.code, name: t.name, description: t.description || '',
+    locked: visible ? !visible.has(t.id) : false,
+    ...roll(live.filter(r => r.team_id === t.id)),
+  }));
+
+  // งานที่ยังไม่ระบุทีม — เห็นได้เฉพาะ admin (can_access_team คืน false ให้ team_id ว่าง)
+  // ต้องโชว์ ไม่ใช่ทิ้ง ไม่งั้นยอดรวมรายทีมจะไม่เท่ากับยอดรวมในหน้าภาพรวม แล้วหาไม่เจอว่าหายไปไหน
+  const orphan = live.filter(r => !r.team_id);
+  const total  = roll(live);
+
+  return {
+    teams: list,
+    orphan: orphan.length ? { count: orphan.length, ...roll(orphan) } : null,
+    total,
+    hiddenTeams: list.filter(t => t.locked).length,
+  };
+}
+
 export default {
   title: 'แหล่งงาน',
-  subtitle: '8 เส้นทางหาโครงการ · ลูกค้าจากงานแสดงสินค้า',
+  subtitle: 'เส้นทางหาโครงการ · ทีมขาย · กลยุทธ์ชนะงาน',
   render: (root) => renderSources(root),
 };
 
@@ -53,6 +177,8 @@ async function renderSources(root) {
         <button type="button" data-tab="expo"  class="${tab === 'expo'  ? 'on' : ''}">
           Thai Water Expo <span class="seg-badge" id="sExpoN" hidden></span>
         </button>
+        <button type="button" data-tab="team"  class="${tab === 'team'  ? 'on' : ''}">ทีมขาย</button>
+        <button type="button" data-tab="play"  class="${tab === 'play'  ? 'on' : ''}">กลยุทธ์</button>
       </div>
     </div>
     <div id="sBody"><div class="skeleton">กำลังโหลด…</div></div>
@@ -82,6 +208,8 @@ async function renderSources(root) {
   async function draw() {
     body.innerHTML = '<div class="skeleton">กำลังโหลด…</div>';
     if (tab === 'paths') return drawPaths(body, root, me, draw);
+    if (tab === 'team')  return drawTeams(body, me);
+    if (tab === 'play')  return drawPlaybook(body, root, me, draw);
     return drawExpo(body, root, me, draw);
   }
   await draw();
@@ -169,6 +297,9 @@ function openSourceEdit(host, src, onSaved) {
               <input type="text" name="cadence" value="${esc(src.cadence || '')}"></label>
             <label class="fld"><span>ผู้รับผิดชอบ</span>
               <input type="text" name="owner_name" value="${esc(src.owner_name || '')}"></label>
+            <label class="fld fld-wide"><span>กลยุทธ์ชนะงานเส้นทางนี้ (playbook)</span>
+              <textarea name="playbook" rows="7"
+                placeholder="ขึ้นต้นบรรทัดด้วย • เพื่อให้แสดงเป็นข้อ ๆ">${esc(src.playbook || '')}</textarea></label>
           </div>
 
           <h3 class="q-h3">ลิงก์</h3>
@@ -457,3 +588,218 @@ function openExpo(host, row, onSaved) {
     }
   });
 }
+
+// ══════════════════════════════════════════════════════════
+// แถบ 3 — ทีมขาย (step 3.2)
+// ══════════════════════════════════════════════════════════
+
+/**
+ * ทีมที่ผู้ใช้คนนี้มีสิทธิ์เห็น
+ * admin → null (เห็นหมด) · manager → ทีมตัวเอง + ทีมที่ได้รับสิทธิ์ · sale → ทีมตัวเอง
+ *
+ * ตัวนี้ใช้ตัดสินแค่ "จะเขียนอะไรบนหน้าจอ" ไม่ใช่มาตรการความปลอดภัย
+ * ของจริง RLS กรองแถวให้ตั้งแต่ที่ DB แล้ว ต่อให้คำนวณตรงนี้ผิดก็ไม่มีข้อมูลรั่ว
+ */
+async function visibleTeamIds(me) {
+  if (!me || me.role === 'admin') return null;
+  const ids = new Set(me.team_id ? [me.team_id] : []);
+  if (me.role === 'manager') {
+    try {
+      const rows = await adapter.listTeamAccess(me.id);
+      (rows || []).forEach(r => ids.add(r.team_id));
+    } catch { /* ยังไม่ได้รัน phase2-4.sql ก็ถือว่ามีแค่ทีมตัวเอง */ }
+  }
+  return ids;
+}
+
+async function drawTeams(body, me) {
+  let teams = [], rows = [], profiles = [];
+  try {
+    [teams, rows] = await Promise.all([
+      adapter.listTeams(),
+      adapter.listPending({ status: 'all', limit: 1000 }),
+    ]);
+  } catch (e) {
+    body.innerHTML = `<div class="empty"><strong>โหลดข้อมูลทีมไม่สำเร็จ</strong>${esc(e.message)}</div>`;
+    return;
+  }
+  // รายชื่อสมาชิกเป็นของแถม — RLS อาจกันไว้ ห้ามให้ทั้งหน้าพังเพราะอันนี้
+  try { profiles = await adapter.listProfiles(); } catch { profiles = []; }
+
+  const visible = await visibleTeamIds(me);
+  const sum = teamRollup(rows, teams, { visible });
+
+  const members = (tid) => profiles.filter(p => p.team_id === tid && p.is_active !== false);
+  const maxPipe = Math.max(1, ...sum.teams.filter(t => !t.locked).map(t => t.pipeline));
+
+  const card = (t) => {
+    const mem = members(t.id);
+    if (t.locked) return `
+      <div class="card tmcard is-locked">
+        <div class="tm-h"><strong>${esc(t.name)}</strong>
+          <span class="tm-code">${esc(t.code)}</span></div>
+        <p class="tm-desc">${esc(t.description)}</p>
+        <p class="tm-lock">🔒 คุณไม่มีสิทธิ์ดูข้อมูลทีมนี้ —
+          ตัวเลขจึงไม่แสดง (ไม่ใช่ว่าทีมนี้ไม่มีงาน)</p>
+      </div>`;
+
+    return `
+      <div class="card tmcard">
+        <div class="tm-h"><strong>${esc(t.name)}</strong>
+          <span class="tm-code">${esc(t.code)}</span></div>
+        <p class="tm-desc">${esc(t.description)}</p>
+
+        <div class="tm-nums">
+          <div><span class="tm-n">${fmtMB(t.won)}</span><span class="tm-l">ปิดได้แล้ว (ล้านบาท)</span></div>
+          <div><span class="tm-n">${fmtMB(t.pipeline)}</span><span class="tm-l">ยังเดินอยู่ (ล้านบาท)</span></div>
+          <div><span class="tm-n">${t.openCount}</span><span class="tm-l">งานที่เดินอยู่</span></div>
+        </div>
+
+        <div class="tm-bar" role="img"
+             aria-label="สัดส่วนงานที่ยังเดินอยู่ ${fmtMB(t.pipeline)} ล้านบาท">
+          <span style="width:${Math.round((t.pipeline / maxPipe) * 100)}%"></span>
+        </div>
+
+        <div class="tm-mem">
+          ${mem.length
+            ? mem.map(p => `<span class="ateam">${esc(p.full_name || p.email || '—')}</span>`).join('')
+            : '<span class="tm-nomem">— ยังไม่มีสมาชิกที่คุณเห็นได้ —</span>'}
+        </div>
+      </div>`;
+  };
+
+  body.innerHTML = `
+    <div class="grid cols-4">
+      <div class="card"><div class="stat-label">ปิดได้แล้ว</div>
+        <div class="stat-value">${fmtMB(sum.total.won)}</div>
+        <div class="stat-note">ล้านบาท · ${esc(CONFIG.TARGET_PERIOD)}</div></div>
+      <div class="card"><div class="stat-label">ยังเดินอยู่</div>
+        <div class="stat-value">${fmtMB(sum.total.pipeline)}</div>
+        <div class="stat-note">ล้านบาท · ${sum.total.openCount} งาน</div></div>
+      <div class="card"><div class="stat-label">ทีมขาย</div>
+        <div class="stat-value">${sum.teams.length}</div>
+        <div class="stat-note">${sum.hiddenTeams ? `ดูได้ ${sum.teams.length - sum.hiddenTeams} ทีม` : 'ดูได้ทุกทีม'}</div></div>
+      <div class="card"><div class="stat-label">คนในทีม</div>
+        <div class="stat-value">${profiles.filter(p => p.is_active !== false).length}</div>
+        <div class="stat-note">เท่าที่คุณมีสิทธิ์เห็น</div></div>
+    </div>
+
+    ${sum.hiddenTeams ? `<p class="sec-foot" style="margin:14px 0 0">
+      🔒 มี ${sum.hiddenTeams} ทีมที่คุณดูข้อมูลไม่ได้ — ตัวเลขรวมด้านบนจึงนับเฉพาะทีมที่คุณเห็น
+      ถ้าต้องดูข้ามทีม ให้ผู้ดูแลระบบเปิดสิทธิ์ให้ในหน้าตั้งค่าระบบ</p>` : ''}
+
+    ${sum.orphan ? `<div class="card warncard" style="margin-top:14px">
+      <strong>⚠️ มี ${sum.orphan.count} งานที่ยังไม่ระบุทีม</strong>
+      <p>รวม ${fmtMB(sum.orphan.pipeline + sum.orphan.won)} ล้านบาท —
+         งานเหล่านี้ไม่ถูกนับเข้าทีมไหนเลย และคนที่ไม่ใช่ผู้ดูแลระบบจะมองไม่เห็น
+         ให้เปิดงานในแถบ Pending Project แล้วเลือกทีมให้เรียบร้อย</p>
+    </div>` : ''}
+
+    <div class="srcgrid" style="margin-top:16px">
+      ${sum.teams.map(card).join('')}
+    </div>
+
+    <p class="sec-foot" style="margin-top:14px">
+      "ปิดได้แล้ว" นับงานที่สถานะเป็นปิดการขายและตกอยู่ในช่วงเป้า ${esc(CONFIG.TARGET_PERIOD)}
+      · "ยังเดินอยู่" คืองานที่ยังไม่ปิดและยังไม่แพ้ — กติกาเดียวกับหน้าภาพรวม
+    </p>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// แถบ 4 — กลยุทธ์: เช็กลิสต์ชนะงาน 7 ข้อ + playbook รายเส้นทาง (step 3.2)
+// ══════════════════════════════════════════════════════════
+
+async function drawPlaybook(body, root, me, redraw) {
+  let sources = [], rows = [];
+  try {
+    [sources, rows] = await Promise.all([
+      adapter.listLeadSources(),
+      adapter.listPending({ status: 'active', limit: 1000 }),
+    ]);
+  } catch (e) {
+    const missing = /ยังไม่ได้สร้างตาราง|does not exist|42P01/i.test(e.message);
+    body.innerHTML = `<div class="empty">
+        <strong>${missing ? 'ยังไม่ได้สร้างตารางแหล่งงาน' : 'โหลดข้อมูลไม่สำเร็จ'}</strong>
+        ${missing ? 'เอาไฟล์ <code>db/phase3-1.sql</code> และ <code>db/phase3-2.sql</code> ไปรันใน Supabase ก่อน'
+                  : esc(e.message)}
+      </div>`;
+    return;
+  }
+
+  const editable = canGaps(me);
+  const gaps = checkGaps(rows);
+  const openN = gaps[0]?.total || 0;
+
+  // playbook ยังไม่มีเลยสักเส้นทาง = ยังไม่ได้รัน phase3-2.sql
+  const noPlaybook = sources.length > 0 && sources.every(s => !has(s.playbook));
+
+  body.innerHTML = `
+    <div class="card wincard">
+      <div class="win-h">
+        <strong>เช็กลิสต์ชนะงาน 7 ข้อ</strong>
+        <span class="win-sub">นับจาก ${openN} งานที่ยังเดินอยู่และคุณมีสิทธิ์เห็น</span>
+      </div>
+      ${openN === 0
+        ? '<p class="tm-nomem" style="padding:8px 0">ยังไม่มีงานที่เดินอยู่ — เพิ่มงานในแถบ Pending Project ก่อน แล้วตัวเลขตรงนี้จะขึ้นเอง</p>'
+        : `<ol class="winlist">
+        ${gaps.map((g, i) => {
+          const pct = g.total ? Math.round((g.done / g.total) * 100) : 0;
+          const tone = pct >= 80 ? 'ok' : pct >= 40 ? 'warn' : 'bad';
+          return `<li class="winrow">
+            <span class="win-no">${i + 1}</span>
+            <div class="win-main">
+              <div class="win-label">${esc(g.label)}</div>
+              <div class="win-hint">${esc(g.hint)}</div>
+              <div class="win-bar tone-${tone}"><span style="width:${pct}%"></span></div>
+            </div>
+            <div class="win-right">
+              <span class="win-pct tone-${tone}">${pct}%</span>
+              <span class="win-miss">${g.miss ? `ยังขาด ${g.miss} งาน · ${fmtMB(g.missValue)} ล้านบาท` : 'ครบทุกงาน ✓'}</span>
+            </div>
+          </li>`;
+        }).join('')}
+      </ol>`}
+      <p class="sec-foot">ทั้ง 7 ข้อตรวจจากช่องในฟอร์ม Pending Project โดยตรง — กรอกช่องให้ครบ ตัวเลขตรงนี้ขึ้นเอง</p>
+    </div>
+
+    ${noPlaybook ? `<div class="empty" style="margin-top:16px">
+        <strong>ยังไม่มีเนื้อหากลยุทธ์</strong>
+        เอาไฟล์ <code>db/phase3-2.sql</code> ไปรันใน Supabase → SQL Editor
+        เพื่อเพิ่มคอลัมน์ <code>playbook</code> พร้อมเนื้อหาตั้งต้น 8 เส้นทาง
+      </div>` : `
+      <h3 class="q-h3" style="margin-top:22px">กลยุทธ์รายเส้นทาง</h3>
+      <p class="sec-foot" style="margin:0 0 12px">
+        ${editable ? 'แก้ได้ที่ปุ่ม "แก้ไข" — เป็นของกลางทั้งทีม แก้แล้วทุกคนเห็นทันที'
+                   : 'เป็นของกลางทั้งทีม แก้ได้เฉพาะหัวหน้างานและผู้ดูแลระบบ'}
+      </p>
+      <div class="srcgrid">
+        ${sources.map(s => `
+          <div class="card pbcard">
+            <div class="src-h">
+              <span class="src-ico">${esc(s.icon || '•')}</span>
+              <div class="src-title"><strong>${esc(s.name)}</strong></div>
+              ${editable ? `<button type="button" class="btn btn-ghost btn-sm"
+                              data-edit-pb="${esc(s.id)}">แก้ไข</button>` : ''}
+            </div>
+            ${has(s.playbook)
+              ? `<ul class="pblist">${bullets(s.playbook).map(b => `<li>${esc(b)}</li>`).join('')}</ul>`
+              : '<p class="src-nolink">— ยังไม่ได้เขียนกลยุทธ์เส้นทางนี้ —</p>'}
+          </div>`).join('')}
+      </div>`}`;
+
+  body.querySelectorAll('[data-edit-pb]').forEach(b => {
+    b.addEventListener('click', () =>
+      openSourceEdit(root.querySelector('#sPanel'), sources.find(r => r.id === b.dataset.editPb), redraw));
+  });
+}
+
+/** ตัด playbook เป็นข้อ ๆ — ตัด • หรือ - นำหน้าออก บรรทัดว่างข้าม */
+function bullets(text) {
+  return String(text || '')
+    .split('\n')
+    .map(l => l.trim().replace(/^[•\-*]\s*/, '').trim())
+    .filter(Boolean);
+}
+
+/** แก้ playbook ได้เท่ากับแก้แหล่งงาน — ใช้เกณฑ์เดียวกับ policy ls_write */
+const canGaps = (me) => canSign(me);

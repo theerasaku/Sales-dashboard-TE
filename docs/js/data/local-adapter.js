@@ -347,15 +347,24 @@ const localAdapter = {
         { id: 'gproc', code: 'gproc', icon: '🏛️', name: 'ประมูลงานราชการ — G-Procurement / G-LEAD',
           descr: 'เฝ้าประกาศ e-bidding คัดงานประปา/บำบัดน้ำเสีย', cadence: 'ตรวจทุกวันทำการ (เช้า)',
           owner_name: '', sort_order: 10, subs: [],
+          // playbook มาใน step 3.2 — ของจริงอยู่ใน db/phase3-2.sql ตรงนี้ย่อไว้พอทดสอบ UI
+          playbook: '• ก่อนประกาศคือช่วงที่ชนะจริง เข้าไปคุยตั้งแต่ตอนร่าง TOR\n'
+                  + '• ราคากลางคือเพดาน ไม่ใช่เป้า\n'
+                  + '• แพ้แล้วขอดูผลเทียบราคาทุกครั้ง',
           links: [{ label: 'ระบบ e-GP กรมบัญชีกลาง', url: 'https://www.gprocurement.go.th' },
                   { label: 'G-LEAD Lightwork', url: 'https://lightworkai.com' }] },
         { id: 'thaiwater', code: 'thaiwater', icon: '🌊', name: 'ลูกค้าจากงาน Thai Water Expo 2026',
           descr: 'ติดตามลูกค้าจากบูธ เน้นกลุ่ม Prospect ก่อน', cadence: 'รีวิวรายสัปดาห์',
           owner_name: '', sort_order: 70, subs: [],
+          playbook: '• ลีดจากงานแสดงสินค้าอายุสั้น ติดต่อกลับภายใน 2 สัปดาห์\n'
+                  + '• ★ ที่ระบุความสนใจชัดโทรก่อน\n'
+                  + '• โทรครั้งแรกอย่าเพิ่งขาย ให้ทวนว่าคุยอะไรกันที่บูธ',
           links: [{ label: 'เว็บงาน Thai Water Expo', url: 'https://www.thai-water.com' }] },
         { id: 'other', code: 'other', icon: '🤝', name: 'ลูกค้าแหล่งอื่น ๆ',
           descr: 'ลูกค้าแนะนำ / โทรเข้าบริษัท / agent', cadence: 'บันทึกทันที',
           owner_name: '', sort_order: 80, links: [],
+          playbook: '• ลูกค้าแนะนำปิดง่ายที่สุด ส่งมอบงานเสร็จให้ถามทุกครั้ง\n'
+                  + '• สายที่โทรเข้าต้องได้ครบ 3 อย่างก่อนวางสาย: ชื่อ-เบอร์-งานอะไร',
           subs: ['ลูกค้าแนะนำ (referral)', 'โทรเข้าบริษัท', 'Agent / ทีมขายหามาให้'] },
       ];
       save();

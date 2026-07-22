@@ -980,3 +980,91 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .exrow { padding: 12px; flex-wrap: wrap; }
   .ex-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   F7 step 3.2 — ทีมขาย + playbook กลยุทธ์ + เช็กลิสต์ชนะงาน
+   ⚠️ ห้าม hardcode hex ในไฟล์นี้ ใช้ var() จาก :root เท่านั้น
+      ไม่งั้นตอนทำโหมดสว่าง (step 3.7) ส่วนนี้จะไม่เปลี่ยนตาม
+   ══════════════════════════════════════════════════════════ */
+
+/* 4 แถบแล้ว จอ 390px เรียงแถวเดียวไม่พอ — ต้องยอมให้ตกบรรทัด
+   ถ้าไม่ใส่ แถบจะดันทะลุขอบจอแล้วหน้าเลื่อนซ้ายขวาได้ทั้งหน้า */
+.segmented { flex-wrap: wrap; max-width: 100%; }
+
+/* ---------- การ์ดทีมขาย ---------- */
+.tmcard { display: flex; flex-direction: column; gap: 10px; }
+.tm-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tm-h strong { font-size: 14.5px; }
+.tm-code {
+  font-size: 10.5px; color: var(--text-mute);
+  border: 1px solid var(--border); border-radius: var(--r-sm); padding: 1px 6px;
+}
+.tm-desc { margin: 0; font-size: 12px; color: var(--text-dim); }
+
+.tm-nums { display: flex; gap: 8px; flex-wrap: wrap; }
+.tm-nums > div { flex: 1 1 90px; min-width: 0; }
+.tm-n {
+  display: block; font-size: 19px; font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.tm-l { display: block; font-size: 10.5px; color: var(--text-mute); }
+
+.tm-bar { height: 5px; border-radius: 999px; background: var(--bg-elev); overflow: hidden; }
+.tm-bar > span { display: block; height: 100%; background: var(--chart-2); }
+
+.tm-mem { display: flex; flex-wrap: wrap; gap: 5px; }
+.tm-nomem { font-size: 11.5px; color: var(--text-mute); }
+
+.tmcard.is-locked { opacity: 0.72; }
+.tm-lock { margin: 0; font-size: 11.5px; color: var(--yellow); }
+
+.warncard { border-color: var(--red-line); }
+.warncard p { margin: 6px 0 0; font-size: 12px; color: var(--text-dim); }
+
+/* ---------- เช็กลิสต์ชนะงาน 7 ข้อ ---------- */
+.wincard { display: flex; flex-direction: column; gap: 10px; }
+.win-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.win-sub { font-size: 11.5px; color: var(--text-mute); }
+
+.winlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.winrow {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 4px; border-top: 1px solid var(--border-soft);
+}
+.winrow:first-child { border-top: none; }
+
+.win-no {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 999px;
+  background: var(--bg-elev); border: 1px solid var(--border);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums;
+}
+/* min-width:0 กันข้อความยาวดันคอลัมน์ขวาทะลุการ์ด (บทเรียนเดียวกับ .topbar-left) */
+.win-main { flex: 1 1 auto; min-width: 0; }
+.win-label { font-size: 13px; }
+.win-hint { font-size: 11px; color: var(--text-mute); margin-top: 2px; }
+
+.win-bar { height: 4px; border-radius: 999px; background: var(--bg-elev); overflow: hidden; margin-top: 6px; }
+.win-bar > span { display: block; height: 100%; background: var(--chart-2); }
+.win-bar.tone-ok   > span { background: var(--green); }
+.win-bar.tone-warn > span { background: var(--yellow); }
+.win-bar.tone-bad  > span { background: var(--red); }
+
+.win-right { flex: 0 0 auto; text-align: right; display: flex; flex-direction: column; gap: 2px; }
+.win-pct { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.win-pct.tone-ok   { color: var(--green); }
+.win-pct.tone-warn { color: var(--yellow); }
+.win-pct.tone-bad  { color: var(--red); }
+.win-miss { font-size: 10.5px; color: var(--text-mute); white-space: nowrap; }
+
+/* ---------- การ์ด playbook ---------- */
+.pbcard { display: flex; flex-direction: column; gap: 8px; }
+.pblist { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.pblist li { font-size: 12.5px; color: var(--text-dim); line-height: 1.55; }
+
+@media (max-width: 430px) {
+  /* มือถือ: ยอมให้ "ยังขาด N งาน" ตกบรรทัดแทนที่จะดันจอ */
+  .winrow { flex-wrap: wrap; }
+  .win-right { flex-direction: row; align-items: baseline; gap: 8px; width: 100%; padding-left: 32px; }
+  .win-miss { white-space: normal; }
+}

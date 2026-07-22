@@ -42,7 +42,9 @@ function monthRange(from, to) {
  * ปิดได้แล้ว → ใช้วันสั่งซื้อจริง (purchased_day) เป็นหลัก
  * ยังไม่ปิด  → ใช้เดือนที่คาดปิด (close_month)
  */
-const monthOf = (r) =>
+// export เพราะหน้าทีมขาย (step 3.2) ต้องนับ "ปิดได้แล้ว" ด้วยกติกาเดียวกันเป๊ะ
+// ⚠️ ห้ามก๊อปสามบรรทัดนี้ไปไว้ที่อื่น ถ้าสองหน้าใช้กติกาคนละแบบ ตัวเลขจะขัดกันเองบนหน้าจอ
+export const monthOf = (r) =>
   (r.stage === 'won' && r.purchased_day)
     ? String(r.purchased_day).slice(0, 7)
     : (r.close_month || null);
