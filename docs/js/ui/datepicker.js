@@ -63,7 +63,9 @@ function ensurePop() {
   pop.hidden = true;
   document.body.appendChild(pop);
 
-  pop.addEventListener('mousedown', (e) => e.preventDefault());   // กันช่องกรอกเสีย focus
+  // ⚠️ ห้าม preventDefault ที่ mousedown ของทั้ง popup
+  //    เคยใส่ไว้กันช่องกรอกเสีย focus แล้วมันไปบล็อก <select> ไม่ให้เปิดดรอปดาวน์
+  //    → ผู้ใช้เลือกเดือน/ปีไม่ได้เลย (ช่องกรอกเป็น readonly อยู่แล้ว ไม่ต้องหวง focus)
   pop.addEventListener('click', onPopClick);
   pop.addEventListener('change', onPopChange);
   return pop;
@@ -201,7 +203,14 @@ export function initDatePicker() {
       return open(dp);
     }
 
-    if (pop && !pop.hidden && !e.target.closest('.dp-pop')) close();
+    if (!pop || pop.hidden) return;
+
+    // ⚠️ ห้ามใช้ e.target.closest('.dp-pop') ตรงนี้
+    //    ปุ่ม ‹ › ทำให้ปฏิทินวาดใหม่ → ปุ่มที่กดหลุดจาก DOM ไปแล้ว
+    //    ตอน event วิ่งมาถึงบรรทัดนี้ closest() จึงหา .dp-pop ไม่เจอ แล้วสั่งปิดทั้งที่กดข้างใน
+    //    composedPath() เก็บเส้นทางไว้ตั้งแต่ตอน dispatch จึงไม่โดนผลจากการวาดใหม่
+    const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+    if (!path.includes(pop)) close();
   });
 
   document.addEventListener('keydown', (e) => {
