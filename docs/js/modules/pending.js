@@ -545,7 +545,10 @@ const FORM = [
     ['next_action', 'Next action ถัดไป', 'text', 'เช่น นัดสำรวจหน้างาน'],
     ['next_date',   'กำหนดทำภายใน',       'date'],
     ['lead_source', 'แหล่งที่มาของงาน',    'text', 'เช่น e-GP / ลูกค้าแนะนำ / agent'],
-    ['product',     'ผลิตภัณฑ์/ระบบ',     'text'],
+    // ⏸️ ซ่อน 'ผลิตภัณฑ์/ระบบ' ไว้ก่อน (เจ้าของสั่ง 23 ก.ค. 2569) — ให้ไปกรอกที่ตาราง PRODUCT แทน
+    //    ⚠️ ห้ามลบคอลัมน์ product ใน DB — งานเก่าที่กรอกไว้แล้วยังอยู่ในนั้น
+    //       ช่องนี้แค่ไม่แสดงบนฟอร์ม ค่าเดิมจึงไม่ถูกเขียนทับ (ไม่อยู่ใน FormData = ไม่ถูกส่งไป PATCH)
+    // ['product',     'ผลิตภัณฑ์/ระบบ',     'text'],
     ['team_id',     'ทีมผู้ดูแล',          'team'],
   ]},
 ];
@@ -705,13 +708,13 @@ async function openDetail(host, id, onSaved, teams) {
         </p>
 
         <div class="modal-foot">
-          ${id ? `<button type="button" class="btn btn-ghost btn-sm" id="pPrint"
-                    title="พิมพ์ตามฟอร์มกระดาษต้นฉบับ หรือบันทึกเป็น PDF">🖨 พิมพ์ / PDF</button>
-                  <button type="button" id="pArch"
+          ${id ? `<button type="button" id="pArch"
                     class="btn btn-sm ${archived ? 'btn-ghost' : 'btn-danger'}">
                     ${archived ? '↩ ปลุกกลับมาทำต่อ' : 'Project จบแล้ว — เก็บเข้าคลัง Archives'}
                   </button>` : ''}
           <span class="spacer"></span>
+          ${id ? `<button type="button" class="btn btn-ghost" id="pPrint"
+                    title="พิมพ์ตามฟอร์มกระดาษต้นฉบับ หรือบันทึกเป็น PDF">🖨 พิมพ์ / PDF</button>` : ''}
           <button type="button" class="btn btn-ghost" id="pCancel">ยกเลิก</button>
           <button type="submit" class="btn btn-primary" id="pSave">บันทึก</button>
         </div>
@@ -865,15 +868,23 @@ async function openDetail(host, id, onSaved, teams) {
     q('#prodAdd').disabled = n >= MAX_PROD;
   }
 
+  /**
+   * เปิดฟอร์มมาต้องมีแถวว่างให้กรอกได้เลย 1 แถว ไม่ต้องกด "+ เพิ่มแถว" ก่อน
+   * (เจ้าของสั่ง 23 ก.ค. 2569 — กดปุ่มก่อนถึงจะกรอกได้ เป็นขั้นตอนที่ไม่จำเป็น)
+   * แถวว่างไม่ถูกบันทึกอยู่แล้ว savePendingProducts ทิ้งแถวที่ทุกช่องว่างให้เอง
+   */
+  const fillProd = (rows) => {
+    const list = (rows || []).slice(0, MAX_PROD);
+    prodBody.innerHTML = (list.length ? list.map(prodRowHtml) : [prodRowHtml()]).join('');
+    paintProdHint();
+  };
+
   if (id) {
     adapter.listPendingProducts(id)
-      .then(rows => {
-        prodBody.innerHTML = (rows || []).slice(0, MAX_PROD).map(prodRowHtml).join('');
-        paintProdHint();
-      })
-      .catch(() => { paintProdHint(); });   // ยังไม่ได้รัน phase3-9.sql ก็ไม่ต้องพัง
+      .then(fillProd)
+      .catch(() => fillProd([]));   // ยังไม่ได้รัน phase3-9.sql ก็ยังกรอกหน้าจอได้ ไม่พัง
   } else {
-    paintProdHint();
+    fillProd([]);
   }
 
   q('#prodAdd')?.addEventListener('click', () => {

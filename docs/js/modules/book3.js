@@ -465,8 +465,6 @@ async function openDetail(host, id, onSaved, teams) {
 
         <div class="modal-foot">
           ${id ? `
-            <button type="button" class="btn btn-ghost btn-sm" id="bPrint"
-                    title="พิมพ์ตามฟอร์ม Potential ต้นฉบับ หรือบันทึกเป็น PDF">🖨 พิมพ์ / PDF</button>
             <button type="button" class="btn btn-ghost btn-sm" id="bToPending"
                     title="สร้างงานใหม่ในแถบ Pending Project จากลูกค้ารายนี้">↗ ยกขึ้นเป็น Pending Project</button>
             <button type="button" id="bArch"
@@ -474,6 +472,8 @@ async function openDetail(host, id, onSaved, teams) {
               ${archived ? '↩ ดึงกลับมาติดต่อต่อ' : 'ไม่ติดต่อแล้ว — เก็บเข้าคลัง'}
             </button>` : ''}
           <span class="spacer"></span>
+          ${id ? `<button type="button" class="btn btn-ghost" id="bPrint"
+                    title="พิมพ์ตามฟอร์ม Potential ต้นฉบับ หรือบันทึกเป็น PDF">🖨 พิมพ์ / PDF</button>` : ''}
           <button type="button" class="btn btn-ghost" id="bCancel">ยกเลิก</button>
           <button type="submit" class="btn btn-primary" id="bSave">บันทึก</button>
         </div>
