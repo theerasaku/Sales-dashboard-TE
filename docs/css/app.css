@@ -332,7 +332,14 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 }
 .who-text span { font-size: 10.5px; color: var(--text-mute); }
 
-.topbar-right { display: flex; align-items: center; gap: 8px; }
+.topbar-right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+
+/* ⚠️ ต้องมี min-width:0 ไม่งั้นชื่อหน้า/คำอธิบายยาว ๆ จะดันแถบขวาทะลุจอ
+   (เจอตอน 2.6: ย่อจอจาก desktop มามือถือแล้วล้นออกไป 3px จนมีแถบเลื่อนแนวนอน)
+   flex-wrap เป็นตาข่ายกันอีกชั้น ถ้าวันหลังมีปุ่มเพิ่มตรงแถบขวา */
+.topbar { flex-wrap: wrap; }
+.topbar-left { min-width: 0; flex: 1 1 180px; }
+.topbar-left h1 { overflow-wrap: anywhere; }
 
 .only-compact { display: none; }
 
@@ -858,4 +865,68 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   border: 1px solid var(--border); border-left: 3px solid var(--chart-4);
   border-radius: var(--r-sm); background: var(--bg-elev);
   font-size: 12px; color: var(--text-dim); line-height: 1.6;
+}
+
+/* ---------- F12 ลายเซ็นหัวหน้า / รอตรวจ (2.6) ---------- */
+.so-bar {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; margin-bottom: 16px;
+  border: 1px solid var(--border); border-left-width: 3px;
+  border-radius: var(--r-md); background: var(--bg-elev);
+}
+.so-bar.so-ok    { border-left-color: var(--green); }
+.so-bar.so-stale { border-left-color: var(--red); }
+.so-bar.so-none  { border-left-color: var(--text-mute); }
+.so-ico { font-size: 16px; line-height: 1.3; flex: 0 0 auto; }
+.so-ok .so-ico    { color: var(--green); }
+.so-stale .so-ico { color: var(--red); }
+.so-none .so-ico  { color: var(--text-mute); }
+.so-body { flex: 1; min-width: 0; }
+.so-h { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.so-ok .so-h    { color: var(--green); }
+.so-stale .so-h { color: var(--red); }
+.so-none .so-h  { color: var(--text-dim); }
+.so-d { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+.so-note {
+  margin-top: 6px; font-size: 12px; color: var(--text-dim);
+  border-left: 2px solid var(--border); padding-left: 8px;
+}
+.so-form {
+  margin: -6px 0 16px; padding: 12px 14px;
+  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-panel);
+}
+.so-warn { font-size: 11.5px; color: var(--yellow); margin: 8px 0 0; line-height: 1.6; }
+.so-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+.so-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; border-radius: var(--r-sm); padding: 2px 7px;
+  border: 1px solid var(--border); white-space: nowrap;
+}
+.so-tag.so-ok    { color: var(--green);     border-color: var(--green-line); }
+.so-tag.so-stale { color: var(--red);       border-color: var(--red-line); }
+.so-tag.so-none  { color: var(--text-mute); }
+
+.rvlist { list-style: none; }
+.rvrow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 12px; margin-bottom: 6px; cursor: pointer;
+  border: 1px solid var(--border-soft); border-radius: var(--r-md);
+  background: var(--bg-panel);
+}
+.rvrow:hover { background: var(--bg-hover); border-color: var(--border); }
+.rvrow.is-stale { border-color: var(--red-line); }
+.rv-kind { flex: 0 0 auto; font-size: 11.5px; color: var(--text-mute); width: 62px; }
+.rv-main { flex: 1; min-width: 0; }
+.rv-title { font-size: 13.5px; word-break: break-word; }
+.rv-meta { font-size: 11.5px; color: var(--text-mute); margin-top: 2px; }
+.rv-right { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.rv-upd { font-size: 11px; color: var(--text-mute); white-space: nowrap; }
+
+@media (max-width: 430px) {
+  .so-bar { flex-wrap: wrap; }
+  .so-bar .btn { width: 100%; }
+  .rvrow { flex-wrap: wrap; padding: 12px; }
+  .rv-kind { width: auto; }
+  .rv-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
 }

@@ -13,9 +13,10 @@ import book3      from './modules/book3.js';
 import activities from './modules/activities.js';
 import sources    from './modules/sources.js';
 import suppliers  from './modules/suppliers.js';
+import review     from './modules/review.js';
 import admin      from './modules/admin.js';
 
-const VIEWS = { dashboard, pending, book3, activities, sources, suppliers, admin };
+const VIEWS = { dashboard, pending, book3, activities, sources, suppliers, review, admin };
 
 const el = {
   login:      document.getElementById('login'),
@@ -66,10 +67,14 @@ function paintUser(user) {
   const roleLabel = { admin: 'ผู้ดูแลระบบ', manager: 'หัวหน้างาน' }[user.role] || 'ฝ่ายขาย';
   el.whoMeta.textContent = user.team ? `${roleLabel} · ${user.team}` : roleLabel;
 
-  // แถบ "ตั้งค่าระบบ" ซ่อนจากคนที่ไม่ใช่ admin — แค่ไม่ให้รก ไม่ใช่มาตรการความปลอดภัย
+  // ซ่อนแถบที่ใช้ไม่ได้ — แค่ไม่ให้รก ไม่ใช่มาตรการความปลอดภัย
   // ของจริงบังคับที่ DB (RLS + trigger) ต่อให้พิมพ์ #admin เองก็แก้อะไรไม่ได้
   document.querySelectorAll('[data-view="admin"]').forEach(b => {
     b.hidden = user.role !== 'admin';
+  });
+  // "รอตรวจ" เป็นงานของหัวหน้า — sale เห็นผลการตรวจได้ในหน้ารายละเอียดอยู่แล้ว
+  document.querySelectorAll('[data-view="review"]').forEach(b => {
+    b.hidden = !(user.role === 'admin' || user.role === 'manager');
   });
 }
 

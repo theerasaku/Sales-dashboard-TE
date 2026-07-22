@@ -724,6 +724,50 @@ const supabaseAdapter = {
     return countRows(`/activities?select=id&is_active=eq.true&status=eq.${encodeURIComponent(status)}`);
   },
 
+  // ---------- B8 · Sign-off หัวหน้าเซ็นรับทราบ (step 2.6) ----------
+
+  /**
+   * ลายเซ็น "ล่าสุด" ของแต่ละรายการ
+   * เรียงใหม่→เก่าแล้วเก็บอันแรกของแต่ละ target_id (ตารางเป็น append-only จึงมีหลายแถวต่อรายการได้)
+   *
+   * ⚠️ embed profiles(full_name) ได้เพราะ signoffs ชี้ไป profiles ทางเดียว (signed_by)
+   *    ต่างจาก activities ที่ชี้ 3 ทางแล้ว PostgREST งง
+   */
+  async listSignoffs(targetTable, ids) {
+    const p = new URLSearchParams();
+    p.set('select', 'id,target_table,target_id,signed_by,signed_at,signed_version,reviewed_note,profiles(full_name,email)');
+    p.set('target_table', `eq.${targetTable}`);
+    p.set('order', 'signed_at.desc');
+    if (ids?.length) p.set('target_id', `in.(${ids.join(',')})`);
+    p.set('limit', '2000');
+
+    const rows = await rest('/signoffs?' + p.toString());
+    const latest = new Map();
+    for (const r of rows || []) if (!latest.has(r.target_id)) latest.set(r.target_id, r);
+    return [...latest.values()];
+  },
+
+  /**
+   * เซ็นรับทราบ — ส่งแค่ว่าเซ็นอะไร ไม่ต้องส่งว่าใครเซ็นหรือเวอร์ชันไหน
+   * trigger set_signoff_meta() ฝั่ง DB เขียน signed_by / signed_at / signed_version ให้เอง
+   * (ห้ามให้ client กำหนด ไม่งั้นปลอมลายเซ็น/ปลอมเวอร์ชันได้)
+   */
+  async addSignoff(targetTable, targetId, note) {
+    const rows = await rest('/signoffs', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        target_table: targetTable,
+        target_id: targetId,
+        reviewed_note: note || null,
+        signed_by: session?.user?.id || null,   // policy บังคับให้ตรงกับ auth.uid()
+        signed_version: new Date().toISOString(), // ค่าหลอก — trigger เขียนทับด้วยของจริง
+      }),
+    });
+    if (!rows?.length) throw new Error('เซ็นรับทราบไม่ได้ — ต้องเป็นหัวหน้างานหรือผู้ดูแลระบบเท่านั้น');
+    return rows[0];
+  },
+
   // ---------- B1 · Admin: ผู้ใช้ / ทีม / สิทธิ์ข้ามทีม (step 2.4) ----------
 
   /** รายชื่อผู้ใช้ — RLS คัดให้เอง (admin เห็นหมด · คนอื่นเห็นเฉพาะตัวเอง+เพื่อนร่วมทีม) */

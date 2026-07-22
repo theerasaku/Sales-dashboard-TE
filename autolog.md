@@ -27,6 +27,34 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-22 19:40 · ยังไม่ commit · 2.6 เสร็จ — หัวหน้าเซ็นรับทราบ (จบ Phase 2)
+**step:** 2.6 | **ประเภท:** ฟีเจอร์ + ความปลอดภัย + แก้บั๊ก
+- `db/signoffs.sql` ใหม่ — ตาราง append-only + `is_reviewer()` + trigger `set_signoff_meta()`
+  กัน 3 ชั้น: GRANT ให้แค่ select/insert · ไม่มี policy update/delete · trigger เขียนทับค่าจาก client
+- `ui/signoff.js` ใหม่ (คอมโพเนนต์ร่วม) — `signoffState()` ตัดสิน "ลายเซ็นค้าง" จุดเดียวทั้งระบบ
+- `modules/review.js` ใหม่ — หน้า "รอตรวจ" รวมงาน+ลูกค้าที่ยังไม่เซ็น/ถูกแก้หลังเซ็น
+  เรียง "แก้ไขหลังเซ็น" ขึ้นก่อน · กดแล้วพาไปเปิดฟอร์มจริงในแถบต้นทาง (ไม่ทำฟอร์มซ้ำ)
+- แถบลายเซ็นในฟอร์ม Pending + Book 3 สี · sale เห็นผลตรวจแต่ไม่มีปุ่มเซ็น
+**บั๊กที่เทสต์จับได้ 3 ตัว:**
+- โค้ดไปแทรกผิดฟังก์ชัน (`openQuickLog` แทน `openDetail`) — รวมของ 2.5 ที่หลุดไปด้วย
+- import หาย → `signoffBarHtml` undefined → ฟอร์มไม่เปิด **แต่เงียบสนิท**
+  เพราะเป็น unhandled rejection ที่ `pageerror` ไม่จับ → **เพิ่มตัวดักในเทสต์ทุกชุดแล้ว**
+- `local-adapter` ไม่ใส่ `updated_at` ตอนสร้าง (ต่างจาก `default now()` ของ Postgres)
+  → เซ็นเสร็จปุ๊บกลายเป็น "แก้ไขหลังเซ็น" ทันที · แก้แล้วลำดับการเรียงตรงกับ Supabase ด้วย
+- แก้ layout: ย่อจอ desktop → มือถือ แถบบนล้น 3px (`.topbar-left` ไม่มี `min-width:0`)
+- bump เป็น v0.7.0
+**ไฟล์:** db/signoffs.sql · docs/js/ui/signoff.js · docs/js/modules/review.js ·
+docs/js/modules/pending.js · docs/js/modules/book3.js · docs/js/data/supabase-adapter.js ·
+docs/js/data/local-adapter.js · docs/js/data/adapter.js · docs/js/app.js · docs/index.html ·
+docs/css/app.css · docs/js/config.js · docs/sw.js · PROGRESS.md · CLAUDE.md
+**ทดสอบ:** 218/218 ผ่าน (49 RLS จริง + 35 ลายเซ็น + 42 + 40 + 31 + 25 + 26 + 12 regression)
+**ค้าง:**
+- 🔴 **ต้องเอา `db/signoffs.sql` ไปรันใน Supabase** ไม่งั้นแถบลายเซ็นกับหน้ารอตรวจยังใช้ไม่ได้
+- ยังไม่ได้ทดสอบด้วยบัญชี sale/manager จริงบน Supabase (ตรรกะพิสูจน์บน Postgres จริงแล้ว)
+- ไอคอน PWA ยัง 404 — รอ step 3.3
+- 1.7 ยังเหลือทดสอบบนเครื่องจริง iPhone/S24/iPad
+
+
 ## 2026-07-22 16:05 · b0622bc · 2.5 เสร็จ — Archive: อุดรูงานปิดแล้วยังตามหลอน
 **step:** 2.5 | **ประเภท:** แก้บั๊ก + ฟีเจอร์เล็ก
 - ตรวจของเดิมก่อน → โครงสร้าง archive ครบตั้งแต่ 1.4/2.2 แล้ว **แต่มีรูรั่ว 1 จุด**

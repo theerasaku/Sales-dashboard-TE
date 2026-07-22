@@ -9,7 +9,7 @@
 // ตอนทำ 3.3 ค่อยเปลี่ยนเป็น stale-while-revalidate เพื่อความเร็วบน 4G
 // แต่ต้องมีกลไกแจ้งผู้ใช้ว่า "มีเวอร์ชันใหม่ กดรีเฟรช" ควบคู่ไปด้วย
 
-const VERSION = 'v0.6.0';
+const VERSION = 'v0.7.0';
 const CACHE = `te-dashboard-${VERSION}`;
 
 const SHELL = [

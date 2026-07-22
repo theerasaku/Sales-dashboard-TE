@@ -18,6 +18,7 @@ const emptyDb = () => ({
   activities: [],
   profiles: [],
   team_access: [],
+  signoffs: [],
   teams_custom: [],
   app_settings: {},
   session: null,
@@ -54,7 +55,11 @@ function upsert(table, row) {
       return list[i];
     }
   }
-  const created = { ...row, id: row.id || uid(), created_at: new Date().toISOString() };
+  // ⚠️ ต้องใส่ updated_at ตั้งแต่ตอนสร้าง ให้ตรงกับ `default now()` ของ Postgres
+  //    ไม่งั้นแถวที่ยังไม่เคยถูกแก้จะไม่มี updated_at แล้วการเทียบ "ลายเซ็นค้าง"
+  //    (signed_version vs updated_at) จะมองว่าค้างทันทีที่เพิ่งเซ็นเสร็จ
+  const now = new Date().toISOString();
+  const created = { ...row, id: row.id || uid(), created_at: now, updated_at: now };
   list.push(created);
   save();
   return created;
@@ -330,6 +335,42 @@ const localAdapter = {
 
   async countActivities(status = 'plan') {
     return db.activities.filter(r => r.is_active !== false && r.status === status).length;
+  },
+
+  // B8 — Sign-off (step 2.6) · จำลอง trigger ฝั่ง DB ให้พฤติกรรมตรงกัน
+  async listSignoffs(targetTable, ids) {
+    const rows = db.signoffs
+      .filter(r => r.target_table === targetTable && (!ids?.length || ids.includes(r.target_id)))
+      .sort((a, b) => String(b.signed_at).localeCompare(String(a.signed_at)));
+    const latest = new Map();
+    for (const r of rows) if (!latest.has(r.target_id)) latest.set(r.target_id, r);
+    return [...latest.values()];
+  },
+
+  async addSignoff(targetTable, targetId, note) {
+    const me = db.session?.user;
+    // เลียนแบบ policy: sale เซ็นไม่ได้
+    if (!me || !['admin', 'manager'].includes(me.role))
+      throw new Error('เซ็นรับทราบไม่ได้ — ต้องเป็นหัวหน้างานหรือผู้ดูแลระบบเท่านั้น');
+
+    const table = targetTable === 'customers' ? db.customers : db.pending_projects;
+    const target = table.find(r => r.id === targetId);
+    if (!target) throw new Error('ไม่พบรายการที่จะเซ็นรับทราบ (อาจถูกลบไปแล้ว)');
+
+    // เลียนแบบ trigger set_signoff_meta(): DB เป็นคนกำหนด ไม่ใช่ client
+    const row = {
+      id: uid(),
+      target_table: targetTable,
+      target_id: targetId,
+      signed_by: me.id,
+      signed_at: new Date().toISOString(),
+      signed_version: target.updated_at || target.created_at || null,
+      reviewed_note: note || null,
+      profiles: { full_name: me.full_name || me.email, email: me.email },
+    };
+    db.signoffs.push(row);
+    save();
+    return row;
   },
 
   // B1 — Admin (step 2.4) · โหมด local ไม่มี RLS จริง จำลองให้รูปข้อมูลตรงกัน

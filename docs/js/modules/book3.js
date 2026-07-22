@@ -6,6 +6,7 @@
 import { adapter } from '../data/adapter.js';
 import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
 import { logListHtml, bindLogEditing, logFormHtml, readLogForm, clearLogForm } from '../ui/loglist.js';
+import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
 
 // ── สี 3 ระดับ ── (ความหมายจากฟอร์มกระดาษ)
 export const COLORS = [
@@ -254,6 +255,15 @@ export default {
     $('bCsv').addEventListener('click', () => exportCsv(rows));
 
     await reload();
+
+    // มาจากหน้า "รอตรวจ" — เปิดรายการที่หัวหน้าเลือกให้เลย
+    // ใช้ sessionStorage ไม่ใช่ hash เพราะ id ไม่ควรไปโผล่บน URL ที่แชร์กันได้
+    const jump = sessionStorage.getItem('te:openRecord');
+    if (jump) {
+      sessionStorage.removeItem('te:openRecord');
+      openDetail(root.querySelector('#bPanel'), jump, reload, teams);
+    }
+
   },
 };
 
@@ -408,6 +418,14 @@ async function openDetail(host, id, onSaved, teams) {
   const me = await whoAmI();
   const archived = row?.is_active === false;
 
+  let soState = { kind: 'none' };
+  if (id) {
+    try {
+      const list = await adapter.listSignoffs('customers', [id]);
+      soState = signoffState(row, list?.[0]);
+    } catch { soState = null; }
+  }
+
   host.innerHTML = `
     <div class="modal" id="bModal">
       <form class="modal-box" id="bForm">
@@ -419,6 +437,7 @@ async function openDetail(host, id, onSaved, teams) {
         </div>
 
         <div class="modal-body">
+          ${id && soState ? signoffBarHtml(soState, canSign(me)) : ''}
           ${FORM.map(g => `
             <section class="fgroup">
               <h3>${esc(g.group)}</h3>
@@ -463,6 +482,13 @@ async function openDetail(host, id, onSaved, teams) {
 
   q('#bClose').addEventListener('click', close);
   q('#bCancel').addEventListener('click', close);
+
+  if (id && soState && canSign(me)) {
+    bindSignoff(host, 'customers', id, adapter.addSignoff, async () => {
+      close();
+      await onSaved();
+    });
+  }
 
   async function reloadLogs() {
     let fresh = [];

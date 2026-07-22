@@ -6,6 +6,7 @@
 import { adapter } from '../data/adapter.js';
 import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
 import { logListHtml, bindLogEditing } from '../ui/loglist.js';
+import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
 
 // ── ขั้นตอนงานขาย ── ยกจาก prototype v3 แต่เปลี่ยน hex เป็นตัวแปร CSS ตามกติกาธีม
 export const STAGES = [
@@ -392,6 +393,15 @@ export default {
     $('pCsv').addEventListener('click', () => exportCsv(rows));
 
     await reload();
+
+    // มาจากหน้า "รอตรวจ" — เปิดรายการที่หัวหน้าเลือกให้เลย
+    // ใช้ sessionStorage ไม่ใช่ hash เพราะ id ไม่ควรไปโผล่บน URL ที่แชร์กันได้
+    const jump = sessionStorage.getItem('te:openRecord');
+    if (jump) {
+      sessionStorage.removeItem('te:openRecord');
+      openDetail(root.querySelector('#pPanel'), jump, reload, teams);
+    }
+
   },
 };
 
@@ -455,18 +465,6 @@ async function openQuickLog(host, pendingId, onSaved) {
   const q = (s) => host.querySelector(s);
   const close = () => { host.innerHTML = ''; };
 
-  // ── ปิดงานแล้วเตือนให้เก็บเข้าคลัง (step 2.5) ──
-  // ไม่เก็บให้อัตโนมัติ เพราะบางทีปิดการขายแล้วยังต้องตามส่งของ/วางบิลอีกหลายเดือน
-  // แค่บอกให้เห็นว่ามีทางเก็บ ไม่งั้นงานที่ปิดแล้วค้างปนกับงานที่ยังเดินอยู่เรื่อย ๆ
-  const stageSel = q('[name="stage"]');
-  const archHint = q('#pArchHint');
-  const syncArchHint = () => {
-    if (!archHint || archived) return;
-    const st = stageSel?.value;
-    archHint.hidden = !(id && (st === 'won' || st === 'lost'));
-  };
-  stageSel?.addEventListener('change', syncArchHint);
-  syncArchHint();
   q('#qClose').addEventListener('click', close);
   q('#qCancel').addEventListener('click', close);
   q('#qModal').addEventListener('mousedown', (e) => { if (e.target.id === 'qModal') close(); });
@@ -603,6 +601,15 @@ async function openDetail(host, id, onSaved, teams) {
   const archived = row?.is_active === false;
   const me       = await whoAmI();
 
+  // ลายเซ็นหัวหน้า — ยังไม่ได้รัน signoffs.sql ก็ต้องเปิดฟอร์มได้ตามปกติ
+  let soState = { kind: 'none' };
+  if (id) {
+    try {
+      const list = await adapter.listSignoffs('pending_projects', [id]);
+      soState = signoffState(row, list?.[0]);
+    } catch { soState = null; }
+  }
+
   host.innerHTML = `
     <div class="modal" id="pModal">
       <form class="modal-box" id="pForm">
@@ -614,6 +621,7 @@ async function openDetail(host, id, onSaved, teams) {
         </div>
 
         <div class="modal-body">
+          ${id && soState ? signoffBarHtml(soState, canSign(me)) : ''}
           ${FORM.map(g => `
             <section class="fgroup">
               <h3>${esc(g.group)}</h3>
@@ -691,6 +699,13 @@ async function openDetail(host, id, onSaved, teams) {
 
   const q = (s) => host.querySelector(s);
   const close = () => { host.innerHTML = ''; };
+
+  if (id && soState && canSign(me)) {
+    bindSignoff(host, 'pending_projects', id, adapter.addSignoff, async () => {
+      close();
+      await onSaved();
+    });
+  }
 
   // ── ปิดงานแล้วเตือนให้เก็บเข้าคลัง (step 2.5) ──
   // ไม่เก็บให้อัตโนมัติ เพราะบางทีปิดการขายแล้วยังต้องตามส่งของ/วางบิลอีกหลายเดือน

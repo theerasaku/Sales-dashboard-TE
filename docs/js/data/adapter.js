@@ -74,6 +74,10 @@ export const adapter = {
   saveActivity:      (row)   => need().saveActivity(row),
   countActivities:   (st)    => need().countActivities(st),
 
+  // B8 sign-off — หัวหน้าเซ็นรับทราบ (step 2.6)
+  listSignoffs:      (t, ids)  => need().listSignoffs(t, ids),
+  addSignoff:        (t, id, n)=> need().addSignoff(t, id, n),
+
   // B1 admin — ผู้ใช้ / ทีม / สิทธิ์ข้ามทีม (step 2.4)
   listProfiles:      ()        => need().listProfiles(),
   saveProfile:       (id, p)   => need().saveProfile(id, p),
