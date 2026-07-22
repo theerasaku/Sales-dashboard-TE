@@ -5,6 +5,7 @@
 
 import { adapter } from '../data/adapter.js';
 import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
+import { logListHtml, bindLogEditing } from '../ui/loglist.js';
 
 // ── ขั้นตอนงานขาย ── ยกจาก prototype v3 แต่เปลี่ยน hex เป็นตัวแปร CSS ตามกติกาธีม
 export const STAGES = [
@@ -407,99 +408,6 @@ async function whoAmI() {
   try { return (await adapter.getSession())?.user || null; } catch { return null; }
 }
 
-/**
- * ปุ่มแก้ไขโผล่เฉพาะบันทึกที่ตัวเองเขียน (หรือ admin)
- * ให้ตรงกับ policy follow_update ฝั่ง DB — ถ้าโชว์ปุ่มให้คนที่กดไม่ผ่าน
- * เขาจะกดแล้วเจอ error งง ๆ แทนที่จะไม่เห็นปุ่มตั้งแต่แรก
- */
-const canEditLog = (l, me) =>
-  !!me && (!l.created_by || l.created_by === me.id || me.role === 'admin');
-
-function logListHtml(logs, me) {
-  if (!logs.length) return '<li class="log-empty">ยังไม่มีบันทึก</li>';
-  return logs.map(l => `
-    <li data-log-item="${esc(l.id)}">
-      <div class="log-view">
-        <div class="log-h">
-          <b>${esc(thaiDate(l.log_date) || l.log_date)}</b> ${esc(l.by_name || '')}
-          ${canEditLog(l, me)
-            ? `<button type="button" class="btn-log log-edit" data-edit="${esc(l.id)}">แก้ไข</button>`
-            : ''}
-        </div>
-        ${l.response   ? `<div>${esc(l.response)}</div>` : ''}
-        ${l.next_doing ? `<div class="log-next">→ ${esc(l.next_doing)}</div>` : ''}
-      </div>
-    </li>`).join('');
-}
-
-/**
- * เปิดโหมดแก้ไขในบรรทัดนั้นเลย ไม่เด้ง modal ซ้อน modal
- * (modal ซ้อนกันบนมือถือกดปิดยาก และ backdrop ทับกันจนงง)
- */
-function bindLogEditing(host, logs, onSaved) {
-  host.querySelectorAll('[data-edit]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.edit;
-      const l  = logs.find(x => String(x.id) === String(id));
-      const li = host.querySelector(`[data-log-item="${CSS.escape(String(id))}"]`);
-      if (!l || !li) return;
-
-      li.querySelector('.log-view').hidden = true;
-      const box = document.createElement('div');
-      box.className = 'log-edit-box';
-      box.innerHTML = `
-        <div class="fgrid">
-          <label class="fld"><span>DATE</span>
-            ${dateField('', l.log_date, { cls: 'dp-log-date', label: 'วันที่บันทึก' })}</label>
-          <label class="fld"><span>BY</span>
-            <input type="text" data-f="by_name" value="${esc(l.by_name || '')}"></label>
-          <label class="fld fld-wide"><span>RESPONSE</span>
-            <textarea data-f="response" rows="2">${esc(l.response || '')}</textarea></label>
-          <label class="fld fld-wide"><span>NEXT DOING</span>
-            <textarea data-f="next_doing" rows="2">${esc(l.next_doing || '')}</textarea></label>
-        </div>
-        <p class="login-err" data-err hidden></p>
-        <div class="log-edit-foot">
-          <button type="button" class="btn btn-ghost btn-sm" data-cancel>ยกเลิก</button>
-          <button type="button" class="btn btn-primary btn-sm" data-save>บันทึกการแก้ไข</button>
-        </div>`;
-      li.appendChild(box);
-
-      const err = box.querySelector('[data-err]');
-      box.querySelector('[data-cancel]').addEventListener('click', () => {
-        box.remove();
-        li.querySelector('.log-view').hidden = false;
-      });
-
-      box.querySelector('[data-save]').addEventListener('click', async () => {
-        err.hidden = true;
-        const patch = {};
-        box.querySelectorAll('[data-f]').forEach(f => { patch[f.dataset.f] = f.value; });
-        // ช่องวันที่เป็นปฏิทินเอง (hidden input ชื่อ log_date) ไม่มี data-f
-        const dpDate = box.querySelector('input.dp-log-date');
-        if (dpDate) patch.log_date = dpDate.value;
-
-        if (!String(patch.response).trim() && !String(patch.next_doing).trim()) {
-          err.textContent = 'ต้องมี RESPONSE หรือ NEXT DOING อย่างน้อยหนึ่งช่อง';
-          err.hidden = false;
-          return;
-        }
-
-        const sv = box.querySelector('[data-save]');
-        sv.disabled = true; sv.textContent = 'กำลังบันทึก…';
-        try {
-          await adapter.updateFollowLog(id, patch);
-          await onSaved();
-        } catch (e) {
-          err.textContent = e.message;
-          err.hidden = false;
-          sv.disabled = false; sv.textContent = 'บันทึกการแก้ไข';
-        }
-      });
-    });
-  });
-}
-
 // ══════════════════════════════════════════════════════════
 // บันทึกความคืบหน้าเร็ว — ใช้บ่อยสุดในงานประจำวัน
 // เปิดเฉพาะ 4 ช่องตามฟอร์มกระดาษ (DATE / BY / RESPONSE / NEXT DOING)
@@ -558,10 +466,10 @@ async function openQuickLog(host, pendingId, onSaved) {
     const ul = q('#qLogList');
     if (!ul) return;
     ul.innerHTML = logListHtml(fresh, me);
-    bindLogEditing(ul, fresh, reloadQLogs);
+    bindLogEditing(ul, fresh, adapter.updateFollowLog, reloadQLogs);
     await onSaved();
   }
-  if (logs.length) bindLogEditing(q('#qLogList'), logs, reloadQLogs);
+  if (logs.length) bindLogEditing(q('#qLogList'), logs, adapter.updateFollowLog, reloadQLogs);
 
   q('#qForm').addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -782,11 +690,11 @@ async function openDetail(host, id, onSaved, teams) {
     ul.innerHTML = logListHtml(fresh, me);
     const cnt = q('#logCount');
     if (cnt) cnt.textContent = fresh.length;
-    bindLogEditing(ul, fresh, reloadLogs);
+    bindLogEditing(ul, fresh, adapter.updateFollowLog, reloadLogs);
     await onSaved();                       // อัปเดตตารางข้างหลังด้วย
   }
 
-  if (id) bindLogEditing(q('#logList'), logs, reloadLogs);
+  if (id) bindLogEditing(q('#logList'), logs, adapter.updateFollowLog, reloadLogs);
 
   /** อ่านช่องบันทึกติดตามที่พิมพ์ค้างไว้ — คืน null ถ้ายังไม่ได้พิมพ์อะไร */
   function draftLog() {
