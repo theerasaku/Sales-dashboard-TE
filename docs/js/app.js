@@ -31,6 +31,9 @@ const el = {
   statusPill: document.getElementById('statusPill'),
   modeChip:   document.getElementById('modeChip'),
 
+  verTag:     document.getElementById('verTag'),
+  verPill:    document.getElementById('verPill'),
+
   whoAvatar:  document.getElementById('whoAvatar'),
   whoName:    document.getElementById('whoName'),
   whoMeta:    document.getElementById('whoMeta'),
@@ -154,6 +157,11 @@ async function signOut() {
 // ---------- boot ----------
 
 async function boot() {
+  // แสดงเวอร์ชันจริงที่เบราว์เซอร์กำลังรัน — ถ้าเลขไม่ตรงกับที่ deploy แปลว่ายังติดโค้ดเก่า
+  const v = `v${CONFIG.VERSION}`;
+  if (el.verTag)  el.verTag.textContent  = `${v} · Phase 1`;
+  if (el.verPill) el.verPill.textContent = v;
+
   bindNav();
   el.loginForm.addEventListener('submit', onLoginSubmit);
   document.getElementById('logoutBtn')?.addEventListener('click', signOut);
