@@ -9,6 +9,7 @@
 import { adapter } from '../data/adapter.js';
 import { CONFIG } from '../config.js';
 import { STAGES } from './pending.js';
+import { thaiDate } from '../ui/datepicker.js';
 
 // ── ตัวช่วย ──
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m =>
@@ -281,7 +282,7 @@ export default {
         </h3>
         ${s.overdue.length ? `<ul class="odlist">
           ${s.overdue.slice(0, 8).map(r => `<li>
-            <span class="od-date">${esc(r.next_date)}</span>
+            <span class="od-date">${esc(thaiDate(r.next_date) || r.next_date)}</span>
             <span class="od-name">${esc(r.project_name)}</span>
             <span class="od-act">${esc(r.next_action || '')}</span>
           </li>`).join('')}

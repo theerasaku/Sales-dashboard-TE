@@ -651,3 +651,68 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 @media (max-width: 430px) {
   .segmented button { min-height: 44px; padding: 7px 14px; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   ปฏิทินเลือกวันที่ (1.4f) — แสดง พ.ศ. · เก็บ ค.ศ.
+   ══════════════════════════════════════════════════════════ */
+.dp { position: relative; display: block; }
+.dp-view {
+  width: 100%; cursor: pointer;
+  background: var(--bg-elev); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--r-sm); padding: 8px 30px 8px 10px;
+  font: inherit; font-size: 16px; min-height: 38px;
+}
+.dp-view:focus { outline: none; border-color: var(--accent); }
+.dp-view::placeholder { color: var(--text-mute); }
+.dp-x {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; border-radius: var(--r-sm);
+  color: var(--text-mute); font-size: 16px; line-height: 1;
+}
+.dp-x:hover { color: var(--red); background: var(--bg-hover); }
+
+/* popup — position:fixed เพื่อให้ลอยพ้นกล่อง modal ที่มี overflow:auto */
+.dp-pop {
+  position: fixed; z-index: 200;
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 10px;
+  box-shadow: 0 16px 40px #00000080;
+  width: 262px;
+}
+.dp-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.dp-nav {
+  width: 28px; height: 28px; border-radius: var(--r-sm);
+  color: var(--text-dim); font-size: 16px; line-height: 1;
+}
+.dp-nav:hover { background: var(--bg-hover); color: var(--text); }
+.dp-sel {
+  flex: 1; min-width: 0;
+  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--r-sm); padding: 4px 6px; font: inherit; font-size: 13px;
+}
+.dp-sel:focus { outline: none; border-color: var(--accent); }
+
+.dp-dow, .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dp-dow span { text-align: center; font-size: 11px; color: var(--text-mute); padding: 2px 0; }
+.dp-d {
+  height: 32px; border-radius: var(--r-sm);
+  font-size: 13px; color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center;
+}
+.dp-d:hover { background: var(--bg-hover); color: var(--text); }
+.dp-pad { pointer-events: none; }
+.dp-d.today { border: 1px solid var(--border); color: var(--text); }
+.dp-d.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+
+.dp-foot { display: flex; gap: 6px; margin-top: 8px; border-top: 1px solid var(--border-soft); padding-top: 8px; }
+.dp-btn {
+  flex: 1; padding: 6px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); color: var(--text-dim); font-size: 12px;
+}
+.dp-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+@media (max-width: 430px) {
+  .dp-pop { width: calc(100vw - 24px); max-width: 300px; }
+  .dp-d { height: 40px; }        /* จุดแตะบนมือถือ */
+  .dp-btn { min-height: 44px; }
+}

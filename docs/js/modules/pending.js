@@ -4,6 +4,7 @@
 // ข้อมูลทั้งหมดผ่าน adapter เท่านั้น ห้ามเรียก Supabase ตรงจากไฟล์นี้
 
 import { adapter } from '../data/adapter.js';
+import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
 
 // ── ขั้นตอนงานขาย ── ยกจาก prototype v3 แต่เปลี่ยน hex เป็นตัวแปร CSS ตามกติกาธีม
 export const STAGES = [
@@ -124,7 +125,7 @@ function dueCell(d) {
   if (!d) return '';
   const today = new Date().toISOString().slice(0, 10);
   const late = d < today;
-  return `<span class="${late ? 'due-late' : ''}">${esc(d)}${late ? ' ⚠' : ''}</span>`;
+  return `<span class="${late ? 'due-late' : ''}">${esc(thaiDate(d) || d)}${late ? ' ⚠' : ''}</span>`;
 }
 
 /** บันทึกความคืบหน้าล่าสุด — เห็นจากตารางเลย ไม่ต้องเปิดเข้าไปทีละงาน */
@@ -138,7 +139,7 @@ function lastLogCell(row) {
   const text = l.response || l.next_doing || '';
   return `<div class="lastlog">
     <div class="lastlog-txt">
-      <span class="lastlog-h">${esc(l.log_date || '')}${l.by_name ? ' · ' + esc(l.by_name) : ''}</span>
+      <span class="lastlog-h">${esc(thaiDate(l.log_date) || l.log_date || '')}${l.by_name ? ' · ' + esc(l.by_name) : ''}</span>
       <span class="lastlog-t" title="${esc(text)}">${esc(text)}</span>
     </div>${btn}
   </div>`;
@@ -161,6 +162,7 @@ export default {
   subtitle: 'โครงการที่กำลังติดตาม',
 
   async render(root) {
+    initDatePicker();
     const view = loadView();
     const cols = loadCols();
     let teams = [];
@@ -419,7 +421,7 @@ function logListHtml(logs, me) {
     <li data-log-item="${esc(l.id)}">
       <div class="log-view">
         <div class="log-h">
-          <b>${esc(l.log_date)}</b> ${esc(l.by_name || '')}
+          <b>${esc(thaiDate(l.log_date) || l.log_date)}</b> ${esc(l.by_name || '')}
           ${canEditLog(l, me)
             ? `<button type="button" class="btn-log log-edit" data-edit="${esc(l.id)}">แก้ไข</button>`
             : ''}
@@ -448,7 +450,7 @@ function bindLogEditing(host, logs, onSaved) {
       box.innerHTML = `
         <div class="fgrid">
           <label class="fld"><span>DATE</span>
-            <input type="date" data-f="log_date" value="${esc(l.log_date || '')}"></label>
+            ${dateField('', l.log_date, { cls: 'dp-log-date', label: 'วันที่บันทึก' })}</label>
           <label class="fld"><span>BY</span>
             <input type="text" data-f="by_name" value="${esc(l.by_name || '')}"></label>
           <label class="fld fld-wide"><span>RESPONSE</span>
@@ -473,6 +475,9 @@ function bindLogEditing(host, logs, onSaved) {
         err.hidden = true;
         const patch = {};
         box.querySelectorAll('[data-f]').forEach(f => { patch[f.dataset.f] = f.value; });
+        // ช่องวันที่เป็นปฏิทินเอง (hidden input ชื่อ log_date) ไม่มี data-f
+        const dpDate = box.querySelector('input.dp-log-date');
+        if (dpDate) patch.log_date = dpDate.value;
 
         if (!String(patch.response).trim() && !String(patch.next_doing).trim()) {
           err.textContent = 'ต้องมี RESPONSE หรือ NEXT DOING อย่างน้อยหนึ่งช่อง';
@@ -517,7 +522,7 @@ async function openQuickLog(host, pendingId, onSaved) {
           <p class="q-sub">${esc(row?.project_name || '')}</p>
           <div class="fgrid">
             <label class="fld"><span>DATE — วันที่</span>
-              <input type="date" name="log_date" value="${new Date().toISOString().slice(0, 10)}"></label>
+              ${dateField('log_date', new Date().toISOString().slice(0, 10), { label: 'วันที่บันทึก' })}</label>
             <label class="fld"><span>BY — ใครติดตาม</span>
               <input type="text" name="by_name"></label>
             <label class="fld fld-wide"><span>RESPONSE — ผลที่ได้</span>
@@ -651,7 +656,10 @@ function fieldHtml([key, label, type, ph], row, teams) {
       ${monthOptions().map(o => `<option value="${o.ym}" ${v === o.ym ? 'selected' : ''}>${o.label}</option>`).join('')}
     </select></label>`;
 
-  const t = type === 'number' ? 'number' : type === 'date' ? 'date' : 'text';
+  if (type === 'date')
+    return `<label class="fld"><span>${esc(label)}</span>${dateField(key, v, { label })}</label>`;
+
+  const t = type === 'number' ? 'number' : 'text';
   return `<label class="fld"><span>${esc(label)}</span>
     <input type="${t}" name="${key}" value="${esc(v)}"${p}${type === 'number' ? ' min="0" step="1"' : ''}></label>`;
 }
@@ -717,7 +725,7 @@ async function openDetail(host, id, onSaved, teams) {
               <h3>บันทึกติดตาม (<span id="logCount">${logs.length}</span>)</h3>
               <div class="fgrid">
                 <label class="fld"><span>วันที่</span>
-                  <input type="date" id="lgDate" value="${new Date().toISOString().slice(0, 10)}"></label>
+                  ${dateField('', new Date().toISOString().slice(0, 10), { id: 'lgDate', label: 'วันที่บันทึก' })}</label>
                 <label class="fld"><span>BY (ใคร)</span><input type="text" id="lgBy"></label>
                 <label class="fld fld-wide"><span>RESPONSE — ผลที่ได้</span>
                   <textarea id="lgRes" rows="2"></textarea></label>
@@ -788,7 +796,7 @@ async function openDetail(host, id, onSaved, teams) {
     if (!res && !next) return null;
     return {
       pending_id: id,
-      log_date:   q('#lgDate')?.value || undefined,
+      log_date:   q('#lgDate')?.value || undefined,   // hidden input ของปฏิทิน
       by_name:    q('#lgBy')?.value.trim() || undefined,
       response:   res  || undefined,
       next_doing: next || undefined,
