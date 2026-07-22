@@ -205,6 +205,9 @@ function doParse() {
 
 // ── 3 · preview + กันซ้ำ ──
 async function preview(res) {
+  // รายชื่อจากงานแสดงสินค้า (3.1) — คนละตารางปลายทาง กันซ้ำด้วยชื่อบริษัท
+  if (res.entity === 'expo') return previewExpo(res);
+
   let existing = [];
   try {
     existing = await adapter.listPending({ status: 'all', limit: 1000 });
@@ -244,9 +247,55 @@ async function preview(res) {
   $('runCard').hidden = true;
 }
 
+/** preview ของรายชื่อจากงานแสดงสินค้า — กันซ้ำด้วย "ชื่อบริษัท" (ไฟล์ต้นทางไม่มีรหัสอะไรให้จับ) */
+async function previewExpo(res) {
+  let existing = [];
+  try {
+    existing = await adapter.listExpoCustomers({ limit: 2000 });
+  } catch (e) {
+    const missing = /ยังไม่ได้สร้างตาราง|does not exist|42P01/i.test(e.message);
+    $('fileErr').textContent = missing
+      ? 'ยังไม่ได้สร้างตาราง expo_customers — เอา db/phase3-1.sql ไปรันใน Supabase ก่อน'
+      : 'อ่านข้อมูลเดิมเพื่อกันซ้ำไม่ได้: ' + e.message;
+    $('fileErr').hidden = false; return;
+  }
+
+  const norm = (v) => String(v || '').trim().toLowerCase();
+  const byName = new Map(existing.map(r => [norm(r.name), r]));
+  const items = res.items.map(i => ({ ...i, dup: byName.get(norm(i.row.name)) || null }));
+  parsed = { ...res, items };
+
+  const dup = items.filter(i => i.dup).length;
+  const star = items.filter(i => i.row.is_prospect).length;
+  $('prevSum').innerHTML =
+    `รูปแบบ: <b>รายชื่อจากงานแสดงสินค้า</b> · พบ <b>${items.length}</b> ราย
+     (ใหม่ <b class="st-new">${items.length - dup}</b> · ซ้ำ <b class="st-dup">${dup}</b>)
+     · ★ ควรตามก่อน <b>${star}</b> ราย`;
+  $('prevWarn').innerHTML = res.warnings.map(w => `<li>⚠ ${esc(w)}</li>`).join('');
+
+  // ตัวเลือกของงานขายใช้กับตารางนี้ไม่ได้ ต้องซ่อน ไม่งั้นผู้ใช้ติ๊กแล้วงงว่าทำไมไม่มีผล
+  $('optLogs').closest('.chk').hidden = true;
+  $('optCtc').closest('.chk').hidden = true;
+
+  $('prevBody').innerHTML = items.map(i => `
+    <tr>
+      <td class="${i.dup ? 'st-dup' : 'st-new'}">${i.dup ? 'ซ้ำ' : 'ใหม่'}</td>
+      <td>${i.row.is_prospect ? '★' : ''}</td>
+      <td>${esc(i.row.name)}</td>
+      <td>${esc(i.row.org || '')}</td>
+      <td class="num">${esc(i.row.sale_name || '')}</td>
+      <td>${esc((i.row.interest || '').slice(0, 40))}</td>
+      <td>${esc((i.row.contact || '').slice(0, 40))}</td>
+    </tr>`).join('');
+
+  $('prevCard').hidden = false;
+  $('runCard').hidden = true;
+}
+
 // ── 4 · นำเข้าจริง ──
 $('btnRun').addEventListener('click', async () => {
   if (!parsed) return;
+  if (parsed.entity === 'expo') return runExpo();
   const updateDup = $('optDup').checked;
   const withLogs  = $('optLogs').checked;
   const withCtc   = $('optCtc').checked;
@@ -258,6 +307,15 @@ $('btnRun').addEventListener('click', async () => {
 
   let done = 0, okCount = 0, skip = parsed.items.length - todo.length, failCount = 0;
   let logCount = 0, ctcCount = 0;
+
+  // ⚠️ ต้องเขียนสรุปก่อนเข้าลูป — ถ้าซ้ำหมดทุกแถว todo จะว่าง ลูปไม่ทำงาน
+  //    แล้วช่องสรุปจะว่างเปล่า ผู้ใช้กดแล้วเหมือนไม่มีอะไรเกิดขึ้น
+  const paintSum = () => {
+    $('runSum').innerHTML =
+      `สำเร็จ <b>${okCount}</b> · ข้าม <b>${skip}</b> · ผิดพลาด <b>${failCount}</b>
+       · บันทึกติดตาม <b>${logCount}</b> · ผู้ติดต่อ <b>${ctcCount}</b>`;
+  };
+  paintSum();
 
   const say = (msg, cls = '') => {
     const d = document.createElement('div');
@@ -293,15 +351,63 @@ $('btnRun').addEventListener('click', async () => {
     }
     done++;
     $('progBar').style.width = `${(done / todo.length * 100).toFixed(1)}%`;
-    $('runSum').innerHTML =
-      `สำเร็จ <b>${okCount}</b> · ข้าม <b>${skip}</b> · ผิดพลาด <b>${failCount}</b>
-       · บันทึกติดตาม <b>${logCount}</b> · ผู้ติดต่อ <b>${ctcCount}</b>`;
+    paintSum();
   }
 
+  if (!todo.length) say('ไม่มีอะไรให้นำเข้า — ทุกงานในไฟล์มีอยู่ในระบบแล้ว (ติ๊ก "อัปเดตทับ" ถ้าต้องการเขียนทับ)');
   say('— จบการนำเข้า —');
   $('btnRun').disabled = false;
-  if (failCount === 0) say('เปิดหน้าหลักเพื่อดูข้อมูลที่นำเข้าได้เลย');
+  if (failCount === 0 && todo.length) say('เปิดหน้าหลักเพื่อดูข้อมูลที่นำเข้าได้เลย');
 });
+
+/** นำเข้ารายชื่อจากงานแสดงสินค้าเข้า expo_customers (step 3.1) */
+async function runExpo() {
+  const updateDup = $('optDup').checked;
+  const todo = parsed.items.filter(i => !i.dup || updateDup);
+
+  $('runCard').hidden = false;
+  $('btnRun').disabled = true;
+  $('runLog').innerHTML = '';
+
+  let done = 0, okCount = 0, failCount = 0;
+  const skip = parsed.items.length - todo.length;
+
+  // เหตุผลเดียวกับเส้นทางงานขาย — ซ้ำหมดแล้วลูปไม่ทำงาน สรุปต้องขึ้นก่อน
+  const paintSum = () => {
+    $('runSum').innerHTML =
+      `สำเร็จ <b>${okCount}</b> · ข้าม <b>${skip}</b> · ผิดพลาด <b>${failCount}</b>`;
+  };
+  paintSum();
+
+  const say = (msg, cls = '') => {
+    const d = document.createElement('div');
+    if (cls) d.className = cls;
+    d.textContent = msg;
+    $('runLog').appendChild(d);
+    $('runLog').scrollTop = $('runLog').scrollHeight;
+  };
+
+  for (const it of todo) {
+    try {
+      const payload = { ...it.row };
+      if (it.dup) payload.id = it.dup.id;          // อัปเดตทับของเดิม
+      await adapter.saveExpoCustomer(payload);
+      okCount++;
+      say(`✓ ${it.row.name}${it.dup ? ' (อัปเดตทับ)' : ''}`);
+    } catch (e) {
+      failCount++;
+      say(`✗ ${it.row.name} — ${e.message}`, 'err');
+    }
+    done++;
+    $('progBar').style.width = `${(done / todo.length * 100).toFixed(1)}%`;
+    paintSum();
+  }
+
+  if (!todo.length) say('ไม่มีอะไรให้นำเข้า — รายชื่อในไฟล์มีอยู่ในระบบแล้วทั้งหมด (ติ๊ก "อัปเดตทับ" ถ้าต้องการเขียนทับ)');
+  say('— จบการนำเข้า —');
+  $('btnRun').disabled = false;
+  if (failCount === 0 && todo.length) say('เปิดแถบ "แหล่งงาน → Thai Water Expo" เพื่อดูรายชื่อที่นำเข้าได้เลย');
+}
 
 boot();
 </script>

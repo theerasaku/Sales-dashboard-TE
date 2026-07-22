@@ -57,12 +57,54 @@ const toNum = (v) => {
 };
 
 /** ตรวจว่าไฟล์ที่วางมาเป็นรูปแบบไหน */
+/**
+ * รายชื่อจากงานแสดงสินค้าหน้าตาเป็นยังไง (step 3.1)
+ * ต้นแบบ v3 เก็บเป็น {id, sales, name, org, interest, contact, result, p}
+ * เช็กจาก "มี name + (interest หรือ contact) แต่ไม่มีสนามของงานขาย" — งานขายต้องมี stage/value/title
+ */
+function looksLikeExpo(arr) {
+  if (!Array.isArray(arr) || !arr.length) return false;
+  const sample = arr.slice(0, 5);
+  const hasExpoKeys = sample.every(r => r && typeof r === 'object' && r.name !== undefined
+    && (r.interest !== undefined || r.contact !== undefined || r.p !== undefined));
+  const hasDealKeys = sample.some(r => r && (r.stage !== undefined || r.value !== undefined
+    || r.title !== undefined || r.project_name !== undefined));
+  return hasExpoKeys && !hasDealKeys;
+}
+
 export function detectFormat(data) {
   if (!data || typeof data !== 'object') return { kind: 'unknown' };
   if (data._format === BACKUP_FORMAT) return { kind: 'backup', version: data._version || 1 };
   if (Array.isArray(data.deals))       return { kind: 'prototype' };
+
+  // รายชื่อจากงานแสดงสินค้า — รับได้ทั้ง array ล้วน และห่อด้วยคีย์
+  const expoWrapped = data.tw_customers || data.TW_CUSTOMERS || data.expo_customers;
+  if (looksLikeExpo(expoWrapped)) return { kind: 'expo', wrapped: true };
+  if (looksLikeExpo(data))        return { kind: 'expo', wrapped: false };
+
   if (Array.isArray(data))             return { kind: 'rows' };   // array ของ deal ล้วน ๆ
   return { kind: 'unknown' };
+}
+
+/** แถวจากงานแสดงสินค้า (ต้นแบบ v3) → แถว expo_customers */
+export function mapExpoCustomer(c, eventName = 'Thai Water Expo 2026') {
+  const s = (v) => {
+    const t = String(v ?? '').trim();
+    return t || null;
+  };
+  return {
+    event_name:  eventName,
+    no:          s(c.no ?? c.id),
+    name:        s(c.name) || '(ไม่มีชื่อ)',
+    org:         s(c.org),
+    interest:    s(c.interest),
+    contact:     s(c.contact),
+    result:      s(c.result),
+    // ต้นแบบใช้คีย์ 'p' แทน prospect · รับ is_prospect ด้วยเผื่อไฟล์สำรองของระบบเรา
+    is_prospect: !!(c.p ?? c.is_prospect),
+    sale_name:   s(c.sales ?? c.sale_name),
+    status:      c.status || (s(c.result) ? 'working' : 'new'),
+  };
 }
 
 /** deal ของ prototype v3 → แถว pending_projects + ลูก ๆ */
@@ -137,7 +179,21 @@ export function parseImport(data, teamByCode = {}) {
   const warnings = [];
 
   if (fmt.kind === 'unknown') {
-    throw new Error('ไม่รู้จักรูปแบบไฟล์นี้ — ต้องเป็นไฟล์สำรองของระบบ หรือ JSON จาก prototype เดิม');
+    throw new Error('ไม่รู้จักรูปแบบไฟล์นี้ — ต้องเป็นไฟล์สำรองของระบบ · JSON จาก prototype เดิม · หรือรายชื่อจากงานแสดงสินค้า');
+  }
+
+  // ── รายชื่อจากงานแสดงสินค้า (step 3.1) ──
+  // entity บอกปลายทางว่าเข้าตารางไหน — หน้า import ใช้ค่านี้เลือกวิธีบันทึก
+  if (fmt.kind === 'expo') {
+    const arr = fmt.wrapped
+      ? (data.tw_customers || data.TW_CUSTOMERS || data.expo_customers)
+      : data;
+    const items = arr.map(c => ({ row: mapExpoCustomer(c) }));
+    const star = items.filter(i => i.row.is_prospect).length;
+    warnings.push(`พบรายชื่อ ${items.length} ราย — เป็นกลุ่มควรตามก่อน (★) ${star} ราย`);
+    const noContact = items.filter(i => !i.row.contact).length;
+    if (noContact) warnings.push(`${noContact} รายไม่มีข้อมูลผู้ติดต่อ — ต้องหาเบอร์/อีเมลเพิ่มเอง`);
+    return { format: fmt, entity: 'expo', items, warnings };
   }
 
   // ── ไฟล์สำรองของระบบเรา: คอลัมน์ตรงกับ DB อยู่แล้ว ──
@@ -157,7 +213,7 @@ export function parseImport(data, teamByCode = {}) {
         _srcId: id ?? null,
       };
     });
-    return { format: fmt, items, warnings };
+    return { format: fmt, entity: 'pending', items, warnings };
   }
 
   // ── prototype v3 ──
@@ -177,7 +233,7 @@ export function parseImport(data, teamByCode = {}) {
   const noMonth = items.filter(i => !i.row.close_month).length;
   if (noMonth) warnings.push(`${noMonth} งานไม่มีเดือนคาดปิด — จะไม่ขึ้นในกราฟรายเดือนจนกว่าจะกรอก`);
 
-  return { format: fmt, items, warnings };
+  return { format: fmt, entity: 'pending', items, warnings };
 }
 
 function stripLog(l) {
