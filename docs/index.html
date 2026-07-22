@@ -7,9 +7,33 @@
 <meta name="theme-color" content="#0d0e12">
 <title>TE Sales Dashboard</title>
 <link rel="manifest" href="manifest.json">
+
+<!-- ─── PWA (step 3.3) ───
+     ⚠️ iOS ไม่อ่านไอคอนใน manifest.json เลย — ตอน "เพิ่มไปยังหน้าจอโฮม"
+        Safari ดูที่ apple-touch-icon อย่างเดียว ถ้าไม่มีจะไปจับภาพหน้าจอมาทำไอคอนแทน
+        (นี่คือเหตุผลที่ต้องมีทั้งสองชุด ไม่ใช่ความซ้ำซ้อน) -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TE Sales">
+<!-- black-translucent = เนื้อหาไหลขึ้นไปใต้แถบสถานะ/รอยบาก
+     ต้องใช้คู่กับ viewport-fit=cover ข้างบน + --safe-t ใน app.css เท่านั้น
+     ถ้าลบตัวใดตัวหนึ่งออก หัวข้อหน้าจะโดนรอยบากทับบน iPhone -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+
+<!-- แถบแจ้ง ออฟไลน์ / มีเวอร์ชันใหม่ / ติดตั้งเป็นแอป — เนื้อหาใส่โดย js/ui/pwa.js
+     🔴 ต้องอยู่บนสุดและอยู่ใน flow ปกติ (ไม่ position:fixed)
+        ของเดิมลอยอยู่มุมล่าง แล้วไปทับปุ่มจนกดไม่โดน — เทสต์ที่คลิกจริงจับได้ตอน 3.3
+        ของที่ลอยทับเนื้อหาได้ ไม่ว่าจะเผื่อ padding ไว้แค่ไหน ก็ยังบังปุ่มกลางหน้าได้อยู่ดี -->
+<div id="pwaBar" class="pwabar" hidden></div>
 
 <!-- ─── หน้าเข้าสู่ระบบ · แสดงเมื่อยังไม่ล็อกอิน ─── -->
 <div id="login" class="login" hidden>

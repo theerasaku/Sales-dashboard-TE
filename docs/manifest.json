@@ -1,17 +1,38 @@
 {
+  "id": "te-sales-dashboard",
   "name": "TE Sales Dashboard",
   "short_name": "TE Sales",
   "description": "ระบบติดตามงานขาย Thammasorn Engineering",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#0d0e12",
   "theme_color": "#0d0e12",
   "lang": "th",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Pending Project",
+      "short_name": "Pending",
+      "description": "รายการงานที่กำลังตามอยู่",
+      "url": "./index.html#pending",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "แผนติดต่อลูกค้า",
+      "short_name": "ติดตาม",
+      "description": "งานที่ต้องทำวันนี้และที่เลยกำหนด",
+      "url": "./index.html#activities",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

@@ -6,6 +6,7 @@
 
 import { CONFIG } from './config.js';
 import { initAdapter, adapter } from './data/adapter.js';
+import { initPWA } from './ui/pwa.js';
 
 import dashboard  from './modules/dashboard.js';
 import pending    from './modules/pending.js';
@@ -208,9 +209,9 @@ async function boot() {
     showLogin();
   }
 
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  // PWA: ลงทะเบียน service worker + แถบ ออฟไลน์ / มีเวอร์ชันใหม่ / ติดตั้งเป็นแอป
+  // เรียกท้ายสุดเสมอ — ถ้าตัวนี้พังต้องไม่ทำให้แอปเปิดไม่ขึ้น
+  try { initPWA(); } catch (e) { console.warn('PWA init ไม่สำเร็จ:', e.message); }
 }
 
 console.info(`${CONFIG.APP_NAME} v${CONFIG.VERSION}`);
