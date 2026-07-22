@@ -27,7 +27,7 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
-## 2026-07-22 14:20 · ยังไม่ commit · 2.4 เสร็จ — role manager + team_access + หน้า Admin
+## 2026-07-22 14:20 · c9a9676 · 2.4 เสร็จ — role manager + team_access + หน้า Admin
 **step:** 2.4 | **ประเภท:** ฟีเจอร์ + ความปลอดภัย + เครื่องมือทดสอบ
 - `db/phase2-4.sql` ใหม่: role `manager` · ตาราง `team_access` · `app_settings` (เป้ายอดขาย)
   + แก้ `can_access_team()` เป็น security definer และให้อ่าน `team_access`
