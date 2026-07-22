@@ -91,7 +91,7 @@ function presetRange(kind, now = new Date()) {
 // ── สถานะหน้าจอ (จำไว้ให้กลับมาแล้วเหมือนเดิม) ──
 const DEFAULT_VIEW = {
   sort: 'updated_at', dir: 'desc', search: '', stage: '',
-  from: '', to: '', showArchived: false,
+  from: '', to: '', status: 'active',
 };
 
 function loadView() {
@@ -196,7 +196,13 @@ export default {
         <button class="btn btn-ghost btn-sm" data-preset="h2">ครึ่งปีหลัง (เป้า 80 ล้าน)</button>
         <button class="btn btn-ghost btn-sm" data-preset="">ล้าง</button>
 
-        <label class="chk"><input type="checkbox" id="pArchived" ${view.showArchived ? 'checked' : ''}> แสดงงานที่จบแล้ว</label>
+        <div class="segmented" id="pStatus" role="tablist" aria-label="สถานะงาน">
+          <button type="button" data-status="active"   class="${view.status === 'active'   ? 'on' : ''}">กำลังทำ</button>
+          <button type="button" data-status="archived" class="${view.status === 'archived' ? 'on' : ''}">
+            Archive <span class="seg-badge" id="pArcCount" hidden></span>
+          </button>
+          <button type="button" data-status="all"      class="${view.status === 'all'      ? 'on' : ''}">ทั้งหมด</button>
+        </div>
 
         <details class="colpick">
           <summary class="btn btn-ghost btn-sm">คอลัมน์</summary>
@@ -226,7 +232,7 @@ export default {
       listEl.innerHTML = '<div class="skeleton">กำลังโหลด…</div>';
       try {
         rows = await adapter.listPending({
-          activeOnly: !view.showArchived,
+          status: view.status,
           stage:  view.stage  || undefined,
           from:   view.from   || undefined,
           to:     view.to     || undefined,
@@ -313,7 +319,23 @@ export default {
     $('pStage')   .addEventListener('change', (e) => { view.stage = e.target.value; reload(); });
     $('pFrom')    .addEventListener('change', (e) => { view.from  = e.target.value; reload(); });
     $('pTo')      .addEventListener('change', (e) => { view.to    = e.target.value; reload(); });
-    $('pArchived').addEventListener('change', (e) => { view.showArchived = e.target.checked; reload(); });
+    root.querySelectorAll('#pStatus [data-status]').forEach(b => {
+      b.addEventListener('click', () => {
+        view.status = b.dataset.status;
+        root.querySelectorAll('#pStatus [data-status]')
+            .forEach(x => x.classList.toggle('on', x === b));
+        reload();
+      });
+    });
+
+    // ป้ายบอกว่ามีงานค้างใน Archive กี่งาน — ไม่ต้องกดเข้าไปดูก็รู้
+    (async () => {
+      try {
+        const n = await adapter.countPending('archived');
+        const el = $('pArcCount');
+        if (el && n > 0) { el.textContent = n; el.hidden = false; }
+      } catch { /* นับไม่ได้ก็ไม่เป็นไร ไม่ใช่ข้อมูลสำคัญ */ }
+    })();
 
     root.querySelectorAll('[data-preset]').forEach(b => {
       b.addEventListener('click', () => {
@@ -721,8 +743,9 @@ async function openDetail(host, id, onSaved, teams) {
         <p class="login-err" id="pErr" role="alert" hidden></p>
 
         <div class="modal-foot">
-          ${id ? `<button type="button" class="btn btn-ghost btn-sm" id="pArch">
-                    ${archived ? 'ปลุกกลับมาทำต่อ' : 'ทำเสร็จแล้ว → เก็บเข้า Archive'}
+          ${id ? `<button type="button" id="pArch"
+                    class="btn btn-sm ${archived ? 'btn-ghost' : 'btn-danger'}">
+                    ${archived ? '↩ ปลุกกลับมาทำต่อ' : 'เก็บเข้า Archive'}
                   </button>` : ''}
           <span class="spacer"></span>
           <button type="button" class="btn btn-ghost" id="pCancel">ยกเลิก</button>
@@ -822,7 +845,26 @@ async function openDetail(host, id, onSaved, teams) {
     }
   });
 
-  q('#pArch')?.addEventListener('click', async () => {
+  /**
+   * เก็บเข้า Archive ต้องกด 2 ครั้ง — กันกดพลาดเพราะปุ่มอยู่ติดกับ "ยกเลิก"/"บันทึก"
+   * ส่วนทางกลับ (ปลุกกลับมาทำต่อ) ไม่อันตราย กดครั้งเดียวพอ
+   */
+  let armed = false;
+  const arch = q('#pArch');
+  arch?.addEventListener('click', async () => {
+    if (!archived && !armed) {
+      armed = true;
+      arch.textContent = 'กดอีกครั้งเพื่อยืนยัน';
+      arch.classList.add('is-armed');
+      // ไม่ยืนยันภายใน 4 วินาที = ถือว่ากดพลาด คืนสภาพเดิม
+      setTimeout(() => {
+        if (!armed) return;
+        armed = false;
+        arch.textContent = 'เก็บเข้า Archive';
+        arch.classList.remove('is-armed');
+      }, 4000);
+      return;
+    }
     try {
       await adapter.archivePending(id, !archived);
       close();

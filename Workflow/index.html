@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>แผนผังงาน TE Sales Dashboard — สร้างถึงไหนแล้ว</title>
+<style>
+  :root {
+    --bg:        #0d0e12;
+    --panel:     #14161d;
+    --panel-2:   #1a1d26;
+    --line:      #262a36;
+    --text:      #e6e8ef;
+    --text-dim:  #9aa1b4;
+    --text-mute: #6b7285;
+
+    --done:      #3ecf8e;
+    --done-bg:   rgba(62,207,142,.12);
+    --partial:   #e8b339;
+    --partial-bg:rgba(232,179,57,.12);
+    --todo:      #5b6478;
+    --todo-bg:   rgba(91,100,120,.12);
+    --warn:      #f5674f;
+    --warn-bg:   rgba(245,103,79,.12);
+    --accent:    #5b8cff;
+    --accent-bg: rgba(91,140,255,.12);
+
+    --radius: 10px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:#f7f8fa; --panel:#fff; --panel-2:#f1f3f7; --line:#e0e3ea;
+      --text:#1a1d26; --text-dim:#5b6478; --text-mute:#8a91a3;
+      --done:#0e9f6e; --todo:#8a91a3;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", sans-serif;
+    font-size: 15px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  /* ---------- header ---------- */
+  header { border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 32px; }
+  h1 { font-size: 26px; font-weight: 650; margin: 0 0 6px; letter-spacing: -.02em; }
+  .sub { color: var(--text-dim); font-size: 14px; margin: 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; font-size: 13px; color: var(--text-mute); }
+  .meta code { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+
+  /* ---------- progress ---------- */
+  .prog-box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 32px; }
+  .prog-top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .prog-num { font-size: 30px; font-weight: 650; letter-spacing: -.02em; }
+  .prog-num small { font-size: 15px; font-weight: 400; color: var(--text-mute); }
+  .bar { height: 10px; background: var(--panel-2); border-radius: 99px; overflow: hidden; display: flex; }
+  .bar i { display: block; height: 100%; }
+  .bar .b-done { background: var(--done); }
+  .bar .b-part { background: var(--partial); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 14px; font-size: 13px; color: var(--text-dim); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .d-done { background: var(--done); } .d-part { background: var(--partial); }
+  .d-todo { background: var(--todo); } .d-warn { background: var(--warn); }
+
+  /* ---------- sections ---------- */
+  h2 {
+    font-size: 17px; font-weight: 620; margin: 44px 0 6px; letter-spacing: -.01em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2::before { content: ''; width: 3px; height: 17px; background: var(--accent); border-radius: 2px; flex: none; }
+  .h2note { color: var(--text-mute); font-size: 13px; margin: 0 0 18px 13px; }
+
+  /* ---------- architecture stack ---------- */
+  .stack { display: grid; gap: 10px; }
+  .layer {
+    background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--todo);
+    border-radius: var(--radius); padding: 14px 16px;
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center;
+  }
+  .layer.is-done { border-left-color: var(--done); }
+  .layer.is-part { border-left-color: var(--partial); }
+  .layer.is-todo { border-left-color: var(--todo); opacity: .78; }
+  .layer-t { font-weight: 600; font-size: 14.5px; }
+  .layer-d { grid-column: 1 / -1; color: var(--text-dim); font-size: 13px; }
+  .layer-d code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+  .arrow { text-align: center; color: var(--text-mute); font-size: 13px; line-height: 1; margin: -3px 0; }
+
+  /* ---------- badges ---------- */
+  .badge {
+    font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 99px;
+    white-space: nowrap; letter-spacing: .01em;
+  }
+  .bg-done { background: var(--done-bg); color: var(--done); }
+  .bg-part { background: var(--partial-bg); color: var(--partial); }
+  .bg-todo { background: var(--todo-bg); color: var(--text-mute); }
+  .bg-warn { background: var(--warn-bg); color: var(--warn); }
+
+  /* ---------- roadmap ---------- */
+  .phase { margin-bottom: 26px; }
+  .phase-h {
+    font-size: 13px; font-weight: 620; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: .06em; margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
+  }
+  .phase-h em { font-style: normal; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-mute); }
+  .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 8px; }
+  .step {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 11px 13px; display: grid; grid-template-columns: auto 1fr auto; gap: 3px 9px; align-items: start;
+  }
+  .step.is-todo { opacity: .72; }
+  .step.is-next { border-color: var(--accent); background: var(--accent-bg); opacity: 1; }
+  .step-id { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text-dim); }
+  .step.is-next .step-id { color: var(--accent); }
+  .step-t { font-size: 13.5px; font-weight: 550; line-height: 1.4; }
+  .step-s { font-size: 11px; font-family: var(--mono); color: var(--text-mute); }
+  .step-n { grid-column: 2 / -1; font-size: 12px; color: var(--text-mute); line-height: 1.45; }
+
+  /* ---------- module grid ---------- */
+  .mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 10px; }
+  .mod {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .mod.is-todo { opacity: .74; }
+  .mod-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 3px; }
+  .mod-id { font-family: var(--mono); font-size: 12px; font-weight: 650; color: var(--accent); }
+  .mod-t { font-size: 14.5px; font-weight: 600; margin-bottom: 7px; }
+  .mod-d { font-size: 13px; color: var(--text-dim); margin: 0 0 9px; line-height: 1.55; }
+  .mod-f { font-family: var(--mono); font-size: 11.5px; color: var(--text-mute); border-top: 1px dashed var(--line); padding-top: 8px; }
+  .mod-f b { color: var(--text-dim); font-weight: 500; }
+
+  /* ---------- todo / warnings ---------- */
+  .cards { display: grid; gap: 10px; }
+  .note {
+    background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--warn);
+    border-radius: var(--radius); padding: 14px 16px;
+  }
+  .note.info { border-left-color: var(--accent); }
+  .note-t { font-weight: 600; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .note-d { font-size: 13px; color: var(--text-dim); margin: 0; line-height: 1.6; }
+  .note-d code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+
+  /* ---------- next ---------- */
+  .next {
+    background: var(--accent-bg); border: 1px solid var(--accent); border-radius: var(--radius);
+    padding: 18px 20px; margin-top: 12px;
+  }
+  .next h3 { margin: 0 0 6px; font-size: 15.5px; font-weight: 620; }
+  .next ol { margin: 10px 0 0; padding-left: 20px; font-size: 13.5px; color: var(--text-dim); line-height: 1.75; }
+  .next ol code { font-family: var(--mono); font-size: 12px; }
+
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+           font-size: 12.5px; color: var(--text-mute); }
+
+  @media (max-width: 560px) {
+    .wrap { padding: 22px 14px 60px; }
+    h1 { font-size: 21px; }
+    .steps, .mods { grid-template-columns: 1fr; }
+    .prog-num { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>แผนผังงาน TE Sales Dashboard</h1>
+  <p class="sub">ระบบขายกลางบน GitHub Pages + Supabase · เป้า 80 ล้านบาท (ก.ค.–ธ.ค. 2569)</p>
+  <div class="meta">
+    <span>อัปเดต <strong>22 ก.ค. 2569</strong></span>
+    <span>repo <code>Sales-dashboard-TE</code> (public)</span>
+    <span>commit ล่าสุด <code>2bbd802</code></span>
+    <span>Supabase project <code>Sales TE</code> · Singapore</span>
+  </div>
+</header>
+
+<!-- ═══════════ ความคืบหน้ารวม ═══════════ -->
+<div class="prog-box">
+  <div class="prog-top">
+    <div class="prog-num">7 <small>/ 23 step เสร็จแล้ว</small></div>
+    <div><span class="badge bg-done">Phase 1 เหลือ 2 step</span></div>
+  </div>
+  <div class="bar">
+    <i class="b-done" style="width:30.4%"></i>
+    <i class="b-part" style="width:4.3%"></i>
+  </div>
+  <div class="legend">
+    <span><i class="dot d-done"></i> เสร็จ + ทดสอบแล้ว — 7 step</span>
+    <span><i class="dot d-part"></i> มีโครงแล้ว ยังไม่ครบ — 1 step</span>
+    <span><i class="dot d-todo"></i> ยังไม่เริ่ม — 15 step</span>
+    <span><i class="dot d-warn"></i> ต้องทำมือ / ค้างอยู่ — 4 เรื่อง</span>
+  </div>
+</div>
+
+<!-- ═══════════ สถาปัตยกรรม ═══════════ -->
+<h2>สถาปัตยกรรม 4 ชั้น — ชั้นไหนเสร็จแล้วบ้าง</h2>
+<p class="h2note">UI ห้ามคุยกับ Supabase ตรง ๆ ต้องผ่าน adapter เสมอ — เปลี่ยน backend ทีหลังได้โดยไม่แตะ UI</p>
+
+<div class="stack">
+  <div class="layer is-done">
+    <div class="layer-t">① Frontend · GitHub Pages</div>
+    <span class="badge bg-done">ใช้งานจริงแล้ว</span>
+    <div class="layer-d">
+      static HTML/CSS/JS แยก module เสิร์ฟจาก <code>docs/</code> · ธีม Linear-dark · mobile-first
+      · หน้าใช้งานได้จริง 3 หน้า (ภาพรวม / Pending / login) อีก 3 แท็บยังเป็นโครง
+    </div>
+  </div>
+
+  <div class="arrow">↓ เรียกผ่าน <code>adapter</code> เท่านั้น</div>
+
+  <div class="layer is-done">
+    <div class="layer-t">② Data Adapter — ชั้นกลางสลับ backend</div>
+    <span class="badge bg-done">19 เมธอด · ครบ 2 ตัว</span>
+    <div class="layer-d">
+      <code>adapter.js</code> (facade 71 บรรทัด) → <code>supabase-adapter.js</code> ตัวจริง 483 บรรทัด ·
+      <code>local-adapter.js</code> โหมดออฟไลน์ 203 บรรทัด — 15/19 เมธอดต่อของจริงแล้ว
+      อีก 4 ตัว (customers/activities) ยัง <code>notReady()</code> รอ step 2.1
+    </div>
+  </div>
+
+  <div class="arrow">↓ REST + JWT</div>
+
+  <div class="layer is-part">
+    <div class="layer-t">③ Backend · Supabase (PostgreSQL + Auth + RLS)</div>
+    <span class="badge bg-part">5 / 9 module</span>
+    <div class="layer-d">
+      รันจริงแล้ว 5 ตาราง · RLS 15 policy · ปิดรับสมัครสาธารณะแล้ว · ผู้ใช้ admin 1 คน
+      — ตาราง B3/B4/B5/B7/B8/B9 ยังไม่ได้สร้าง
+    </div>
+  </div>
+
+  <div class="arrow">↓ (ยังไม่มี)</div>
+
+  <div class="layer is-todo">
+    <div class="layer-t">④ Edge Function — ถือ ANTHROPIC_API_KEY ฝั่งเซิร์ฟเวอร์</div>
+    <span class="badge bg-todo">step 3.8</span>
+    <div class="layer-d">
+      ยังไม่เริ่ม · มีไว้เคสเดียว: AI Intake อ่านลายมือไทยจากรูป
+      — key ห้ามอยู่ใน frontend เด็ดขาด (repo เป็น public)
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ Backend module ═══════════ -->
+<h2>Backend 9 module — ตารางใน Supabase</h2>
+<p class="h2note">✅ = SQL เขียนเสร็จ + รันจริงบน Supabase แล้ว</p>
+
+<div class="mods">
+
+  <div class="mod">
+    <div class="mod-h"><span class="mod-id">B1</span><span class="badge bg-part">เสร็จบางส่วน</span></div>
+    <div class="mod-t">Users &amp; Teams</div>
+    <p class="mod-d">
+      <code>teams</code> (5 ทีม) + <code>profiles</code> (role admin/sale) ผูก Supabase Auth
+      · trigger สร้าง profile อัตโนมัติตอนเชิญบัญชี
+    </p>
+    <div class="mod-f"><b>ยังขาด:</b> role <code>manager</code> + ตาราง <code>team_access</code> → step 2.4</div>
+  </div>
+
+  <div class="mod">
+    <div class="mod-h"><span class="mod-id">B2</span><span class="badge bg-done">เสร็จ</span></div>
+    <div class="mod-t">Pending Projects</div>
+    <p class="mod-d">
+      <code>pending_projects</code> ครบฟอร์มกระดาษ 2 หน้า + <code>follow_logs</code> +
+      <code>project_contacts</code> · มี <code>is_active</code>/<code>archived_at</code> ตั้งแต่แรก
+      → step 2.5 ไม่ต้อง migration
+    </p>
+    <div class="mod-f"><b>db/schema.sql</b> 216 บรรทัด · <b>policies.sql</b> 250 บรรทัด</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">B3</span><span class="badge bg-todo">step 2.1</span></div>
+    <div class="mod-t">Book 3 สี</div>
+    <p class="mod-d"><code>customers</code> (🟢 สนิท · 🟡 มีโอกาส · 🔴 เพิ่งเริ่ม) + <code>customer_logs</code></p>
+    <div class="mod-f"><b>เตรียมไว้แล้ว:</b> <code>plan/form-book3-si-fields.md</code></div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">B4</span><span class="badge bg-todo">step 2.1</span></div>
+    <div class="mod-t">Activities</div>
+    <p class="mod-d"><code>activities</code> กิจกรรมรายสัปดาห์ ผูก pending/customer + due date</p>
+    <div class="mod-f"><b>รอ:</b> สร้างพร้อม B3 ในไฟล์เดียวกัน</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">B5</span><span class="badge bg-todo">step 3.1</span></div>
+    <div class="mod-t">Lead Sources &amp; Settings</div>
+    <p class="mod-d"><code>lead_sources</code> 8 เส้นทาง · <code>expo_customers</code> (Thai Water 90 ราย, ★37) · <code>app_settings</code> (เป้า 80 ล้าน)</p>
+    <div class="mod-f"><b>ตอนนี้:</b> เป้าฮาร์ดโค้ดใน <code>config.js</code> ก่อน</div>
+  </div>
+
+  <div class="mod">
+    <div class="mod-h"><span class="mod-id">B6</span><span class="badge bg-part">เปลี่ยนวิธี</span></div>
+    <div class="mod-t">Dashboard สรุปตัวเลข</div>
+    <p class="mod-d">
+      <strong>เบี่ยงจากแผนโดยตั้งใจ</strong> — ไม่ได้ทำ <code>views.sql</code>
+      แต่คำนวณฝั่งเบราว์เซอร์แทน (ข้อมูลหลักร้อยแถว เร็วกว่า + ไม่ต้องรอเจ้าของรัน SQL)
+    </p>
+    <div class="mod-f"><b>db/views.sql</b> ยังเป็นโครงเปล่า 5 บรรทัด · ย้ายกลับได้โดยไม่แตะ UI</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">B7</span><span class="badge bg-todo">step 3.4</span></div>
+    <div class="mod-t">Suppliers</div>
+    <p class="mod-d"><code>suppliers</code> + <code>supplier_categories</code> + <code>project_suppliers</code> (ผูก supplier ↔ โครงการ)</p>
+    <div class="mod-f"><b>รอ:</b> ยังไม่มีไฟล์ SQL</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">B8</span><span class="badge bg-todo">step 2.6</span></div>
+    <div class="mod-t">Sign-off หัวหน้าเซ็นรับทราบ</div>
+    <p class="mod-d">
+      <code>signoffs</code> append-only — เขียนได้อย่างเดียว แก้/ลบไม่ได้ ·
+      เก็บ <code>signed_version</code> กันลายเซ็นค้างหลังมีคนแก้ตัวเลข
+    </p>
+    <div class="mod-f"><b>บังคับลำดับ:</b> ต้องทำหลัง 2.4 (ยังไม่มี role manager)</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">B9</span><span class="badge bg-todo">step 3.5</span></div>
+    <div class="mod-t">AI Intake staging</div>
+    <p class="mod-d"><code>intake_items</code> — ข้อมูลจาก AI ลง staging ก่อนเสมอ ห้ามเขียนเข้าตารางจริงตรง ๆ · confidence รายช่อง</p>
+    <div class="mod-f"><b>เหตุผล:</b> ถ่ายรูปหน้างานด้วยมือถือ แต่มาตรวจแก้บนคอมที่ออฟฟิศ</div>
+  </div>
+
+</div>
+
+<!-- ═══════════ Frontend module ═══════════ -->
+<h2>Frontend 10 module — หน้าจอที่ทีมขายใช้</h2>
+<p class="h2note">ตัวเลขบรรทัด = ขนาดไฟล์จริงในตอนนี้ · โครง = ยังเป็น placeholder รอทำ</p>
+
+<div class="mods">
+
+  <div class="mod">
+    <div class="mod-h"><span class="mod-id">F1</span><span class="badge bg-done">เสร็จ · step 1.2</span></div>
+    <div class="mod-t">App Shell + Login</div>
+    <p class="mod-d">
+      ล็อกอินจริงผ่าน Supabase Auth · จำ session · ต่ออายุ token อัตโนมัติ ·
+      ไม่มี session = เห็นแค่หน้า login เปลี่ยน hash ก็เข้าไม่ได้ · sidebar + bottom bar มือถือ
+    </p>
+    <div class="mod-f"><b>js/app.js</b> 197 · <b>index.html</b> 109 · <b>css/app.css</b> 617 บรรทัด</div>
+  </div>
+
+  <div class="mod">
+    <div class="mod-h"><span class="mod-id">F2</span><span class="badge bg-done">เสร็จ · step 1.3</span></div>
+    <div class="mod-t">Data Adapter</div>
+    <p class="mod-d">
+      pending CRUD + archive + follow logs + contacts + teams ·
+      กัน SQL injection ด้วย whitelist คอลัมน์ · <code>nullslast</code> ทุก order
+    </p>
+    <div class="mod-f"><b>supabase-adapter.js</b> 483 · <b>local-adapter.js</b> 203 · <b>adapter.js</b> 71</div>
+  </div>
+
+  <div class="mod">
+    <div class="mod-h"><span class="mod-id">F3</span><span class="badge bg-done">เสร็จ · step 1.5</span></div>
+    <div class="mod-t">Dashboard ภาพรวม</div>
+    <p class="mod-d">
+      KPI 4 การ์ด (เป้า · ปิดได้แล้ว · pipeline ถ่วงน้ำหนัก · coverage) ·
+      กราฟแท่งรายเดือน แผน vs ปิดจริง · funnel 6 ขั้น · top 3 · งานเลยกำหนด — SVG ล้วน ไม่มี library
+    </p>
+    <div class="mod-f"><b>modules/dashboard.js</b> 294 บรรทัด · ทดสอบ 47/47 ผ่าน</div>
+  </div>
+
+  <div class="mod">
+    <div class="mod-h"><span class="mod-id">F4</span><span class="badge bg-done">เสร็จ · step 1.4</span></div>
+    <div class="mod-t">Pending Project UI</div>
+    <p class="mod-d">
+      ฟอร์ม 42 ช่อง · ตาราง sort/ซ่อนคอลัมน์ · การ์ดบนมือถือ ·
+      กรองเดือนคาดปิด (dropdown ไม่ให้พิมพ์เอง) · บันทึกติดตาม + แก้ไขในที่ · CSV
+    </p>
+    <div class="mod-f"><b>modules/pending.js</b> 868 บรรทัด — ใหญ่สุดในระบบ · ทดสอบ 29+32 เคส</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">F5</span><span class="badge bg-todo">step 2.2 (L)</span></div>
+    <div class="mod-t">Book 3 สี UI</div>
+    <p class="mod-d">กรองสี/ทีม/sale · log รายคน · ปุ่มยกลูกค้า → Pending · toggle ซ่อนลูกค้าไม่ active</p>
+    <div class="mod-f"><b>modules/book3.js</b> โครง 19 บรรทัด</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">F6</span><span class="badge bg-todo">step 2.3</span></div>
+    <div class="mod-t">แผนติดต่อลูกค้า</div>
+    <p class="mod-d">กิจกรรมรายสัปดาห์ + แจ้งเตือนงานเลยกำหนดบน dashboard</p>
+    <div class="mod-f"><b>modules/activities.js</b> โครง 19 บรรทัด</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">F7</span><span class="badge bg-todo">step 3.1–3.2</span></div>
+    <div class="mod-t">แหล่งงาน + ทีม + playbook</div>
+    <p class="mod-d">8 เส้นทางหาโครงการ (ลิงก์แก้ได้) · Thai Water Expo ★ prospect ขึ้นก่อน · ทีมขาย 5 ทีม · เช็กลิสต์ชนะงาน 7 ข้อ</p>
+    <div class="mod-f"><b>modules/sources.js</b> โครง 14 บรรทัด</div>
+  </div>
+
+  <div class="mod">
+    <div class="mod-h"><span class="mod-id">F8</span><span class="badge bg-part">มีโครง · step 3.3</span></div>
+    <div class="mod-t">PWA + Responsive</div>
+    <p class="mod-d">
+      responsive เสร็จแล้วทุกหน้าที่ทำไป (390/820/1440 ทดสอบผ่าน) ·
+      <code>manifest.json</code> + <code>sw.js</code> มีแล้ว
+    </p>
+    <div class="mod-f"><b>ค้าง:</b> ไฟล์ไอคอน <code>icons/icon-192.png</code> / <code>512</code> ยังไม่มี → PWA ขึ้น warning</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">F9</span><span class="badge bg-todo">step 3.4</span></div>
+    <div class="mod-t">แถบ Supplier</div>
+    <p class="mod-d">ผู้ขาย/ผู้รับเหมา/วัสดุ/วัตถุดิบ/บริการ · กลุ่มย่อยกรองได้ เพิ่ม/แก้กลุ่มจากหน้าจอ · ปุ่มหา supplier จากหน้า Pending</p>
+    <div class="mod-f"><b>modules/suppliers.js</b> โครง 14 บรรทัด · ต่อ router แล้ว</div>
+  </div>
+
+  <div class="mod is-todo">
+    <div class="mod-h"><span class="mod-id">F10</span><span class="badge bg-todo">step 3.5 (L)</span></div>
+    <div class="mod-t">AI Intake</div>
+    <p class="mod-d">
+      ปุ่ม 🤖 ทุกแท็บ · 4 แหล่ง: นามบัตร → Book 3 สี · ฟอร์มกระดาษ/ลายมือ → Pending · Obsidian · Notion
+      — preview + merge กันซ้ำก่อนบันทึกจริง
+    </p>
+    <div class="mod-f"><b>modules/ai-intake.js</b> โครง 20 บรรทัด · ยังไม่ต่อ router</div>
+  </div>
+
+</div>
+
+<!-- ═══════════ Roadmap ═══════════ -->
+<h2>Roadmap 23 step — ตอนนี้อยู่ตรงไหน</h2>
+<p class="h2note">ทำทีละ step ตามลำดับ · จบ step ต้อง commit + push ทุกครั้ง</p>
+
+<div class="phase">
+  <div class="phase-h">Phase 0 — เตรียมฐาน <em>· เสร็จครบ 2/2</em></div>
+  <div class="steps">
+    <div class="step"><span class="step-id">0.1</span><span class="step-t">repo + โครงไฟล์ + เปิด Pages</span><span class="badge bg-done">✓</span>
+      <span class="step-n">เว็บขึ้นแล้ว ทดสอบ headless ผ่าน</span></div>
+    <div class="step"><span class="step-id">0.2</span><span class="step-t">setup Supabase + config.js</span><span class="badge bg-done">✓</span>
+      <span class="step-n">project Sales TE · Singapore</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-h">Phase 1 — MVP ใช้งานจริงได้ <em>· เสร็จ 5/7 — เหลือ 2 step</em></div>
+  <div class="steps">
+    <div class="step"><span class="step-id">1.1</span><span class="step-t">schema + policies + seed (B1,B2)</span><span class="badge bg-done">✓</span>
+      <span class="step-n">รันจริงแล้ว · RLS 15 policy · anon ทะลุไม่ได้</span></div>
+    <div class="step"><span class="step-id">1.2</span><span class="step-t">F1 App Shell + Login</span><span class="badge bg-done">✓</span>
+      <span class="step-n">ล็อกอินจริงผ่าน Supabase Auth</span></div>
+    <div class="step"><span class="step-id">1.3</span><span class="step-t">F2 Data Adapter</span><span class="badge bg-done">✓</span>
+      <span class="step-n">pending CRUD + archive + follow logs</span></div>
+    <div class="step"><span class="step-id">1.4</span><span class="step-t">F4 Pending UI เต็มระบบ</span><span class="badge bg-done">✓ L</span>
+      <span class="step-n">ฟอร์ม 42 ช่อง + กรองเดือน + CSV · ทดสอบ 29/29</span></div>
+    <div class="step"><span class="step-id">1.5</span><span class="step-t">F3 Dashboard ภาพรวม</span><span class="badge bg-done">✓</span>
+      <span class="step-n">KPI + กราฟ + funnel + top3 · ทดสอบ 47/47</span></div>
+    <div class="step is-next"><span class="step-id">1.6</span><span class="step-t">tools/import-json.html</span><span class="badge bg-part">ถัดไป</span>
+      <span class="step-n">นำเข้า JSON เดิม + เป็นทางกู้ backup ด้วย · โครง 21 บรรทัด</span></div>
+    <div class="step is-todo"><span class="step-id">1.7</span><span class="step-t">deploy + ทดสอบ 3 เครื่อง</span><span class="badge bg-todo">S</span>
+      <span class="step-n">iPhone / S24 / iPad — login, เพิ่มงาน, ดู dashboard</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-h">Phase 2 — ลูกค้า + ทีม <em>· ยังไม่เริ่ม 0/6</em></div>
+  <div class="steps">
+    <div class="step is-todo"><span class="step-id">2.1</span><span class="step-t">schema B3 + B4 + RLS</span><span class="badge bg-todo">S</span>
+      <span class="step-n">customers, customer_logs, activities</span></div>
+    <div class="step is-todo"><span class="step-id">2.2</span><span class="step-t">F5 Book 3 สี UI</span><span class="badge bg-todo">L</span>
+      <span class="step-n">กรองสี/ทีม/sale + ปุ่มยก → Pending</span></div>
+    <div class="step is-todo"><span class="step-id">2.3</span><span class="step-t">F6 แผนติดต่อลูกค้า</span><span class="badge bg-todo">M</span>
+      <span class="step-n">+ แจ้งเตือนงานเลยกำหนด</span></div>
+    <div class="step is-todo"><span class="step-id">2.4</span><span class="step-t">หน้า Admin + role manager</span><span class="badge bg-todo">M</span>
+      <span class="step-n">+ ตาราง team_access · ทดสอบ RLS ข้ามทีม</span></div>
+    <div class="step is-todo"><span class="step-id">2.5</span><span class="step-t">Archive แสดง/ซ่อนงานจบแล้ว</span><span class="badge bg-todo">M</span>
+      <span class="step-n">schema เตรียมไว้แล้ว ไม่ต้อง migration</span></div>
+    <div class="step is-todo"><span class="step-id">2.6</span><span class="step-t">หัวหน้าเซ็นรับทราบ</span><span class="badge bg-todo">M</span>
+      <span class="step-n">ต้องทำหลัง 2.4 · signoffs append-only</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-h">Phase 3 — ครบระบบ + Supplier + AI + PWA <em>· ยังไม่เริ่ม 0/8</em></div>
+  <div class="steps">
+    <div class="step is-todo"><span class="step-id">3.1</span><span class="step-t">B5 + F7 แหล่งงาน 8 เส้นทาง</span><span class="badge bg-todo">M</span>
+      <span class="step-n">+ Thai Water Expo 90 ราย</span></div>
+    <div class="step is-todo"><span class="step-id">3.2</span><span class="step-t">ทีมขาย + playbook</span><span class="badge bg-todo">S</span>
+      <span class="step-n">เช็กลิสต์ชนะงาน 7 ข้อ</span></div>
+    <div class="step is-todo"><span class="step-id">3.3</span><span class="step-t">F8 PWA เต็ม (icons)</span><span class="badge bg-todo">M</span>
+      <span class="step-n">ติดตั้งบน iPhone/iPad/S24</span></div>
+    <div class="step is-todo"><span class="step-id">3.4</span><span class="step-t">B7 + F9 แถบ Supplier</span><span class="badge bg-todo">M</span>
+      <span class="step-n">กลุ่มย่อยเพิ่ม/แก้จากหน้าจอ</span></div>
+    <div class="step is-todo"><span class="step-id">3.5</span><span class="step-t">F10 AI Intake (คัดลอกคำสั่ง)</span><span class="badge bg-todo">L</span>
+      <span class="step-n">staging + preview + merge · ยังไม่มีค่า API</span></div>
+    <div class="step is-todo"><span class="step-id">3.6</span><span class="step-t">export CSV/JSON + backup</span><span class="badge bg-todo">S</span>
+      <span class="step-n">รูปแบบต้องตรงกับที่ 1.6 อ่านได้</span></div>
+    <div class="step is-todo"><span class="step-id">3.7</span><span class="step-t">ธีม/สี เลือกธีมสำเร็จรูป</span><span class="badge bg-todo">S</span>
+      <span class="step-n">โครง data-theme เตรียมไว้แล้ว</span></div>
+    <div class="step is-todo"><span class="step-id">3.8</span><span class="step-t">AI Intake อัตโนมัติ (Edge Function)</span><span class="badge bg-todo">M</span>
+      <span class="step-n">ต้องทำหลัง 3.5 · key อยู่ใน Supabase secrets</span></div>
+  </div>
+</div>
+
+<!-- ═══════════ ของค้าง ═══════════ -->
+<h2>ของค้างที่ต้องเคลียร์ — ไม่ใช่ step แต่ต้องทำ</h2>
+<p class="h2note">4 เรื่องนี้ค้างอยู่จริงตอนนี้ · เรียงตามความสำคัญ</p>
+
+<div class="cards">
+
+  <div class="note">
+    <div class="note-t">🔴 ต้องรัน <code>db/policies.sql</code> ใน Supabase ซ้ำ 1 รอบ <span class="badge bg-warn">เจ้าของทำเอง</span></div>
+    <p class="note-d">
+      แก้ policy <code>pending_delete</code> ให้เป็น admin เท่านั้นแล้วในไฟล์ แต่<strong>ยังไม่ได้รันบน DB จริง</strong>
+      → ตอนนี้ sale ยังลบงานถาวรได้อยู่ ทั้งที่ควรทำได้แค่ archive
+      · ผู้ช่วยรัน SQL เองไม่ได้ ต้องเปิด Supabase SQL Editor วางไฟล์ทั้งไฟล์ → Run
+    </p>
+  </div>
+
+  <div class="note">
+    <div class="note-t">🟠 1.4 + 1.5 ทดสอบด้วยโหมด local เท่านั้น <span class="badge bg-warn">เจ้าของทดสอบ</span></div>
+    <p class="note-d">
+      ตรรกะทั้งหมดผ่านเทสต์ 76 เคส แต่ยัง<strong>ไม่เคยมีใครเพิ่มงานจริงบน Supabase</strong>
+      (ผู้ช่วยไม่มีรหัสผ่าน) — เส้นทาง "ล็อกอิน → เพิ่มงาน → เห็นบน dashboard" ยังไม่ถูกพิสูจน์
+      · <strong>ควรทำก่อนเริ่ม 1.6</strong> ถ้ามีบั๊กจะได้เจอตอนนี้ ไม่ใช่ตอนนำเข้าข้อมูลจริงเข้าไปแล้ว
+    </p>
+  </div>
+
+  <div class="note">
+    <div class="note-t">🟡 <code>docs/js/modules/pending.js</code> มีงานยังไม่ commit</div>
+    <p class="note-d">
+      แก้ไป +64/−18 บรรทัด (ทำให้แผงบันทึกด่วนไม่รีเซ็ตข้อความที่พิมพ์ค้างไว้)
+      แต่ยังไม่ได้ commit — <strong>ผิดกติกาข้อ 2 ใน CLAUDE.md</strong> (จบงานต้อง commit + push ทุกครั้ง)
+    </p>
+  </div>
+
+  <div class="note info">
+    <div class="note-t">🔵 <code>PROGRESS.md</code> ตารางยังเป็น 21 step ไม่ใช่ 23</div>
+    <p class="note-d">
+      ตอนอัปสเปค v3 เพิ่ม step <strong>2.6</strong> (หัวหน้าเซ็นรับทราบ) และ <strong>3.8</strong> (AI Edge Function)
+      ใน CLAUDE.md แล้ว แต่ตารางใน PROGRESS.md ยังไม่ได้เพิ่ม 2 แถวนี้ → ตัวเลขความคืบหน้า 2 ไฟล์ไม่ตรงกัน
+    </p>
+  </div>
+
+</div>
+
+<!-- ═══════════ ถัดไป ═══════════ -->
+<h2>ทำอะไรต่อ</h2>
+
+<div class="next">
+  <h3>step 1.6 (M) — <code>tools/import-json.html</code> นำเข้าข้อมูลเดิม</h3>
+  <p class="note-d">
+    รับไฟล์ JSON จาก prototype v1/v2/v3 → แปลง schema → เขียนเข้า Supabase ผ่าน adapter
+    · <strong>เครื่องมือนี้เป็นทางกู้คืน backup ด้วย</strong> — รูปแบบไฟล์ต้องล็อกให้ตรงกับที่ step 3.6 export ออก
+    ไม่งั้นจะได้ไฟล์ backup ที่เอากลับเข้าไม่ได้
+  </p>
+  <ol>
+    <li><strong>ก่อนเริ่ม 1.6:</strong> เจ้าของรัน <code>policies.sql</code> ซ้ำ + ลองเพิ่มงานจริงบน Supabase 1 งาน</li>
+    <li>commit งานค้างใน <code>pending.js</code> ให้เรียบร้อยก่อน</li>
+    <li>ล็อก schema ไฟล์ JSON กลาง (ใช้ทั้ง import และ export)</li>
+    <li>ทำ 1.6 → ทดสอบวงจร export → ลบ → import กลับ → ข้อมูลครบ</li>
+    <li>ต่อด้วย 1.7 ทดสอบจริง 3 เครื่อง = <strong>จบ Phase 1 ทีมขายเริ่มใช้งานได้จริง</strong></li>
+  </ol>
+</div>
+
+<footer>
+  สร้างจากสถานะจริงของ repo ณ commit <code>2bbd802</code> ·
+  อ้างอิง <code>CLAUDE.md</code> (แผนเต็ม) + <code>PROGRESS.md</code> (บันทึกรายละเอียดแต่ละ step) ·
+  ไฟล์นี้เป็นภาพนิ่ง — ทำ step ใหม่แล้วต้องมาอัปเดตเอง
+</footer>
+
+</div>
+</body>
+</html>

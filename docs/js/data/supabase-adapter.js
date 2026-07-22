@@ -272,7 +272,9 @@ const supabaseAdapter = {
 
   /**
    * opt:
-   *   activeOnly (true)  ซ่อนงานที่ archive แล้ว — ค่าเริ่มต้นซ่อน (step 2.5)
+   *   status ('active')  'active' = เฉพาะงานที่เดินอยู่ (ค่าเริ่มต้น)
+   *                      'archived' = เฉพาะงานที่เก็บเข้า Archive แล้ว
+   *                      'all' = ทั้งหมด
    *   teamId, stage      กรอง
    *   from, to           ช่วงเดือนคาดปิด 'YYYY-MM' (close_month)
    *   search             ค้นชื่องาน/ลูกค้า/PENDING NO.
@@ -283,14 +285,16 @@ const supabaseAdapter = {
    */
   async listPending(opt = {}) {
     const {
-      activeOnly = true, teamId, stage, from, to, search,
+      status = 'active', teamId, stage, from, to, search,
       sort = 'updated_at', dir = 'desc', limit = 500,
     } = opt;
 
     const p = new URLSearchParams();
     p.set('select', PENDING_SELECT);
 
-    if (activeOnly) p.set('is_active', 'eq.true');
+    if (status === 'active')        p.set('is_active', 'eq.true');
+    else if (status === 'archived') p.set('is_active', 'eq.false');
+    // 'all' = ไม่กรอง
     if (teamId)     p.set('team_id',   `eq.${teamId}`);
     if (stage)      p.set('stage',     `eq.${stage}`);
 
@@ -318,6 +322,12 @@ const supabaseAdapter = {
     const rows = await rest('/pending_projects?' + p.toString());
     // แปลงให้ UI ใช้ง่าย: last_log = บันทึกล่าสุด หรือ null
     return (rows || []).map(r => ({ ...r, last_log: r.follow_logs?.[0] || null }));
+  },
+
+  /** นับจำนวนงานตามสถานะ — ใช้โชว์ป้ายบนแถบ Archive ว่ามีของอยู่กี่งาน */
+  async countPending(status = 'active') {
+    const flag = status === 'archived' ? 'eq.false' : 'eq.true';
+    return countRows(`/pending_projects?select=id&is_active=${flag}`);
   },
 
   /** งาน 1 ใบ + บันทึกติดตาม + ผู้ติดต่อ — ดึงทีเดียวจบ ไม่ต้องยิง 3 รอบ */

@@ -87,12 +87,13 @@ const localAdapter = {
   // B2 — กรอง/เรียงในหน่วยความจำ ให้ผลลัพธ์เหมือน supabase-adapter
   async listPending(opt = {}) {
     const {
-      activeOnly = true, teamId, stage, from, to, search,
+      status = 'active', teamId, stage, from, to, search,
       sort = 'updated_at', dir = 'desc', limit = 500,
     } = opt;
 
     let rows = [...db.pending_projects];
-    if (activeOnly) rows = rows.filter(r => r.is_active !== false);
+    if (status === 'active')        rows = rows.filter(r => r.is_active !== false);
+    else if (status === 'archived') rows = rows.filter(r => r.is_active === false);
     if (teamId)     rows = rows.filter(r => r.team_id === teamId);
     if (stage)      rows = rows.filter(r => r.stage === stage);
     if (from)       rows = rows.filter(r => r.close_month && r.close_month >= from);
@@ -122,6 +123,11 @@ const localAdapter = {
         .filter(l => l.pending_id === r.id)
         .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)))[0] || null,
     }));
+  },
+
+  async countPending(status = 'active') {
+    return db.pending_projects.filter(r =>
+      status === 'archived' ? r.is_active === false : r.is_active !== false).length;
   },
 
   async getPending(id) {

@@ -619,3 +619,35 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 /* บอกผู้ใช้ว่ากดปุ่มไหนก็ได้ (เคยพิมพ์แล้วกดปุ่มบันทึกใหญ่ ข้อความหาย) */
 .lg-add-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lg-hint { font-size: 11.5px; color: var(--text-mute); }
+
+/* ---------- แถบสถานะงาน (กำลังทำ / Archive / ทั้งหมด) ---------- */
+.segmented {
+  display: inline-flex; border: 1px solid var(--border);
+  border-radius: var(--r-sm); overflow: hidden; background: var(--bg-panel);
+}
+.segmented button {
+  padding: 7px 12px; font-size: 12.5px; color: var(--text-dim);
+  border-right: 1px solid var(--border); min-height: 38px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.segmented button:last-child { border-right: none; }
+.segmented button:hover { background: var(--bg-hover); color: var(--text); }
+.segmented button.on { background: var(--accent-soft); color: var(--accent-text); }
+.seg-badge {
+  background: var(--bg-elev); border: 1px solid var(--border);
+  color: var(--text-dim); font-size: 10.5px; padding: 0 6px; border-radius: 999px;
+}
+.segmented button.on .seg-badge { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+
+/* ---------- ปุ่มอันตราย (เก็บเข้า Archive) ---------- */
+.btn-danger {
+  background: transparent; color: var(--red);
+  border: 1px solid var(--red-line);
+}
+.btn-danger:hover { background: color-mix(in srgb, var(--red) 12%, transparent); border-color: var(--red); }
+/* ติดอาวุธแล้ว = รอกดยืนยันครั้งที่ 2 ให้เห็นชัดว่าเปลี่ยนสถานะ */
+.btn-danger.is-armed { background: var(--red); color: var(--on-accent); border-color: var(--red); }
+
+@media (max-width: 430px) {
+  .segmented button { min-height: 44px; padding: 7px 14px; }
+}

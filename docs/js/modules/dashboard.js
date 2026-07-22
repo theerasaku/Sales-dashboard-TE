@@ -207,7 +207,7 @@ export default {
     let rows;
     try {
       // ดึงงานที่ยังเดินอยู่ทั้งหมด (RLS คัดให้แล้วว่าคนนี้เห็นอะไรได้บ้าง)
-      rows = await adapter.listPending({ activeOnly: true, limit: 1000 });
+      rows = await adapter.listPending({ status: 'active', limit: 1000 });
     } catch (e) {
       root.innerHTML = `<div class="empty"><strong>โหลดข้อมูลไม่สำเร็จ</strong>${esc(e.message)}</div>`;
       return;

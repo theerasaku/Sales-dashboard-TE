@@ -42,6 +42,7 @@ export const adapter = {
 
   // B2 pending projects
   listPending:       (opt)   => need().listPending(opt),
+  countPending:      (st)    => need().countPending(st),
   getPending:        (id)    => need().getPending(id),
   savePending:       (row)   => need().savePending(row),
   // ทางลบปกติของ sale = archive (ลบถาวรได้เฉพาะ admin — ระบบทำแค่ backup ไม่มี rollback)
