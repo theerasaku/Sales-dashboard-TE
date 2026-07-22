@@ -510,6 +510,27 @@ async function openQuickLog(host, pendingId, onSaved) {
 // แผงรายละเอียด / ฟอร์มเต็ม (ตามฟอร์มกระดาษ 2 หน้า)
 // ══════════════════════════════════════════════════════════
 
+// ตาราง PRODUCT — วางไว้ "ก่อนหมวดเงิน & เวลา" (เจ้าของสั่ง 23 ก.ค. 2569)
+// เพราะรายการสินค้าคือที่มาของยอดเงิน ควรกรอกก่อนถึงจะรู้มูลค่างานรวม
+const PRODUCT_SECTION = `
+          <section class="fgroup">
+            <h3>PRODUCT — รายการสินค้า
+              <span class="fg-note">สูงสุด 9 แถว เท่าฟอร์มกระดาษ</span></h3>
+            <div class="prodwrap">
+              <table class="prodtbl" id="prodTbl">
+                <thead><tr>
+                  <th>PRODUCT</th><th>AMOUNT</th><th>PRICE/UNIT</th>
+                  <th>TOTAL</th><th>DISCOUNT</th><th>NET</th><th>NOTE</th><th></th>
+                </tr></thead>
+                <tbody id="prodBody"></tbody>
+              </table>
+            </div>
+            <div class="lg-add-row">
+              <button type="button" class="btn btn-ghost btn-sm" id="prodAdd">+ เพิ่มแถว</button>
+              <span class="lg-hint" id="prodHint"></span>
+            </div>
+          </section>`;
+
 const FORM = [
   { group: 'หัวฟอร์ม', fields: [
     ['pending_no',     'PENDING NO. (Sale code count)',      'text', 'เช่น PD-69-004'],
@@ -627,28 +648,11 @@ async function openDetail(host, id, onSaved, teams) {
         <div class="modal-body">
           ${id && soState ? signoffBarHtml(soState, canSign(me)) : ''}
           ${FORM.map(g => `
+            ${g.group === 'เงิน & เวลา' ? PRODUCT_SECTION : ''}
             <section class="fgroup">
               <h3>${esc(g.group)}</h3>
               <div class="fgrid">${g.fields.map(f => fieldHtml(f, row, teams)).join('')}</div>
             </section>`).join('')}
-
-          <section class="fgroup">
-            <h3>PRODUCT — รายการสินค้า
-              <span class="fg-note">สูงสุด 9 แถว เท่าฟอร์มกระดาษ</span></h3>
-            <div class="prodwrap">
-              <table class="prodtbl" id="prodTbl">
-                <thead><tr>
-                  <th>PRODUCT</th><th>AMOUNT</th><th>PRICE/UNIT</th>
-                  <th>TOTAL</th><th>DISCOUNT</th><th>NET</th><th>NOTE</th><th></th>
-                </tr></thead>
-                <tbody id="prodBody"></tbody>
-              </table>
-            </div>
-            <div class="lg-add-row">
-              <button type="button" class="btn btn-ghost btn-sm" id="prodAdd">+ เพิ่มแถว</button>
-              <span class="lg-hint" id="prodHint"></span>
-            </div>
-          </section>
 
           <section class="fgroup">
             <h3>CONTACT TO — ผู้ติดต่อ 1–3</h3>

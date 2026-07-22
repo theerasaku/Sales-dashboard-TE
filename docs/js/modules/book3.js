@@ -8,6 +8,7 @@ import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
 import { logListHtml, bindLogEditing, logFormHtml, readLogForm, clearLogForm } from '../ui/loglist.js';
 import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
 import { printCustomer } from '../ui/formprint.js';
+import { photoFieldHtml, bindPhotoField } from '../ui/photofield.js';
 
 // ── สี 3 ระดับ ── (ความหมายจากฟอร์มกระดาษ)
 export const COLORS = [
@@ -440,6 +441,10 @@ async function openDetail(host, id, onSaved, teams) {
 
         <div class="modal-body">
           ${id && soState ? signoffBarHtml(soState, canSign(me)) : ''}
+          <section class="fgroup">
+            <h3>รูปลูกค้า</h3>
+            ${photoFieldHtml(row?.photo_url)}
+          </section>
           ${FORM.map(g => `
             <section class="fgroup">
               <h3>${esc(g.group)}</h3>
@@ -483,6 +488,10 @@ async function openDetail(host, id, onSaved, teams) {
   const q = (s) => host.querySelector(s);
   const close = () => { host.innerHTML = ''; };
   const fail = (m) => { q('#bErr').textContent = m; q('#bErr').hidden = false; };
+
+  // ช่องรูปลูกค้า (step 3.9+) — bindPhotoField จัดการเลือก/ย่อ/ลบ + เก็บลง input[name=photo_url]
+  const photoEl = host.querySelector('.photofield');
+  if (photoEl) bindPhotoField(photoEl, { onError: fail });
 
   q('#bClose').addEventListener('click', close);
   q('#bCancel').addEventListener('click', close);
