@@ -13,8 +13,9 @@ import book3      from './modules/book3.js';
 import activities from './modules/activities.js';
 import sources    from './modules/sources.js';
 import suppliers  from './modules/suppliers.js';
+import admin      from './modules/admin.js';
 
-const VIEWS = { dashboard, pending, book3, activities, sources, suppliers };
+const VIEWS = { dashboard, pending, book3, activities, sources, suppliers, admin };
 
 const el = {
   login:      document.getElementById('login'),
@@ -62,8 +63,14 @@ function paintUser(user) {
   el.whoAvatar.textContent = (name.trim()[0] || '?').toUpperCase();
   el.whoName.title = user.email || '';
 
-  const roleLabel = user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ฝ่ายขาย';
+  const roleLabel = { admin: 'ผู้ดูแลระบบ', manager: 'หัวหน้างาน' }[user.role] || 'ฝ่ายขาย';
   el.whoMeta.textContent = user.team ? `${roleLabel} · ${user.team}` : roleLabel;
+
+  // แถบ "ตั้งค่าระบบ" ซ่อนจากคนที่ไม่ใช่ admin — แค่ไม่ให้รก ไม่ใช่มาตรการความปลอดภัย
+  // ของจริงบังคับที่ DB (RLS + trigger) ต่อให้พิมพ์ #admin เองก็แก้อะไรไม่ได้
+  document.querySelectorAll('[data-view="admin"]').forEach(b => {
+    b.hidden = user.role !== 'admin';
+  });
 }
 
 // ---------- router ----------

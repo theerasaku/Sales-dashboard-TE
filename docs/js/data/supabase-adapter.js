@@ -112,11 +112,30 @@ async function rest(path, opts = {}) {
   });
 
   const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const msg = data?.message || `เรียกข้อมูลไม่สำเร็จ (${res.status})`;
-    throw new Error(msg);
-  }
+  if (!res.ok) throw new Error(restError(data, res));
   return data;
+}
+
+/**
+ * แปลง error ของ PostgREST/Postgres เป็นภาษาที่ทีมขายอ่านรู้เรื่อง
+ *
+ * 2 รหัสนี้เจอบ่อยสุดและข้อความดิบเป็นภาษาอังกฤษล้วน (ทดสอบกับ Postgres จริงแล้ว):
+ *   42501 = RLS ปฏิเสธ — "new row violates row-level security policy for table ..."
+ *   P0001 = trigger guard_profile_privilege() โยนเอง (ข้อความไทยอยู่แล้ว ส่งต่อตรง ๆ)
+ */
+function restError(data, res) {
+  const code = data?.code;
+  const raw  = String(data?.message || '');
+
+  if (code === 'P0001') return raw;                    // ข้อความจาก trigger เป็นไทยอยู่แล้ว
+  if (code === '42501' || /row-level security/i.test(raw))
+    return 'ไม่มีสิทธิ์ทำรายการนี้ — ข้อมูลนี้อยู่นอกทีมที่คุณดูแล (ถ้าคิดว่าผิด ให้ admin ตรวจสิทธิ์ให้)';
+  if (code === '42P01' || /does not exist/i.test(raw))
+    return `ยังไม่ได้สร้างตารางในฐานข้อมูล — ต้องเอาไฟล์ใน db/ ไปรันใน Supabase ก่อน (${raw})`;
+  if (code === '23505') return 'มีข้อมูลนี้อยู่แล้ว — ห้ามซ้ำ';
+  if (code === '23514') return 'ค่าที่กรอกไม่ผ่านเงื่อนไขของฐานข้อมูล — ตรวจว่าเลือกค่าจากรายการที่ระบบมีให้';
+
+  return raw || `เรียกข้อมูลไม่สำเร็จ (${res.status})`;
 }
 
 /**
@@ -212,6 +231,24 @@ function cleanRow(row) {
 
 /** กันอักขระที่มีความหมายพิเศษใน PostgREST (`,` แยกเงื่อนไข · `*` คือ wildcard) */
 const safeSearch = (s) => String(s || '').replace(/[,()*\\]/g, ' ').trim();
+
+/**
+ * เติม team_id ของผู้ใช้ให้อัตโนมัติเมื่อไม่ได้เลือกทีม
+ *
+ * ⚠️ ต้องมี ไม่งั้น sale บันทึกไม่ผ่านโดยไม่รู้สาเหตุ
+ *    `can_access_team(null)` คืน false กับทุกคนที่ไม่ใช่ admin
+ *    → แถวที่ไม่ระบุทีมเป็นของ admin เท่านั้น
+ *    ทดสอบกับ Postgres จริงแล้ว: sale ที่เลือก "— ยังไม่ระบุ —" โดน 42501 ทันที
+ *
+ * เช็ก 'team_id' in body ด้วย เพราะการอัปเดตบางครั้งส่งมาแค่บางคอลัมน์
+ * ถ้าเติมทุกครั้งจะไปแก้ทีมของแถวที่ผู้ใช้ไม่ได้ตั้งใจแตะ
+ */
+function fillTeam(body) {
+  if (!body.id || 'team_id' in body) {
+    if (!body.team_id) body.team_id = session?.profile?.team_id || null;
+  }
+  return body;
+}
 
 const supabaseAdapter = {
   async init() {
@@ -360,7 +397,7 @@ const supabaseAdapter = {
 
   /** มี id = แก้ · ไม่มี = สร้างใหม่ */
   async savePending(row) {
-    const body = cleanRow(row);
+    const body = fillTeam(cleanRow(row));
     const me   = session?.user?.id || null;
 
     if (body.id) {
@@ -546,7 +583,7 @@ const supabaseAdapter = {
   },
 
   async saveCustomer(row) {
-    const body = cleanRow(row);
+    const body = fillTeam(cleanRow(row));
     const me = session?.user?.id || null;
 
     if (body.id) {
@@ -653,13 +690,7 @@ const supabaseAdapter = {
     if (body.status === 'done' && !body.done_at) body.done_at = new Date().toISOString();
     if (body.status && body.status !== 'done')   body.done_at = null;
 
-    // ⚠️ team_id ว่าง = can_access_team() คืน false กับทุกคนที่ไม่ใช่ admin
-    //    ปล่อยว่างไว้ sale จะกดบันทึกไม่ผ่านโดยไม่รู้สาเหตุ → เติมทีมของตัวเองให้
-    //    เช็ก 'team_id' in body ด้วย เพราะการอัปเดตบางครั้งส่งมาแค่ { id, status }
-    //    ถ้าเติมทุกครั้งจะไปแก้ทีมของแถวที่ผู้ใช้ไม่ได้ตั้งใจแตะ
-    if (!body.id || 'team_id' in body) {
-      if (!body.team_id) body.team_id = session?.profile?.team_id || null;
-    }
+    fillTeam(body);   // เหตุผลอยู่ที่ตัวฟังก์ชัน — sale ที่ไม่เลือกทีมจะโดน RLS ปฏิเสธ
 
     if (body.id) {
       const id = body.id;
@@ -677,6 +708,7 @@ const supabaseAdapter = {
 
     if (!body.owner_id) body.owner_id = me;
     body.created_by = me;
+
     body.updated_by = me;
     const rows = await rest('/activities', {
       method: 'POST',
@@ -688,6 +720,96 @@ const supabaseAdapter = {
 
   async countActivities(status = 'plan') {
     return countRows(`/activities?select=id&is_active=eq.true&status=eq.${encodeURIComponent(status)}`);
+  },
+
+  // ---------- B1 · Admin: ผู้ใช้ / ทีม / สิทธิ์ข้ามทีม (step 2.4) ----------
+
+  /** รายชื่อผู้ใช้ — RLS คัดให้เอง (admin เห็นหมด · คนอื่นเห็นเฉพาะตัวเอง+เพื่อนร่วมทีม) */
+  async listProfiles() {
+    return rest('/profiles?select=id,email,full_name,role,team_id,is_active,teams(code,name)'
+              + '&order=role.asc,full_name.asc');
+  },
+
+  /**
+   * แก้ profile — role / team / สถานะ แก้ได้เฉพาะ admin
+   * ถ้าไม่ใช่ admin trigger guard_profile_privilege() จะโยน P0001 ออกมาเป็นภาษาไทย
+   */
+  async saveProfile(id, patch) {
+    const body = cleanRow(patch);
+    delete body.id; delete body.email;
+    const rows = await rest(`/profiles?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    if (!rows?.length) throw new Error('แก้ผู้ใช้คนนี้ไม่ได้ — ต้องเป็น admin เท่านั้น');
+    return rows[0];
+  },
+
+  /** ทีมที่คน ๆ นั้นดูข้ามได้ (นอกเหนือจากทีมตัวเอง) */
+  async listTeamAccess(profileId) {
+    const p = new URLSearchParams();
+    p.set('select', 'profile_id,team_id,can_edit');
+    if (profileId) p.set('profile_id', `eq.${profileId}`);
+    return rest('/team_access?' + p.toString());
+  },
+
+  /**
+   * ตั้งชุดทีมที่คนนี้ดูข้ามได้ทั้งชุด (ลบของเดิม → ใส่ของใหม่)
+   *
+   * ⚠️ ลบก่อนแล้วค่อยเพิ่ม ไม่ใช่ upsert
+   *    เพราะการ "เอาสิทธิ์ออก" สำคัญพอ ๆ กับการให้สิทธิ์ ถ้า upsert อย่างเดียวจะถอนไม่ได้
+   */
+  async setTeamAccess(profileId, teamIds) {
+    await rest(`/team_access?profile_id=eq.${encodeURIComponent(profileId)}`, { method: 'DELETE' });
+    const rows = (teamIds || []).filter(Boolean).map(team_id => ({
+      profile_id: profileId, team_id, granted_by: session?.user?.id || null,
+    }));
+    if (!rows.length) return [];
+    return rest('/team_access', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(rows),
+    });
+  },
+
+  async saveTeam(row) {
+    const body = cleanRow(row);
+    if (body.id) {
+      const id = body.id;
+      delete body.id;
+      const rows = await rest(`/teams?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(body),
+      });
+      if (!rows?.length) throw new Error('แก้ทีมไม่ได้ — ต้องเป็น admin เท่านั้น');
+      return rows[0];
+    }
+    const rows = await rest('/teams', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    return rows?.[0] || null;
+  },
+
+  // ---------- app_settings (เป้ายอดขาย ฯลฯ) ----------
+
+  /** คืนเป็น object { key: value } — ทุกคนอ่านได้ แก้ได้เฉพาะ admin */
+  async getSettings() {
+    const rows = await rest('/app_settings?select=key,value');
+    return Object.fromEntries((rows || []).map(r => [r.key, r.value]));
+  },
+
+  async saveSetting(key, value) {
+    const rows = await rest('/app_settings', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({ key, value, updated_by: session?.user?.id || null }),
+    });
+    if (!rows?.length) throw new Error('บันทึกค่าตั้งไม่ได้ — ต้องเป็น admin เท่านั้น');
+    return rows[0];
   },
 };
 

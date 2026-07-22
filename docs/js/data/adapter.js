@@ -74,6 +74,17 @@ export const adapter = {
   saveActivity:      (row)   => need().saveActivity(row),
   countActivities:   (st)    => need().countActivities(st),
 
+  // B1 admin — ผู้ใช้ / ทีม / สิทธิ์ข้ามทีม (step 2.4)
+  listProfiles:      ()        => need().listProfiles(),
+  saveProfile:       (id, p)   => need().saveProfile(id, p),
+  listTeamAccess:    (pid)     => need().listTeamAccess(pid),
+  setTeamAccess:     (pid, ts) => need().setTeamAccess(pid, ts),
+  saveTeam:          (row)     => need().saveTeam(row),
+
+  // ค่าตั้งระบบ (เป้ายอดขาย ฯลฯ)
+  getSettings:       ()        => need().getSettings(),
+  saveSetting:       (k, v)    => need().saveSetting(k, v),
+
   // B6 dashboard
   getDashboardStats: ()      => need().getDashboardStats(),
 };

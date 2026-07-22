@@ -16,6 +16,10 @@ const emptyDb = () => ({
   customers: [],
   customer_logs: [],
   activities: [],
+  profiles: [],
+  team_access: [],
+  teams_custom: [],
+  app_settings: {},
   session: null,
 });
 
@@ -82,13 +86,16 @@ const localAdapter = {
 
   // B1
   async listTeams() {
-    return [
+    const base = [
       { id: 'GOV.1',  code: 'GOV.1',  name: 'GOV.1' },
       { id: 'GOV.3',  code: 'GOV.3',  name: 'GOV.3' },
       { id: 'GOV.4',  code: 'GOV.4',  name: 'GOV.4' },
       { id: 'TE-IMP', code: 'TE-IMP', name: 'TE-IMP' },
       { id: 'SYSTEM', code: 'SYSTEM', name: 'System Project' },
     ];
+    // ทีมที่เพิ่มจากหน้า Admin ตอนทดสอบโหมดออฟไลน์ (ของจริงอยู่ในตาราง teams)
+    const extra = db.teams_custom.filter(t => !base.some(b => b.code === t.code));
+    return [...base, ...extra];
   },
 
   // B2 — กรอง/เรียงในหน่วยความจำ ให้ผลลัพธ์เหมือน supabase-adapter
@@ -323,6 +330,53 @@ const localAdapter = {
 
   async countActivities(status = 'plan') {
     return db.activities.filter(r => r.is_active !== false && r.status === status).length;
+  },
+
+  // B1 — Admin (step 2.4) · โหมด local ไม่มี RLS จริง จำลองให้รูปข้อมูลตรงกัน
+  async listProfiles() {
+    if (!db.profiles.length && db.session?.user) {
+      // โหมดออฟไลน์มีผู้ใช้คนเดียว — ปั้นแถวจาก session ให้หน้า Admin มีอะไรแสดง
+      db.profiles.push({ ...db.session.user, is_active: true });
+      save();
+    }
+    return db.profiles.map(r => ({
+      ...r,
+      teams: r.team_id ? { code: r.team_id, name: r.team_id } : null,
+    }));
+  },
+
+  async saveProfile(id, patch) {
+    const row = db.profiles.find(r => r.id === id);
+    if (!row) throw new Error('ไม่พบผู้ใช้คนนี้');
+    const { id: _i, email: _e, ...safe } = patch;
+    Object.assign(row, safe);
+    save();
+    return row;
+  },
+
+  async listTeamAccess(profileId) {
+    return db.team_access.filter(r => !profileId || r.profile_id === profileId);
+  },
+
+  async setTeamAccess(profileId, teamIds) {
+    db.team_access = db.team_access.filter(r => r.profile_id !== profileId);
+    for (const team_id of (teamIds || []).filter(Boolean)) {
+      db.team_access.push({ profile_id: profileId, team_id, can_edit: true });
+    }
+    save();
+    return db.team_access.filter(r => r.profile_id === profileId);
+  },
+
+  async saveTeam(row) { return upsert('teams_custom', row); },
+
+  async getSettings() {
+    return db.app_settings || {};
+  },
+
+  async saveSetting(key, value) {
+    db.app_settings = { ...(db.app_settings || {}), [key]: value };
+    save();
+    return { key, value };
   },
 
   // B6 — Phase 1.5 จะคำนวณจริง (รูปข้อมูลต้องตรงกับ supabase-adapter: null = ยังนับไม่ได้)

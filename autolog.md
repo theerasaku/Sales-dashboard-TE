@@ -27,6 +27,34 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-22 14:20 · ยังไม่ commit · 2.4 เสร็จ — role manager + team_access + หน้า Admin
+**step:** 2.4 | **ประเภท:** ฟีเจอร์ + ความปลอดภัย + เครื่องมือทดสอบ
+- `db/phase2-4.sql` ใหม่: role `manager` · ตาราง `team_access` · `app_settings` (เป้ายอดขาย)
+  + แก้ `can_access_team()` เป็น security definer และให้อ่าน `team_access`
+- `modules/admin.js` ใหม่: จัดการผู้ใช้ (role/ทีม/เปิด-ปิดบัญชี) · ติ๊กทีมที่หัวหน้าดูข้ามได้ ·
+  เพิ่มทีม · ตั้งเป้ายอดขาย (dashboard ดึงไปใช้ทันที ไม่ต้องแก้ config.js อีก)
+- ⭐ **ทดสอบ RLS ด้วย PostgreSQL จริงได้แล้ว** — ติดตั้ง PGlite (PG16 เป็น WASM)
+  จำลอง auth ของ Supabase แล้วรันไฟล์ SQL ทั้ง 4 ตามลำดับจริง + สลับ role ยิง query
+  พิสูจน์ได้ว่าหัวหน้าเห็น 3 ทีมที่ติ๊กให้ และไม่เห็นทีมที่ไม่ได้ติ๊ก (34/34)
+- **สิ่งที่การทดสอบจริงเจอ:** การถูกปฏิเสธมี 2 หน้าตา — ละเมิด `using` = 0 แถวเงียบ ๆ ·
+  ละเมิด `with check` = error 42501 → ต้องดักทั้งสองแบบ
+- เพิ่ม `restError()` แปลง error ของ Postgres (42501/P0001/42P01/23505/23514) เป็นภาษาไทย
+- **เก็บของค้างจาก 2.3:** `savePending`/`saveCustomer` เติม team_id ให้อัตโนมัติแล้ว (`fillTeam()`)
+- app.js: ป้ายสิทธิ์รองรับ "หัวหน้างาน" + ซ่อนแถบตั้งค่าจากคนที่ไม่ใช่ admin
+- bump เป็น v0.5.0
+**ไฟล์:** db/phase2-4.sql · docs/js/modules/admin.js · docs/js/modules/dashboard.js ·
+docs/js/data/supabase-adapter.js · docs/js/data/local-adapter.js · docs/js/data/adapter.js ·
+docs/js/app.js · docs/index.html · docs/css/app.css · docs/js/config.js · docs/sw.js ·
+PROGRESS.md · CLAUDE.md
+**ทดสอบ:** 174/174 ผ่าน (34 RLS บน Postgres จริง + 39 หน้า Admin + 41 + 30 + 18 + 12 regression)
+**ค้าง:**
+- 🔴 **ต้องเอา `db/phase2-4.sql` ไปรันใน Supabase ก่อน** ไม่งั้นหน้าตั้งค่าจะขึ้นว่ายังไม่มีตาราง
+- ยังไม่ได้ทดสอบด้วยบัญชี sale/manager จริงบน Supabase (ยังไม่มีบัญชีพวกนั้น)
+  แต่ตรรกะ RLS พิสูจน์บน Postgres จริงแล้ว — เหลือแค่ยืนยันว่า Supabase ให้ผลเดียวกัน
+- ไอคอน PWA (`icons/icon-192.png`) ยัง 404 — รอ step 3.3
+- 1.7 ยังเหลือทดสอบบนเครื่องจริง iPhone/S24/iPad
+
+
 ## 2026-07-22 10:40 · 8716a05 · 2.3 เสร็จ — F6 แผนติดต่อลูกค้า + เตือนงานค้างบน dashboard
 **step:** 2.3 | **ประเภท:** ฟีเจอร์ + แก้บั๊ก
 - เขียน `modules/activities.js` ใหม่ทั้งไฟล์ (จากเดิมเป็น placeholder) — จัดกลุ่มตามกำหนดเวลา ไม่ใช่ตารางเรียง

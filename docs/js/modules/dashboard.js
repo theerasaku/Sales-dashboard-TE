@@ -257,10 +257,19 @@ export default {
     try { acts = bucketize(await adapter.listActivities({ status: 'plan', limit: 500 })); }
     catch { acts = null; }
 
+    // เป้ายอดขายมาจาก app_settings (แก้ได้ในหน้าตั้งค่าระบบ) · ยังไม่ได้รัน phase2-4.sql
+    // ก็ตกกลับไปใช้ค่าใน config.js เหมือนเดิม ไม่ทำให้หน้าล่ม
+    let goal = { target_mb: CONFIG.TARGET_MB, from: CONFIG.TARGET_FROM,
+                 to: CONFIG.TARGET_TO, period: CONFIG.TARGET_PERIOD };
+    try {
+      const st = (await adapter.getSettings())?.sales_target;
+      if (st?.target_mb) goal = { ...goal, ...st };
+    } catch { /* ใช้ค่าตั้งต้น */ }
+
     if (!rows.length) {
       root.innerHTML = `
         <div class="grid cols-4">
-          ${card('เป้ายอดขาย', `${CONFIG.TARGET_MB} ล้านบาท`, CONFIG.TARGET_PERIOD)}
+          ${card('เป้ายอดขาย', `${esc(goal.target_mb)} ล้านบาท`, esc(goal.period))}
         </div>
         <div class="empty" style="margin-top:20px">
           <strong>ยังไม่มีข้อมูลให้สรุป</strong>
@@ -270,7 +279,7 @@ export default {
       return;
     }
 
-    const s = summarize(rows);
+    const s = summarize(rows, { from: goal.from, to: goal.to, targetMB: goal.target_mb });
     // ความกว้างที่กราฟใช้ได้จริง = กว้างของพื้นที่เนื้อหา ลบ padding ของ .card (18px สองข้าง)
     const chartW = Math.max(300, (root.clientWidth || 720) - 40);
     const cov = s.coverage === Infinity ? '∞' : s.coverage.toFixed(1) + '×';
@@ -279,7 +288,7 @@ export default {
 
     root.innerHTML = `
       <div class="grid cols-4">
-        ${card('เป้ายอดขาย', `${CONFIG.TARGET_MB} ล้านบาท`, CONFIG.TARGET_PERIOD)}
+        ${card('เป้ายอดขาย', `${esc(goal.target_mb)} ล้านบาท`, esc(goal.period))}
         ${card('ปิดได้แล้ว', `${fmtMB(s.won)} ล้าน`,
                `${s.pct.toFixed(1)}% ของเป้า · ขาดอีก ${fmtMB(s.gap)} ล้าน`)}
         ${card('Pipeline ถ่วงน้ำหนัก', `${fmtMB(s.weighted)} ล้าน`,
@@ -291,7 +300,7 @@ export default {
 
       <div class="prog-wrap">
         <div class="prog"><i style="width:${Math.min(100, s.pct).toFixed(1)}%"></i></div>
-        <div class="prog-note">${fmtMB(s.won)} / ${CONFIG.TARGET_MB} ล้านบาท (${s.pct.toFixed(1)}%)</div>
+        <div class="prog-note">${fmtMB(s.won)} / ${esc(goal.target_mb)} ล้านบาท (${s.pct.toFixed(1)}%)</div>
       </div>
 
       <div class="card sec">
