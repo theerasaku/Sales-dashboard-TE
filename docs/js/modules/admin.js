@@ -9,6 +9,7 @@
 
 import { adapter } from '../data/adapter.js';
 import { CONFIG } from '../config.js';
+import { buildBackup, BACKUP_FORMAT } from '../data/import-map.js';
 
 export const ROLES = [
   { id: 'admin',   label: 'ผู้ดูแลระบบ', note: 'เห็นและแก้ได้ทุกทีม · จัดการผู้ใช้ได้' },
@@ -169,6 +170,24 @@ async function renderAdmin(root) {
         <p class="login-err" id="tmErr" role="alert" hidden></p>
       </div>
 
+      <div class="card sec">
+        <h3 class="sec-h">สำรอง &amp; กู้คืนข้อมูล <span class="sec-sub">ไฟล์เดียวครบทุกตาราง</span></h3>
+        <p class="sec-foot" style="margin:0 0 12px">
+          รูทีนแนะนำ: กด <b>ดาวน์โหลด backup</b> ทุกวันศุกร์ เก็บไฟล์ไว้นอกระบบ (Google Drive / คอมส่วนตัว)
+          — Supabase สำรองอัตโนมัติวันละครั้งเก็บ 7 วันอยู่แล้ว แต่กู้ได้ทีละทั้งโปรเจกต์
+          ไฟล์นี้ให้กู้เฉพาะจุดได้ · ตาราง CSV รายหน้าอยู่ที่ปุ่ม ⭳ CSV ในแต่ละแถบ
+        </p>
+        <div class="bk-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="bkExport">⭳ ดาวน์โหลด backup (JSON)</button>
+          <label class="btn btn-ghost btn-sm bk-file">
+            ⭱ กู้คืนจากไฟล์ backup
+            <input type="file" id="bkFile" accept="application/json,.json" hidden>
+          </label>
+          <span class="lg-hint" id="bkMsg"></span>
+        </div>
+        <p class="bk-warn" id="bkWarn" hidden></p>
+      </div>
+
       <div id="aPanel"></div>`;
 
     const $ = (s) => root.querySelector(s);
@@ -251,6 +270,59 @@ async function renderAdmin(root) {
         await adapter.saveTeam({ code, name: name || code, parent_team_id: parent });
         await renderAdmin(root);
       } catch (e) { flash($('#tmErr'), e.message, true); }
+    });
+
+    // ── สำรอง & กู้คืน (step 3.6) ──
+    $('#bkExport').addEventListener('click', async () => {
+      const btn = $('#bkExport');
+      btn.disabled = true; btn.textContent = 'กำลังรวบรวม…';
+      try {
+        const tables = await adapter.exportAll();
+        const backup = buildBackup(tables);
+        const count = Object.values(tables).reduce((a, r) => a + (Array.isArray(r) ? r.length : 0), 0);
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `te-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        flash($('#bkMsg'), `✓ ดาวน์โหลดแล้ว — ${count} แถวจากทุกตาราง`);
+      } catch (e) { flash($('#bkMsg'), 'สำรองไม่สำเร็จ: ' + e.message, true); }
+      btn.disabled = false; btn.textContent = '⭳ ดาวน์โหลด backup (JSON)';
+    });
+
+    // กู้คืน — ยืนยัน 2 ขั้น เพราะเขียนทับข้อมูลปัจจุบัน
+    let pendingRestore = null;
+    $('#bkFile').addEventListener('change', async (ev) => {
+      const file = ev.target.files?.[0];
+      ev.target.value = '';                 // ให้เลือกไฟล์เดิมซ้ำได้
+      if (!file) return;
+      const warn = $('#bkWarn');
+      try {
+        const data = JSON.parse(await file.text());
+        if (data?._format !== BACKUP_FORMAT || !data.tables)
+          throw new Error('ไม่ใช่ไฟล์ backup ของระบบนี้ (ต้องเป็น te-backup-*.json ที่ปุ่มด้านบน export ออก)');
+        const n = Object.values(data.tables).reduce((a, r) => a + (Array.isArray(r) ? r.length : 0), 0);
+        pendingRestore = data.tables;
+        warn.innerHTML = `ไฟล์ลงวันที่ <b>${esc((data.exported_at || '').slice(0, 10))}</b> · ${n} แถว
+          — จะ<b>เขียนทับ</b>ข้อมูลที่ id ตรงกัน (โปรเจกต์เดิม) ·
+          <button type="button" class="btn btn-danger btn-sm" id="bkGo">ยืนยันกู้คืน</button>`;
+        warn.hidden = false;
+        $('#bkGo').addEventListener('click', async () => {
+          const go = $('#bkGo');
+          go.disabled = true; go.textContent = 'กำลังกู้คืน…';
+          try {
+            const summary = await adapter.restoreBackup(pendingRestore);
+            const ok = Object.entries(summary).map(([t, v]) => `${t}: ${v}`).join(' · ');
+            warn.hidden = true;
+            flash($('#bkMsg'), '✓ กู้คืนแล้ว — ' + ok);
+            setTimeout(() => renderAdmin(root), 800);
+          } catch (e) {
+            go.disabled = false; go.textContent = 'ยืนยันกู้คืน';
+            flash($('#bkMsg'), 'กู้คืนไม่สำเร็จ: ' + e.message, true);
+          }
+        });
+      } catch (e) { warn.hidden = true; flash($('#bkMsg'), e.message, true); }
     });
 }
 

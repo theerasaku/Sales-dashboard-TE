@@ -118,6 +118,10 @@ export const adapter = {
   deleteIntake:  (id)    => need().deleteIntake(id),
   approveIntake: (id, i) => need().approveIntake(id, i),
   rejectIntake:  (id)    => need().rejectIntake(id),
+
+  // Backup & กู้คืน (step 3.6) — ดึงทุกตาราง / เขียนกลับทุกตาราง
+  exportAll:     ()      => need().exportAll(),
+  restoreBackup: (t)     => need().restoreBackup(t),
 };
 
 export default adapter;

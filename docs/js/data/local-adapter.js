@@ -590,6 +590,58 @@ const localAdapter = {
     return row;
   },
 
+  // ── Backup & กู้คืน (step 3.6) · รูปข้อมูลต้องตรงกับ supabase-adapter ──
+  async exportAll() {
+    const clone = (a) => JSON.parse(JSON.stringify(a || []));
+    return {
+      teams:            clone(db.teams_custom),
+      profiles:         clone(db.profiles),
+      team_access:      clone(db.team_access),
+      team_targets:     clone(db.team_targets),
+      pending_projects: clone(db.pending_projects),
+      follow_logs:      clone(db.follow_logs),
+      project_contacts: clone(db.project_contacts),
+      pending_products: clone(db.pending_products),
+      customers:        clone(db.customers),
+      customer_logs:    clone(db.customer_logs),
+      activities:       clone(db.activities),
+      lead_sources:     clone(db.lead_sources),
+      expo_customers:   clone(db.expo_customers),
+      signoffs:         clone(db.signoffs),
+      intake_items:     clone(db.intake_items),
+      // app_settings เก็บเป็น rows {key,value} ให้ตรงกับ supabase (import อ่านรูปเดียวกัน)
+      app_settings:     Object.entries(db.app_settings || {}).map(([key, value]) => ({ key, value })),
+    };
+  },
+
+  async restoreBackup(tables) {
+    const summary = {};
+    const put = (dbKey, name) => {
+      const rows = tables?.[name];
+      if (!Array.isArray(rows)) return;
+      db[dbKey] = JSON.parse(JSON.stringify(rows));
+      summary[name] = rows.length;
+    };
+    put('teams_custom',     'teams');
+    put('team_targets',     'team_targets');
+    put('pending_projects', 'pending_projects');
+    put('follow_logs',      'follow_logs');
+    put('project_contacts', 'project_contacts');
+    put('pending_products', 'pending_products');
+    put('customers',        'customers');
+    put('customer_logs',    'customer_logs');
+    put('activities',       'activities');
+    put('lead_sources',     'lead_sources');
+    put('expo_customers',   'expo_customers');
+    put('intake_items',     'intake_items');
+    if (Array.isArray(tables?.app_settings)) {
+      db.app_settings = Object.fromEntries(tables.app_settings.map(r => [r.key, r.value]));
+      summary.app_settings = tables.app_settings.length;
+    }
+    save();
+    return summary;
+  },
+
   // B6 — Phase 1.5 จะคำนวณจริง (รูปข้อมูลต้องตรงกับ supabase-adapter: null = ยังนับไม่ได้)
   async getDashboardStats() {
     return {

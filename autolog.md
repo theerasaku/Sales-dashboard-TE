@@ -27,6 +27,17 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-23 22:09 · ยังไม่ commit · 3.6 Export / Backup รวมทุกตาราง + กู้คืน
+**step:** 3.6 | **ประเภท:** ฟีเจอร์ (backup ครบระบบ + วงจรกู้คืน)
+- adapter (3 ไฟล์) +2 เมธอด: `exportAll()` (ดึงทุกตาราง) · `restoreBackup(tables)` (เขียนกลับ upsert ตาม id)
+  - supabase: export = select=* ทุกตาราง (RLS ทำงาน · admin ได้ทั้งระบบ) · restore = upsert ตามลำดับ FK · ข้าม profiles/team_access/signoffs (auth/append-only)
+  - local: dump/replace db arrays ครบ
+- หน้า Admin: ส่วน "สำรอง & กู้คืน" — ปุ่มดาวน์โหลด `te-backup-YYYY-MM-DD.json` (ผ่าน `buildBackup` = BACKUP_FORMAT ที่ 1.6 อ่านได้) + อัปโหลดกู้คืน (ยืนยัน 2 ขั้น) + รูทีนรายสัปดาห์
+- รูปแบบไฟล์ล็อกไว้ที่ `import-map.js` (`_format:'te-sales-dashboard-backup', _version:1, tables:{}`)
+**ไฟล์:** docs/js/data/{adapter,supabase-adapter,local-adapter}.js · docs/js/modules/admin.js · docs/css/app.css · docs/js/config.js · docs/sw.js
+**ทดสอบ:** วงจร backup **12/12** (puppeteer โหมด local: export ทุกตาราง → ล้าง → restore → pending/customer/ผู้ติดต่อ/บันทึกกลับครบ · summary ถูก · UI admin มีปุ่ม) · parity 55 ครบ · ไม่มี secret/hex · bump v0.17.0
+**ค้าง:** supabase restore ออกแบบสำหรับกู้ "โปรเจกต์เดิม" (teams/profiles ยังอยู่) — ยังไม่ทดสอบบน Supabase จริง
+
 ## 2026-07-23 21:56 · ยังไม่ commit · ปุ่ม Success/Miss + ติ๊ก PDF + เสริม error ลิงก์ลืมรหัสผ่าน
 **step:** — (เจ้าของขอเพิ่ม จาก WishtoHave) | **ประเภท:** ฟีเจอร์ + แก้บั๊ก (UX)
 - เจ้าของแจ้ง: **รัน `db/phase3-5.sql` แล้ว** (ผ่าน 5/5 · intake_items + RLS + anon ปิด) → AI Intake staging พร้อมใช้

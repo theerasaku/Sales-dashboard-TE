@@ -202,6 +202,22 @@ const SORTABLE = new Set([
   'value_baht', 'project_name', 'customer_name', 'stage', 'updated_at', 'created_at',
 ]);
 
+// ── Backup (step 3.6) ──
+// ทุกตารางที่ดึงลง backup (รวม profiles/team_access/signoffs ไว้เป็นบันทึก แม้ตอนกู้จะข้าม)
+const BACKUP_TABLES = [
+  'teams', 'profiles', 'team_access', 'team_targets',
+  'pending_projects', 'follow_logs', 'project_contacts', 'pending_products',
+  'customers', 'customer_logs', 'activities',
+  'lead_sources', 'expo_customers', 'signoffs', 'intake_items', 'app_settings',
+];
+// ลำดับกู้คืนตาม FK (พ่อก่อนลูก) · ข้าม profiles/team_access (auth จัดการ) + signoffs (append-only)
+const RESTORE_ORDER = [
+  'teams', 'team_targets',
+  'pending_projects', 'follow_logs', 'project_contacts', 'pending_products',
+  'customers', 'customer_logs', 'activities',
+  'lead_sources', 'expo_customers', 'intake_items', 'app_settings',
+];
+
 // ฟิลด์ที่ DB จัดการเอง — ต้องตัดทิ้งก่อนส่งกลับไปเขียน ไม่งั้น PostgREST ตอบ 400
 // ⚠️ ต้องมีชื่อ "ตารางที่ embed มา" ครบทุกตัวที่ select ไว้ข้างล่าง
 //    ไม่งั้นพอเอาแถวที่โหลดมาส่งกลับไปบันทึก จะติดคอลัมน์ที่ไม่มีจริงไปด้วย
@@ -1123,6 +1139,47 @@ const supabaseAdapter = {
     });
     if (!rows?.length) throw new Error('ทิ้งรายการนี้ไม่ได้ — อยู่นอกทีมที่คุณมีสิทธิ์');
     return rows[0];
+  },
+
+  // ---------- Backup & กู้คืน (step 3.6) ----------
+  //
+  // export = ดึงทุกตาราง (select=* ดิบ ๆ) · RLS ทำงานตามปกติ →
+  //   admin ได้ทั้งระบบ · คนอื่นได้เฉพาะทีมตัวเอง (ปุ่ม backup อยู่หน้า admin จึงได้ทั้งระบบ)
+  // รูปแบบไฟล์ล็อกไว้ที่ import-map.js (BACKUP_FORMAT) — ต้องอ่านกลับด้วย 1.6 ได้
+
+  /** ดึงทุกตารางเป็น { ชื่อตาราง: [rows] } — ตารางที่ยังไม่มีคืน [] ไม่ทำให้ทั้งชุดพัง */
+  async exportAll() {
+    const dump = async (t) => {
+      try { return await rest(`/${t}?select=*&limit=100000`); }
+      catch { return []; }
+    };
+    const out = {};
+    for (const t of BACKUP_TABLES) out[t] = await dump(t);
+    return out;
+  },
+
+  /**
+   * เขียนกลับ (upsert ตาม id) ทีละตารางตามลำดับ FK ที่ปลอดภัย
+   * ⚠️ ใช้กู้คืน "โปรเจกต์เดิม" (teams/profiles ยังอยู่) — ข้าม profiles/team_access/signoffs
+   *    (auth จัดการเอง · ลายเซ็นเป็น append-only แก้ไม่ได้)
+   */
+  async restoreBackup(tables) {
+    const summary = {};
+    const upsert = async (t, rows, conflict = 'id') => {
+      if (!Array.isArray(rows) || !rows.length) { summary[t] = 0; return; }
+      try {
+        await rest(`/${t}?on_conflict=${conflict}`, {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify(rows),
+        });
+        summary[t] = rows.length;
+      } catch (e) { summary[t] = 'ผิดพลาด: ' + e.message; }
+    };
+    for (const t of RESTORE_ORDER) {
+      await upsert(t, tables?.[t], t === 'app_settings' ? 'key' : 'id');
+    }
+    return summary;
   },
 };
 
