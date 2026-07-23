@@ -25,8 +25,9 @@
 | 3.3 | F8 PWA (manifest + sw + icons) | M | ⬜ |
 | 3.4 | **B7 + F9 แถบ Supplier** (ใหม่ v2) | M | ⬜ |
 | 3.5 | **F10 AI Intake** (ใหม่ v2) | L | ✅ **เสร็จ** — staging + preview + ไฮไลต์ confidence + merge กันซ้ำ (ทดสอบ RLS 24/24 · UI 27/27) |
-| 3.6 | export CSV/JSON ทุก module + backup + ทดสอบรวม | S | ⬜ |
-| 3.7 | **ธีม/สี — เลือกธีมสำเร็จรูป + สีเน้น** (ใหม่) | S | ⬜ |
+| 3.6 | export CSV/JSON ทุก module + backup + ทดสอบรวม | S | ✅ **เสร็จ** — backup รวมทุกตาราง + กู้คืนในหน้า Admin (ทดสอบวงจร 12/12) |
+| 3.7 | **ธีม/สี — เลือกธีมสำเร็จรูป + สีเน้น** (ใหม่) | S | ✅ **เสร็จ** — Dark/สว่าง/คอนทราสต์สูง + สีเน้น 5 สี (ทดสอบ 15/15) |
+| 3.8 | **AI Intake อัตโนมัติ (Edge Function)** (ใหม่ v3) | M | ✅ **เสร็จ** — อ่านรูปด้วย Claude vision · key ฝั่งเซิร์ฟเวอร์ (ทดสอบ flow 9/9) |
 
 ## สิ่งที่ทำใน Phase 0.1
 
@@ -1231,17 +1232,39 @@ unique (pending_id, line_no)
 
 ---
 
-## ขั้นตอนต่อไป
+## step 3.6 — Export / Backup รวมทุกตาราง ✅ (23 ก.ค. 2569)
+- `adapter.exportAll()` ดึงทุกตาราง · `restoreBackup()` เขียนกลับ (upsert ตาม id · เรียงตาม FK · ข้าม profiles/team_access/signoffs)
+- หน้า Admin: ส่วน "สำรอง & กู้คืน" — ดาวน์โหลด `te-backup-YYYY-MM-DD.json` (`buildBackup` = `BACKUP_FORMAT` ที่ import-json.html 1.6 อ่านได้) + อัปโหลดกู้คืน (ยืนยัน 2 ขั้น) + รูทีนรายสัปดาห์
+- ทดสอบวงจร **12/12**: export ทุกตาราง → ล้าง → restore → pending/customer/ผู้ติดต่อ/บันทึกกลับครบ
 
-**⏸️ step 3.4 แถบ Supplier — ถอดออกจากแผนแล้ว** (เจ้าของสั่ง 23 ก.ค. 2569 · "ยังไม่ต้องใช้ฟังก์ชันนี้")
-สเปคเก็บไว้ใน `CLAUDE.md` หัวข้อ "📦 แผนอัปเดตอนาคต"
+## step 3.7 — ธีม/สี ✅ (23 ก.ค. 2569)
+- `docs/js/ui/theme.js`: 3 ธีม (Linear Dark / สว่าง / คอนทราสต์สูง) + สีเน้น 5 สี · จำใน localStorage · สลับด้วย `data-theme`/`data-accent`
+- app.css: `[data-theme="light"]`/`[data-theme="contrast"]` + `[data-accent="..."]` · `--accent-soft`/`--accent-text` derive จาก `--accent`+`--text` (color-mix)
+- index.html: สคริปต์ inline ใน `<head>` ตั้งธีมก่อน CSS วาด → กันจอกระพริบ · ปุ่ม 🎨 ในแถบบน (ทุกคนเข้าถึง)
+- ⭐ ไม่มี hex ใน theme.js เลย (สีอยู่ใน app.css ที่เดียว) · swatch preview ด้วย data-theme/data-accent + var()
+- ทดสอบ **15/15**: สลับ 3 ธีม + 5 สีเน้น · พื้นเปลี่ยนจริง · reload จำได้ไม่กระพริบ
 
-**เหลือ 3 step: 3.6 · 3.7 · 3.8** (+1.7 ทดสอบเครื่องจริง)
-- **step 3.6 (S)** — export CSV/JSON ทุก module + ไฟล์ backup รวม `te-backup-YYYY-MM-DD.json`
-  (รูปแบบต้องตรงกับ `BACKUP_FORMAT` ใน `docs/js/data/import-map.js` ที่ 1.6 อ่านได้) + ทดสอบวงจร export→ลบ→import กลับ
-- **step 3.7 (S)** — หน้าตั้งค่าเลือกธีมสำเร็จรูป (Linear Dark / สว่าง / คอนทราสต์สูง) + สีเน้น
-- **step 3.8 (M)** — AI Intake อัตโนมัติผ่าน Edge Function (ถือ `ANTHROPIC_API_KEY` ฝั่งเซิร์ฟเวอร์) →
-  แทนที่แค่ "ที่มา JSON" · staging/preview/merge (3.5) ใช้ของเดิมทั้งหมด
+## step 3.8 — AI Intake อัตโนมัติ (Edge Function) ✅ (23 ก.ค. 2569 · จบ roadmap)
+- `supabase/functions/ai-intake/index.ts` (Deno): ถือ `ANTHROPIC_API_KEY` ฝั่งเซิร์ฟเวอร์ → รับรูป → Claude vision อ่านลายมือไทย → คืน JSON
+  - ตรวจ JWT ก่อนเรียก Claude (กันคนนอกใช้ key ฟรี) · CORS ครบ · key อ่านจาก Deno.env เท่านั้น · README คู่มือ deploy
+- `adapter.aiExtract()`: supabase = POST ไป Edge Function (token อยู่ใน adapter) · local = demo stub
+- `ai-intake.js`: ปุ่ม 📷 อ่านรูป → ย่อ→base64→aiExtract→`parsePasted` เดิม→staging (ใช้ `stageRecords` ร่วมกับทางวางเอง)
+- ⭐ เปลี่ยนแค่ "JSON มาจากไหน" · staging/preview/merge/confidence (3.5) ใช้ต่อทั้งหมด · ไม่ deploy ก็ตกไปทางก๊อปวางเองได้
+- ทดสอบ flow **9/9**: อัปโหลดรูป → staging → บันทึกเข้า pending จริง
+
+---
+
+## 🎉 จบ roadmap 24 step แล้ว
+
+**เหลือแค่ 1.7** — ทดสอบบนเครื่องจริง (iPhone / Samsung S24 / iPad): login, เพิ่มงาน, ดู dashboard, ติดตั้ง PWA
+
+**เจ้าของต้องทำให้ครบ (setup ฝั่ง Supabase):**
+1. รัน `db/phase3-5.sql` (ตาราง staging ของ AI Intake)
+2. ตั้ง Supabase → Authentication → URL Configuration: Site URL + Redirect URLs = `https://theerasaku.github.io/Sales-dashboard-TE/**` (แก้ลืมรหัสผ่านเด้ง 404)
+3. (ถ้าอยากใช้ปุ่มอ่านรูปอัตโนมัติ) deploy Edge Function + ตั้ง `ANTHROPIC_API_KEY` — ดู `supabase/functions/ai-intake/README.md`
+   ไม่ทำก็ยังใช้ AI Intake ได้ด้วยวิธีก๊อปคำสั่งไปวางใน Claude เอง (ฟรี)
+
+**⏸️ step 3.4 แถบ Supplier — ถอดออกจากแผนแล้ว** (23 ก.ค. 2569) · สเปคอยู่ใน `CLAUDE.md` หัวข้อ "📦 แผนอัปเดตอนาคต"
 
 
 
