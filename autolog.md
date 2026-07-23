@@ -27,6 +27,22 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-23 21:56 · ยังไม่ commit · ปุ่ม Success/Miss + ติ๊ก PDF + เสริม error ลิงก์ลืมรหัสผ่าน
+**step:** — (เจ้าของขอเพิ่ม จาก WishtoHave) | **ประเภท:** ฟีเจอร์ + แก้บั๊ก (UX)
+- เจ้าของแจ้ง: **รัน `db/phase3-5.sql` แล้ว** (ผ่าน 5/5 · intake_items + RLS + anon ปิด) → AI Intake staging พร้อมใช้
+- **ปุ่ม Success / Miss** ในฟอร์ม Pending (ด้านล่าง เหนือปุ่มบันทึก):
+  - กด Success = ตั้ง stage=won + **เติม purchased_day=วันนี้** (todayISO) ถ้ายังว่าง → นับเข้าเป้า 80 ล้านได้จริง
+  - กด Miss = ตั้ง stage=lost · ทั้งคู่บันทึกทั้งฟอร์ม (คงค่าที่แก้อื่น + ช่อง "เพราะ" result_because) แล้วปิด+reload
+  - ปุ่มไฮไลต์ตาม stage ปัจจุบันตอนเปิดฟอร์ม · ช่อง result_because เพิ่มในฟอร์ม (เดิม PDF มีช่องนี้แต่กรอกไม่ได้)
+- **ติ๊กบน PDF**: RESULT row เดิม (S ✓ / M ✓ ตาม stage) → ทำเป็น checkbox ชัด `[✓] Success (ได้งาน)` · `[ ] Miss` + BECAUSE · `.pf-box` ใน print.css (#000 ตามกติกา)
+- **ลืมรหัสผ่านเด้ง 404**: จากภาพ ลิงก์ในเมลเด้งไป `theerasaku.github.io/` (root) แทน `/Sales-dashboard-TE/`
+  → **ต้นเหตุคือ config Supabase** (Redirect URL/Site URL) ไม่ใช่บั๊กโค้ด · redirect_to ในโค้ดถูกแล้ว (`origin+pathname`)
+  → เสริมโค้ด: `readHashError()` ใน app.js อ่าน `#error=...` ที่ Supabase แนบมาตอนลิงก์หมดอายุ → ขึ้นข้อความไทยชัด ๆ แทนหน้า login เงียบ ๆ
+- bump v0.16.0 (config + sw)
+**ไฟล์:** docs/js/modules/pending.js · docs/js/ui/formprint.js · docs/css/print.css · docs/css/app.css · docs/js/app.js · docs/js/config.js · docs/sw.js
+**ทดสอบ:** Success/Miss + PDF **14/14** (puppeteer คลิกจริง: won เติม purchased_day/lost ไม่เติม · PDF ติ๊กถูก · result_because บันทึก · ไม่มี JS error) · intake-ui ซ้ำ 27/27 ไม่ regression
+**ค้าง:** **เจ้าของต้องแก้ Supabase → Authentication → URL Configuration:** Site URL = `https://theerasaku.github.io/Sales-dashboard-TE/` + Redirect URLs เพิ่ม `https://theerasaku.github.io/Sales-dashboard-TE/**` (มี `/**`) ไม่งั้นลิงก์ลืมรหัสผ่านยังเด้ง 404
+
 ## 2026-07-23 21:38 · ยังไม่ commit · 3.5 AI Intake — staging + preview + merge (งานใหญ่ L)
 **step:** 3.5 | **ประเภท:** ฟีเจอร์ (โมดูลใหม่ + ตารางใหม่ + ปุ่ม 2 แถบ)
 - **DB `db/phase3-5.sql`** — ตาราง `intake_items` (staging): source · target_type · parsed/edited/confidence (jsonb) · status(draft/approved/merged/rejected) · target_table/target_id/merge_mode · approved_by

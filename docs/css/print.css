@@ -63,6 +63,14 @@
   .pf-n { flex: 0 0 auto; font-size: 9pt; }
   .pf-sp { flex: 1 1 auto; }
 
+  /* ผลงาน (RESULT) — ช่องติ๊ก Success / Miss · ดำบนขาวเสมอ (print.css hardcode สีได้จุดเดียว) */
+  .pf-chk { flex: 0 0 auto; font-size: 9pt; margin-right: 6mm; white-space: nowrap; }
+  .pf-box {
+    display: inline-block; width: 3.4mm; height: 3.4mm; line-height: 3.4mm;
+    text-align: center; border: 0.4pt solid #000; margin-right: 1mm;
+    font-size: 8pt; vertical-align: middle;
+  }
+
   /* ⚠️ min-width:0 จำเป็น ไม่งั้นข้อความยาวดันบรรทัดทะลุขอบกระดาษ
      (บทเรียนเดียวกับ .topbar-left บนหน้าจอ — flex item ไม่ยอมหดถ้าไม่ใส่) */
   .pf-v {

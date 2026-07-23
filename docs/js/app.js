@@ -142,6 +142,19 @@ function escapeHtml(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 
+/** อ่าน error ที่ Supabase แนบมาใน hash ตอนลิงก์ recovery หมดอายุ/ผิด — คืนข้อความไทย หรือ null */
+function readHashError() {
+  try {
+    const h = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+    const raw = h.get('error_description') || h.get('error');
+    if (!raw) return null;
+    const t = decodeURIComponent(raw).toLowerCase();
+    if (t.includes('expired') || t.includes('otp'))
+      return 'ลิงก์ตั้งรหัสผ่านหมดอายุแล้ว — กด "ลืมรหัสผ่าน?" เพื่อขอลิงก์ใหม่';
+    return 'ลิงก์ตั้งรหัสผ่านไม่ถูกต้อง — กด "ลืมรหัสผ่าน?" เพื่อขอลิงก์ใหม่';
+  } catch { return null; }
+}
+
 function bindNav() {
   document.querySelectorAll('.nav-item, .bn').forEach(btn => {
     btn.addEventListener('click', () => render(btn.dataset.view));
@@ -282,6 +295,11 @@ async function boot() {
     recoveryToken = await adapter.readRecoveryToken();
     if (recoveryToken) { showLoginPanel('newpass'); el.newpass1?.focus(); return; }
   } catch { /* ไม่ใช่ลิงก์ recovery ก็ทำงานต่อปกติ */ }
+
+  // ลิงก์ recovery หมดอายุ/ไม่ถูกต้อง → Supabase เด้งกลับพร้อม #error=... บอกผู้ใช้ให้ชัด
+  // (กันเคสกดลิงก์เก่าแล้วเห็นแต่หน้า login เฉย ๆ ไม่รู้ว่าเกิดอะไร)
+  const hashErr = readHashError();
+  if (hashErr) { showLogin(); showLoginError(hashErr); history.replaceState(null, '', location.pathname); }
 
   // มี session ค้างอยู่ไหม (เปิดเบราว์เซอร์ใหม่แล้วไม่ต้องล็อกอินซ้ำ)
   let session = null;

@@ -4,7 +4,7 @@
 // ข้อมูลทั้งหมดผ่าน adapter เท่านั้น ห้ามเรียก Supabase ตรงจากไฟล์นี้
 
 import { adapter } from '../data/adapter.js';
-import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
+import { dateField, thaiDate, initDatePicker, todayISO } from '../ui/datepicker.js';
 import { logListHtml, bindLogEditing } from '../ui/loglist.js';
 import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
 import { printPending } from '../ui/formprint.js';
@@ -714,6 +714,18 @@ async function openDetail(host, id, onSaved, teams) {
           จะได้ไม่มาปนกับงานที่ยังเดินอยู่ (กิจกรรมที่ผูกไว้จะหยุดเตือนด้วย)
         </p>
 
+        ${id ? `
+        <div class="resultbar">
+          <span class="resultbar-l">ผลของงานนี้</span>
+          <button type="button" class="btn-result btn-win" id="pResWin">✓ Success — ได้งาน</button>
+          <button type="button" class="btn-result btn-miss" id="pResMiss">✗ Miss — ไม่ได้งาน</button>
+          <label class="resultbar-because">
+            <span>เพราะ</span>
+            <input type="text" name="result_because" value="${esc(row?.result_because)}"
+                   placeholder="เหตุผล เช่น ราคาสู้คู่แข่งไม่ได้ / ได้สเปกตรงงาน">
+          </label>
+        </div>` : ''}
+
         <div class="modal-foot">
           ${id ? `<button type="button" id="pArch"
                     class="btn btn-sm ${archived ? 'btn-ghost' : 'btn-danger'}">
@@ -751,6 +763,32 @@ async function openDetail(host, id, onSaved, teams) {
   stageSel?.addEventListener('change', syncArchHint);
   syncArchHint();
   const fail  = (msg) => { const e = q('#pErr'); e.textContent = msg; e.hidden = false; };
+
+  // ── ปุ่ม Success / Miss — ระบุได้งาน/ไม่ได้งานในคลิกเดียว ──
+  // กด = ตั้ง stage เป็น won/lost แล้วบันทึกทั้งฟอร์ม (คงค่าที่แก้อื่น ๆ + เหตุผลไว้ด้วย)
+  // ⭐ won ต้องมี purchased_day ถึงจะนับเข้าเป้า 80 ล้าน (monthOf นับจาก purchased_day+stage='won')
+  //    → เติม "วันนี้" ให้ถ้ายังไม่ได้กรอก · ใช้ todayISO() ไม่ใช่ new Date() (กันเพี้ยนก่อน 07:00)
+  const setResActive = (stg) => {
+    q('#pResWin') ?.classList.toggle('on', stg === 'won');
+    q('#pResMiss')?.classList.toggle('on', stg === 'lost');
+  };
+  if (id) setResActive(stageSel?.value);
+  stageSel?.addEventListener('change', () => setResActive(stageSel.value));
+
+  const applyResult = (win) => {
+    if (stageSel) stageSel.value = win ? 'won' : 'lost';
+    if (win) {
+      const pd = host.querySelector('input[name="purchased_day"]');
+      if (pd && !pd.value) pd.value = todayISO();
+    }
+    setResActive(stageSel?.value);
+    syncArchHint();
+    const form = q('#pForm');
+    if (form.requestSubmit) form.requestSubmit();   // บันทึกทั้งฟอร์ม → submit handler ปิด+reload ต่อ
+    else q('#pSave').click();                        // fallback เบราว์เซอร์เก่า (#pSave = type=submit)
+  };
+  q('#pResWin') ?.addEventListener('click', () => applyResult(true));
+  q('#pResMiss')?.addEventListener('click', () => applyResult(false));
 
   q('#pClose').addEventListener('click', close);
   q('#pCancel').addEventListener('click', close);

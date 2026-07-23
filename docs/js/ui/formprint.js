@@ -147,8 +147,8 @@ export function pendingFormHtml(row, contacts, products, logs) {
     <div class="pf-row"><span class="pf-l">COMPETITOR</span> ${V(row.competitors)}</div>
 
     <div class="pf-row"><span class="pf-l">RESULT</span>
-      <span class="pf-n">S</span> ${V(row.stage === 'won' ? '✓' : '')}
-      <span class="pf-n">M</span> ${V(row.stage === 'lost' ? '✓' : '')}
+      <span class="pf-chk"><span class="pf-box">${row.stage === 'won' ? '✓' : '&nbsp;'}</span> Success (ได้งาน)</span>
+      <span class="pf-chk"><span class="pf-box">${row.stage === 'lost' ? '✓' : '&nbsp;'}</span> Miss (ไม่ได้งาน)</span>
       <span class="pf-l">BECAUSE</span> ${V(row.result_because)}</div>
   </section>`;
 
