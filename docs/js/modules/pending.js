@@ -238,11 +238,14 @@ export default {
       saveView(view);
       listEl.innerHTML = '<div class="skeleton">กำลังโหลด…</div>';
       try {
+        // ⚠️ Archive = งานที่จบแล้ว — "เดือนคาดปิด" ไม่มีความหมาย จึงไม่กรองเดือน
+        //    (ไม่งั้น badge นับงานในคลังทั้งหมด แต่ลิสต์ถูกตัวกรองเดือนซ่อน → เลข 1 แต่ลิสต์ว่าง งง)
+        const archived = view.status === 'archived';
         rows = await adapter.listPending({
           status: view.status,
           stage:  view.stage  || undefined,
-          from:   view.from   || undefined,
-          to:     view.to     || undefined,
+          from:   archived ? undefined : (view.from || undefined),
+          to:     archived ? undefined : (view.to   || undefined),
           search: view.search || undefined,
           sort: view.sort, dir: view.dir,
         });
@@ -252,6 +255,18 @@ export default {
         return;
       }
       paint();
+      refreshArcBadge();   // อัปเดตเลขบนแถบ Archive ทุกครั้ง (กดเก็บ/ปลุกกลับแล้วเลขตามทันที)
+    }
+
+    // ป้ายบอกว่ามีงานค้างใน Archive กี่งาน — เรียกทุก reload ให้ตรงเสมอ
+    async function refreshArcBadge() {
+      const el = $('pArcCount');
+      if (!el) return;
+      try {
+        const n = await adapter.countPending('archived');
+        el.textContent = n;
+        el.hidden = !(n > 0);
+      } catch { /* นับไม่ได้ก็ไม่เป็นไร ไม่ใช่ข้อมูลสำคัญ */ }
     }
 
     function paint() {
@@ -323,6 +338,14 @@ export default {
       t = setTimeout(reload, 300);
     });
 
+    // หรี่ตัวกรองเดือนเมื่ออยู่แท็บ Archive — งานจบแล้วไม่กรองตามเดือนคาดปิด (ให้ตรงกับ badge)
+    function syncMonthFilterState() {
+      const off = view.status === 'archived';
+      ['pFrom', 'pTo'].forEach(id => { const el = $(id); if (el) el.disabled = off; });
+      root.querySelectorAll('[data-preset]').forEach(b => { b.disabled = off; });
+      root.querySelector('.toolbar-sub')?.classList.toggle('filter-off', off);
+    }
+
     $('pStage')   .addEventListener('change', (e) => { view.stage = e.target.value; reload(); });
     $('pFrom')    .addEventListener('change', (e) => { view.from  = e.target.value; reload(); });
     $('pTo')      .addEventListener('change', (e) => { view.to    = e.target.value; reload(); });
@@ -331,18 +354,11 @@ export default {
         view.status = b.dataset.status;
         root.querySelectorAll('#pStatus [data-status]')
             .forEach(x => x.classList.toggle('on', x === b));
+        syncMonthFilterState();
         reload();
       });
     });
-
-    // ป้ายบอกว่ามีงานค้างใน Archive กี่งาน — ไม่ต้องกดเข้าไปดูก็รู้
-    (async () => {
-      try {
-        const n = await adapter.countPending('archived');
-        const el = $('pArcCount');
-        if (el && n > 0) { el.textContent = n; el.hidden = false; }
-      } catch { /* นับไม่ได้ก็ไม่เป็นไร ไม่ใช่ข้อมูลสำคัญ */ }
-    })();
+    syncMonthFilterState();
 
     root.querySelectorAll('[data-preset]').forEach(b => {
       b.addEventListener('click', () => {

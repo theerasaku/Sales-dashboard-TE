@@ -48,10 +48,12 @@ export default {
  */
 async function renderAdmin(root) {
     const me = (await adapter.getSession())?.user || null;
+    // admin = จัดการทั้งหมด · manager = เห็นเฉพาะเป้ารายทีม (แก้ทีมตัวเองได้) · sale = ไม่เข้า
+    const isAdmin = me?.role === 'admin';
 
-    if (me?.role !== 'admin') {
+    if (me?.role !== 'admin' && me?.role !== 'manager') {
       root.innerHTML = `<div class="empty">
-          <strong>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น</strong>
+          <strong>หน้านี้สำหรับผู้ดูแลระบบและหัวหน้างานเท่านั้น</strong>
           บัญชีของคุณเป็น "${esc(roleOf(me?.role).label)}" — ถ้าต้องการสิทธิ์เพิ่ม ให้ติดต่อผู้ดูแลระบบ
         </div>`;
       return;
@@ -86,7 +88,7 @@ async function renderAdmin(root) {
     const accessOf = (pid) => access.filter(a => a.profile_id === pid);
 
     root.innerHTML = `
-      <div class="card sec">
+      ${isAdmin ? `<div class="card sec">
         <h3 class="sec-h">เป้ายอดขาย <span class="sec-sub">ตัวเลขที่หน้าภาพรวมใช้คำนวณ</span></h3>
         <form id="tgForm" class="fgrid">
           <label class="fld"><span>เป้า (ล้านบาท)</span>
@@ -100,7 +102,7 @@ async function renderAdmin(root) {
             <span class="lg-hint" id="tgMsg"></span>
           </div>
         </form>
-      </div>
+      </div>` : `<p class="sec-foot" style="margin:0 0 4px">คุณเป็น <b>หัวหน้างาน</b> — ตั้งได้เฉพาะเป้าของทีมที่ดูแล · จัดการผู้ใช้/ทีม/สำรองข้อมูล เป็นสิทธิ์ผู้ดูแลระบบ</p>`}
 
       <div class="card sec">
         <h3 class="sec-h">เป้ารายทีม <span class="sec-sub">ตั้งที่ทีมย่อย · ทีมแม่/องค์กร = ผลรวม</span></h3>
@@ -123,7 +125,7 @@ async function renderAdmin(root) {
         <p class="login-err" id="ttErr" role="alert" hidden></p>
       </div>
 
-      <div class="card sec">
+      ${isAdmin ? `<div class="card sec">
         <h3 class="sec-h">ผู้ใช้ <span class="sec-sub">${profiles.length} บัญชี</span></h3>
         <p class="sec-foot" style="margin:0 0 10px">
           เพิ่มบัญชีใหม่ทำที่ Supabase → Authentication → Users → Invite user
@@ -186,7 +188,7 @@ async function renderAdmin(root) {
           <span class="lg-hint" id="bkMsg"></span>
         </div>
         <p class="bk-warn" id="bkWarn" hidden></p>
-      </div>
+      </div>` : ''}
 
       <div id="aPanel"></div>`;
 
@@ -199,7 +201,7 @@ async function renderAdmin(root) {
     };
 
     // ── เป้ายอดขาย ──
-    $('#tgForm').addEventListener('submit', async (ev) => {
+    $('#tgForm')?.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const f = Object.fromEntries(new FormData(ev.target).entries());
       if (f.from > f.to) return flash($('#tgMsg'), '⚠ เดือนเริ่มต้องไม่เกินเดือนสิ้นสุด', true);
@@ -259,7 +261,7 @@ async function renderAdmin(root) {
     });
 
     // ── เพิ่มทีม (+ ทีมแม่) ──
-    $('#tmForm').addEventListener('submit', async (ev) => {
+    $('#tmForm')?.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const code = $('#tmCode').value.trim(), name = $('#tmName').value.trim();
       const parent = $('#tmParent').value || null;
@@ -273,7 +275,7 @@ async function renderAdmin(root) {
     });
 
     // ── สำรอง & กู้คืน (step 3.6) ──
-    $('#bkExport').addEventListener('click', async () => {
+    $('#bkExport')?.addEventListener('click', async () => {
       const btn = $('#bkExport');
       btn.disabled = true; btn.textContent = 'กำลังรวบรวม…';
       try {
@@ -293,7 +295,7 @@ async function renderAdmin(root) {
 
     // กู้คืน — ยืนยัน 2 ขั้น เพราะเขียนทับข้อมูลปัจจุบัน
     let pendingRestore = null;
-    $('#bkFile').addEventListener('change', async (ev) => {
+    $('#bkFile')?.addEventListener('change', async (ev) => {
       const file = ev.target.files?.[0];
       ev.target.value = '';                 // ให้เลือกไฟล์เดิมซ้ำได้
       if (!file) return;

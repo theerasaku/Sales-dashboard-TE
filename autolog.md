@@ -27,6 +27,19 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-24 04:53 · ยังไม่ commit · แก้ 2 เรื่องที่เจ้าของแจ้ง — เมนูตั้งค่า(manager) + Archive กรองเดือน
+**step:** — (แก้ตามที่เจ้าของแจ้ง) | **ประเภท:** แก้บั๊ก/ปรับ UX
+- เจ้าของแจ้ง: รัน `db/phase3-5.sql` แล้ว (ผ่าน 5/5) → AI Intake staging พร้อม
+- **เมนู "ตั้งค่าระบบ" ให้ admin + หัวหน้างานเห็น** (เดิม admin เท่านั้น):
+  - app.js paintUser: `[data-view="admin"]` โชว์เมื่อ admin หรือ manager
+  - admin.js: manager เห็นเฉพาะ "เป้ารายทีม" (แก้ทีมตัวเองได้ตาม can_edit_team) · ซ่อน เป้ายอดขายรวม/ผู้ใช้/ทีม/สำรอง (admin เท่านั้น) · handler admin-only ใส่ `?.` กันพังตอน element ไม่มี
+- **Archive: badge=1 แต่ลิสต์ว่าง** — ต้นเหตุ: งาน archived จริง 1 งาน (ไม่มี close_month) ถูก "ตัวกรองเดือน" ที่ค้างจาก view active ซ่อน
+  - แก้: `status='archived'` → ไม่ส่ง from/to (งานจบแล้ว เดือนคาดปิดไม่มีความหมาย) · ปิด(disabled)ดรอปดาวน์เดือน+ปุ่ม preset ตอนดู Archive
+  - `refreshArcBadge()` เรียกทุก reload (เดิมนับครั้งเดียวตอน render → กดเก็บ/ปลุกกลับเลขไม่ตาม)
+- bump v0.20.0
+**ไฟล์:** docs/js/app.js · docs/js/modules/admin.js · docs/js/modules/pending.js · docs/css/app.css · docs/js/config.js · docs/sw.js
+**ทดสอบ:** เมนู+Archive **13/13** (puppeteer local: admin/manager/sale เห็นเมนูถูก · manager เห็นแค่เป้ารายทีม · sale โดนบล็อก · Archive แสดงงานแม้ตั้งกรองเดือน · badge ตรงลิสต์ · ดรอปดาวน์เดือนปิดตอน Archive) · success-miss ซ้ำ 14/14 ไม่ regression · parity 56
+
 ## 2026-07-23 22:27 · ยังไม่ commit · 3.8 AI Intake อัตโนมัติ — Edge Function + อ่านรูปด้วย Claude vision
 **step:** 3.8 (จบ roadmap!) | **ประเภท:** ฟีเจอร์ (Edge Function + frontend)
 - `supabase/functions/ai-intake/index.ts` (ใหม่ · Deno): ถือ `ANTHROPIC_API_KEY` ฝั่งเซิร์ฟเวอร์ →
