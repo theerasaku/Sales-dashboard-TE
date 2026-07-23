@@ -24,7 +24,7 @@
 | 3.2 | หน้าทีมขาย + playbook + เช็กลิสต์ชนะงาน | S | ⬜ |
 | 3.3 | F8 PWA (manifest + sw + icons) | M | ⬜ |
 | 3.4 | **B7 + F9 แถบ Supplier** (ใหม่ v2) | M | ⬜ |
-| 3.5 | **F10 AI Intake** (ใหม่ v2) | L | ⬜ |
+| 3.5 | **F10 AI Intake** (ใหม่ v2) | L | ✅ **เสร็จ** — staging + preview + ไฮไลต์ confidence + merge กันซ้ำ (ทดสอบ RLS 24/24 · UI 27/27) |
 | 3.6 | export CSV/JSON ทุก module + backup + ทดสอบรวม | S | ⬜ |
 | 3.7 | **ธีม/สี — เลือกธีมสำเร็จรูป + สีเน้น** (ใหม่) | S | ⬜ |
 
@@ -1191,19 +1191,57 @@ unique (pending_id, line_no)
 ⭐ เทสต์ **สร้างไฟล์ PDF ออกมาจริงแล้วเปิดดูเทียบกับต้นฉบับ** ไม่ได้เช็กแค่ว่า HTML มีคำนั้นอยู่ไหม
 — วิธีนี้เองที่จับได้ว่าฟอนต์ตกไปเป็นตัวมีเชิงตอนพิมพ์
 
+## step 3.5 — F10 AI Intake: staging + preview + merge ✅ (23 ก.ค. 2569)
+
+**เป้าหมาย:** แปลงรูปนามบัตร/ฟอร์มกระดาษ/โน้ต Obsidian/Notion → ข้อมูลในระบบ โดยให้ Claude แกะเป็น JSON
+รอบนี้ = **คัดลอกคำสั่งไปวางใน Claude เอง (ฟรี ไม่มีค่า API)** · step 3.8 จะเปลี่ยนที่มา JSON เป็น Edge Function
+ส่วน staging/preview/merge สร้างครบในรอบนี้แล้ว 3.8 ใช้ต่อทั้งหมด
+
+**ทำไมต้อง staging (`intake_items`) แยก ไม่เขียนตารางจริงตรง ๆ**
+ถ่ายรูปหน้างานด้วยมือถือ แต่มานั่งตรวจแก้บนคอมที่ออฟฟิศ → ถ้าเก็บใน browser state ข้อมูลไม่ข้ามเครื่อง
+และไม่มีหลักฐานว่าใครอนุมัติอะไรมาจากเอกสารไหน · ตาราง `intake_items` เก็บ 3 อย่าง:
+`parsed` (AI แกะ · ต้นฉบับไม่แก้ทับ) · `edited` (คนแก้) · `confidence` (รายช่อง → ไฮไลต์เหลืองเฉพาะที่ AI ไม่มั่นใจ)
+⭐ แถว `status='merged'` + `target_id` + `approved_by` = **ล็อกการนำเข้าในตัว** (หลักฐานครบ)
+
+**ที่ทำ**
+- `db/phase3-5.sql` — ตาราง `intake_items` + RLS: อ่าน `can_access_team` · เขียน/ลบ `can_edit_team` + grant/revoke anon + บล็อกตรวจผล
+- adapter 3 ไฟล์ +6 เมธอด: `listIntake` `getIntake` `saveIntake` `deleteIntake` `approveIntake` `rejectIntake`
+- `docs/js/modules/ai-intake.js` (สตับ → เต็ม ~430 บรรทัด): modal 2 แท็บ (นำเข้าใหม่ / รอตรวจ)
+  - คำสั่งสำเร็จรูปสร้างจาก `FIELDS` ให้ตรง schema เสมอ · แกะ JSON ทน code fence/ข้อความห่อ/object แบน
+  - dedup `matchDuplicate`: เทียบเลขล้วน (`normDigits`) + ชื่อ/หน่วยงาน/PENDING NO. กับ **รายชื่อทั้งชุด** (cache ต่อการเปิด modal)
+  - `buildPayload`: value_baht ตัดคอมมา · close_month/birthday **แปลงปี พ.ศ.→ค.ศ.** อัตโนมัติ (2400–2600 = พ.ศ. ลบ 543) · stage/color ล็อกค่าที่ DB ยอมรับ
+  - บันทึกจริงผ่าน `savePending`/`saveCustomer` (RLS ปกติ) + ผู้ติดต่อ 1 (pending) → `approveIntake` ปิด draft→merged
+- ปุ่ม 🤖 AI Import เพิ่มในแถบ Pending + Book 3 สี · CSS บล็อกใหม่ (var() ล้วน) · bump v0.15.0
+
+**บั๊กที่เจอระหว่างทำ (เทสต์จับได้ → แก้แล้ว)**
+1. dedup เดิมใช้ `search` ilike → เบอร์ที่เก็บมีขีด (081-234-5678) ไม่ match เบอร์ที่ AI อ่านมาไม่มีขีด (0812345678)
+   → เปลี่ยนเป็นดึงรายชื่อทั้งชุดมาเทียบเลขล้วนใน JS
+2. regex `\d{4}-\d{2}` **และ check constraint ของ DB** ปล่อยปี พ.ศ. 2569 ผ่านหมด (กับดักที่ CLAUDE.md เตือน)
+   → เพิ่มแปลง พ.ศ.→ค.ศ. ที่ชั้นแอปก่อนบันทึก (2569-07 → 2026-07)
+
+**ทดสอบ**
+- SQL parse 13/13 ไฟล์ (libpg-query)
+- intake RLS **24/24** บน Postgres จริง (PGlite): sale เห็น/แก้/ลบเฉพาะทีมตัวเอง · หัวหน้าตามสิทธิ์ · admin เห็นหมด · anon ปิด · team ว่าง = ถูกปฏิเสธ
+- UI **27/27** puppeteer คลิกจริง โหมด local: แกะ 2 การ์ด · ไฮไลต์ confidence · บันทึกเข้า customers/pending จริง · intake ปิดเป็น merged · staging ค้างข้ามการเปิด/ปิด · dedup จับเบอร์ซ้ำ + เลือกอัปเดต/สร้างใหม่ · value_baht/ปี พ.ศ. แปลงถูก · ผู้ติดต่อแยกตาราง · **ไม่มี JS error + ไม่มี unhandled rejection**
+- parity 53 เมธอดครบทั้ง 2 adapter · grep secret/hex/PII ผ่าน
+
+**ค้าง / ให้เจ้าของทำ**
+- **ต้องรัน `db/phase3-5.sql` ใน Supabase** ก่อน ไม่งั้นวาง JSON แล้วบันทึก staging ไม่ได้ (หน้าจอไม่พัง — ดักบอกให้รันไฟล์)
+- ยังไม่ทดสอบบน Supabase จริง — ลองปุ่ม 🤖 AI Import แล้ววาง JSON จาก Claude ดู
+
+---
+
 ## ขั้นตอนต่อไป
 
 **⏸️ step 3.4 แถบ Supplier — ถอดออกจากแผนแล้ว** (เจ้าของสั่ง 23 ก.ค. 2569 · "ยังไม่ต้องใช้ฟังก์ชันนี้")
-ถอดปุ่มออกจากแถบนำทางทั้งสองที่ · ถอดออกจาก router และ precache · **ลบ `docs/js/modules/suppliers.js` ทิ้ง**
-ยังไม่เคยแตะฐานข้อมูล จึงไม่มีหนี้ค้าง หยิบกลับมาทำเมื่อไหร่ก็เริ่มจากศูนย์ได้
-สเปคเก็บไว้ใน `CLAUDE.md` หัวข้อ "📦 แผนอัปเดตอนาคต" — **ตัด `project_suppliers` และปุ่มหา supplier
-จากหน้า Pending ออกถาวร** ถ้าทำในอนาคตจะเป็นแถบเดี่ยว ๆ ไม่ผูกกับ Pending Project
+สเปคเก็บไว้ใน `CLAUDE.md` หัวข้อ "📦 แผนอัปเดตอนาคต"
 
-**⚠️ ต้องรัน `db/phase3-9.sql` ใน Supabase ก่อน** ไม่งั้นตารางสินค้ากับชื่อเล่นยังบันทึกไม่ได้
-(หน้าจอไม่พัง — ดักไว้แล้วว่าถ้ายังไม่มีตารางให้ข้ามไปเงียบ ๆ)
-
-step 3.5 (L) — F10 AI Intake
-(staging `intake_items` + modal 🤖 AI Import 4 แหล่ง + preview/merge กันซ้ำก่อนบันทึกจริง)
+**เหลือ 3 step: 3.6 · 3.7 · 3.8** (+1.7 ทดสอบเครื่องจริง)
+- **step 3.6 (S)** — export CSV/JSON ทุก module + ไฟล์ backup รวม `te-backup-YYYY-MM-DD.json`
+  (รูปแบบต้องตรงกับ `BACKUP_FORMAT` ใน `docs/js/data/import-map.js` ที่ 1.6 อ่านได้) + ทดสอบวงจร export→ลบ→import กลับ
+- **step 3.7 (S)** — หน้าตั้งค่าเลือกธีมสำเร็จรูป (Linear Dark / สว่าง / คอนทราสต์สูง) + สีเน้น
+- **step 3.8 (M)** — AI Intake อัตโนมัติผ่าน Edge Function (ถือ `ANTHROPIC_API_KEY` ฝั่งเซิร์ฟเวอร์) →
+  แทนที่แค่ "ที่มา JSON" · staging/preview/merge (3.5) ใช้ของเดิมทั้งหมด
 
 
 

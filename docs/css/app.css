@@ -1253,3 +1253,118 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   padding: 10px 12px;
 }
 .login-ok .t2 { color: var(--text-dim); }
+
+/* ═══════════════════════════════════════════════════════════
+   AI Intake (step 3.5) — ปุ่ม + modal นำเข้าด้วย AI
+   ═══════════════════════════════════════════════════════════ */
+
+/* ปุ่ม 🤖 AI Import — เด่นแบบ accent อ่อน ไม่แย่งสายตากับ "+ เพิ่ม" (ปุ่มหลัก) */
+.btn-ai {
+  background: var(--accent-soft); color: var(--accent-text);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.btn-ai:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); }
+
+.ai-box { width: min(760px, 100%); }
+
+/* แท็บใน modal */
+.ai-tabs { display: flex; gap: 4px; padding: 8px 18px 0; border-bottom: 1px solid var(--border); }
+.ai-tab {
+  appearance: none; background: none; border: none; cursor: pointer;
+  color: var(--text-mute); font: inherit; font-size: 13px; font-weight: 600;
+  padding: 8px 12px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.ai-tab:hover { color: var(--text-dim); }
+.ai-tab.on { color: var(--accent-text); border-bottom-color: var(--accent); }
+.ai-tab .seg-badge { margin-left: 4px; }
+
+.ai-pane { padding-top: 14px; }
+.ai-step {
+  font-size: 12px; font-weight: 600; color: var(--text-dim);
+  margin: 14px 0 8px; letter-spacing: .01em;
+}
+.ai-pane .ai-step:first-child { margin-top: 4px; }
+
+/* เลือกแหล่ง */
+.ai-src { display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-srcbtn {
+  appearance: none; cursor: pointer; font: inherit; font-size: 13px;
+  background: var(--bg-elev); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 12px;
+}
+.ai-srcbtn:hover { border-color: var(--text-mute); color: var(--text); }
+.ai-srcbtn.on { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
+
+/* กล่องคำสั่งสำเร็จรูป */
+.ai-prompt-wrap { position: relative; }
+.ai-prompt {
+  width: 100%; background: var(--bg); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 10px 12px; font: inherit; font-size: 12.5px; line-height: 1.5;
+  resize: vertical; white-space: pre; overflow-x: auto;
+}
+.ai-copy { position: absolute; top: 8px; right: 8px; }
+
+.ai-paste {
+  width: 100%; font-size: 13px; line-height: 1.5; resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* การ์ดใน staging */
+.ai-card {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 12px 14px; margin-bottom: 12px;
+}
+.ai-card.ai-saved { border-color: var(--green-line); opacity: .7; transition: opacity .3s; }
+.ai-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ai-card-head .spacer { flex: 1; }
+.ai-badge {
+  font-size: 11px; color: var(--text-dim);
+  background: var(--bg-elev); border: 1px solid var(--border-soft);
+  border-radius: 999px; padding: 3px 9px;
+}
+.ai-dup { font-size: 12px; color: var(--yellow); }
+
+.ai-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ai-fld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ai-fld.ai-wide { grid-column: 1 / -1; }
+.ai-fld > span { font-size: 12px; color: var(--text-dim); }
+.ai-fld .inp { width: 100%; font-size: 16px; }
+.ai-fld textarea.inp { resize: vertical; line-height: 1.5; min-height: 40px; }
+
+/* ช่องที่ AI ไม่มั่นใจ — ไฮไลต์เหลือง (หายเมื่อคนแก้/แตะ) */
+.inp.ai-low {
+  border-color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 12%, var(--bg-elev));
+}
+.ai-low-dot { color: var(--yellow); font-size: 9px; vertical-align: middle; }
+.ai-low-chip {
+  color: var(--yellow); background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  border-radius: 4px; padding: 1px 6px; font-weight: 600;
+}
+
+.ai-more { margin-top: 10px; }
+.ai-more > summary {
+  cursor: pointer; font-size: 12.5px; color: var(--text-mute);
+  padding: 6px 0; list-style: none;
+}
+.ai-more > summary:hover { color: var(--text-dim); }
+.ai-more[open] > summary { margin-bottom: 8px; }
+
+.ai-card-foot { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.ai-card-foot .spacer { flex: 1; }
+.ai-mergehint { font-size: 12px; color: var(--text-mute); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ai-mergehint b { color: var(--text-dim); }
+.ai-merge-q { color: var(--yellow); }
+.ai-radio { display: inline-flex; align-items: center; gap: 4px; color: var(--text-dim); cursor: pointer; }
+.ai-ok { color: var(--green); font-size: 13px; font-weight: 600; }
+
+.ai-note { font-size: 11.5px; color: var(--text-mute); }
+
+@media (max-width: 1024px) {
+  .ai-fields { grid-template-columns: 1fr; }
+}
+@media (max-width: 430px) {
+  .ai-srcbtn, .ai-tab { min-height: 44px; }
+  .ai-card-foot .btn { min-height: 44px; }
+}

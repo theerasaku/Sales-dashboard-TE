@@ -9,6 +9,7 @@ import { logListHtml, bindLogEditing, logFormHtml, readLogForm, clearLogForm } f
 import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
 import { printCustomer } from '../ui/formprint.js';
 import { photoFieldHtml, bindPhotoField } from '../ui/photofield.js';
+import { openAIImport } from './ai-intake.js';
 
 // ── สี 3 ระดับ ── (ความหมายจากฟอร์มกระดาษ)
 export const COLORS = [
@@ -71,6 +72,7 @@ export default {
         <input class="inp inp-search" id="bSearch" type="search"
                placeholder="ค้นหาชื่อ / หน่วยงาน / เบอร์โทร…"
                value="${esc(view.search)}" autocapitalize="off" spellcheck="false">
+        <button class="btn btn-ai btn-sm" id="bAI" title="แปลงรูปนามบัตร/โน้ต เป็นลูกค้าด้วย AI">🤖 AI Import</button>
         <button class="btn btn-primary btn-sm" id="bNew">+ เพิ่มลูกค้า</button>
       </div>
 
@@ -254,6 +256,7 @@ export default {
     });
 
     $('bNew').addEventListener('click', () => openDetail(root.querySelector('#bPanel'), null, reload, teams));
+    $('bAI').addEventListener('click', () => openAIImport('customer', { onSaved: reload }));
     $('bCsv').addEventListener('click', () => exportCsv(rows));
 
     await reload();

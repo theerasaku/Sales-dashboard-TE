@@ -163,8 +163,12 @@ async function countRows(path) {
 
 /** ดึง profile ของผู้ใช้ (ชื่อ/role/ทีม) — ผ่าน RLS จริง ไม่ได้เชื่อค่าจากฝั่ง client */
 async function fetchProfile(userId) {
+  // ⚠️ ต้องระบุ `teams!team_id` ไม่ใช่ `teams` เฉย ๆ — ตั้งแต่มีตาราง team_access (2.4)
+  // และ team_targets (3.10) ที่อ้างทั้ง profiles และ teams, PostgREST เห็นความสัมพันธ์
+  // profiles↔teams มากกว่า 1 เส้น (เส้นตรง profiles.team_id + เส้นผ่าน junction)
+  // → embed แบบไม่ระบุจะตอบ "more than one relationship was found" แล้ว login พังทั้งระบบ
   const rows = await rest(
-    `/profiles?id=eq.${userId}&select=id,email,full_name,role,is_active,team_id,teams(code,name)`
+    `/profiles?id=eq.${userId}&select=id,email,full_name,role,is_active,team_id,teams!team_id(code,name)`
   );
   return rows?.[0] || null;
 }
@@ -944,7 +948,8 @@ const supabaseAdapter = {
 
   /** รายชื่อผู้ใช้ — RLS คัดให้เอง (admin เห็นหมด · คนอื่นเห็นเฉพาะตัวเอง+เพื่อนร่วมทีม) */
   async listProfiles() {
-    return rest('/profiles?select=id,email,full_name,title,role,team_id,is_active,teams(code,name)'
+    // teams!team_id: ระบุ FK ให้ชัด กัน "more than one relationship" เหมือน fetchProfile
+    return rest('/profiles?select=id,email,full_name,title,role,team_id,is_active,teams!team_id(code,name)'
               + '&order=role.asc,full_name.asc');
   },
 
@@ -1030,6 +1035,93 @@ const supabaseAdapter = {
       body: JSON.stringify({ key, value, updated_by: session?.user?.id || null }),
     });
     if (!rows?.length) throw new Error('บันทึกค่าตั้งไม่ได้ — ต้องเป็น admin เท่านั้น');
+    return rows[0];
+  },
+
+  // ---------- B9 · AI Intake staging (step 3.5) ----------
+  //
+  // ข้อมูลลง staging ก่อนเสมอ ห้ามเขียนเข้าตารางจริงตรง ๆ (กติกาใน CLAUDE.md)
+  // การเขียนเข้าตารางจริงตอน "อนุมัติ" ใช้ savePending/saveCustomer ตัวเดิม (ผ่าน RLS ปกติ)
+  // แล้วค่อย approveIntake() มาปิดสถานะ draft → merged ให้เป็นหลักฐานว่านำเข้าจากเอกสารไหน
+
+  /** opt: targetType ('customer'|'pending') · status ('draft'|'draft,approved'|…) · limit */
+  async listIntake(opt = {}) {
+    const { targetType, status, limit = 200 } = opt;
+    const p = new URLSearchParams();
+    p.set('select', '*');
+    if (targetType) p.set('target_type', `eq.${targetType}`);
+    if (status) {
+      const list = String(status).split(',').map(s => s.trim()).filter(Boolean);
+      if (list.length === 1)      p.set('status', `eq.${list[0]}`);
+      else if (list.length > 1)   p.set('status', `in.(${list.join(',')})`);
+    }
+    p.set('order', 'created_at.desc');
+    p.set('limit', String(limit));
+    return rest('/intake_items?' + p.toString());
+  },
+
+  async getIntake(id) {
+    const rows = await rest(`/intake_items?id=eq.${encodeURIComponent(id)}&select=*`);
+    return rows?.[0] || null;
+  },
+
+  /** มี id = แก้ draft · ไม่มี = สร้างใหม่ · fillTeam เติมทีมผู้ใช้ให้ (ไม่งั้นโดน RLS ปฏิเสธ) */
+  async saveIntake(row) {
+    const body = fillTeam(cleanRow(row));
+    if (body.id) {
+      const id = body.id;
+      delete body.id;
+      const rows = await rest(`/intake_items?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(body),
+      });
+      if (!rows?.length) throw new Error('แก้รายการนำเข้านี้ไม่ได้ — อยู่นอกทีมที่คุณมีสิทธิ์');
+      return rows[0];
+    }
+    body.created_by = session?.user?.id || null;
+    const rows = await rest('/intake_items', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    return rows?.[0] || null;
+  },
+
+  async deleteIntake(id) {
+    await rest(`/intake_items?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  /**
+   * ปิดสถานะ draft → merged หลังเขียนเข้าตารางจริงสำเร็จ
+   * info: { target_table, target_id, merge_mode ('new'|'update'), edited? }
+   * แถวที่ merged + target_id + approved_by = หลักฐานว่านำเข้าอะไร เข้าแถวไหน ใครอนุมัติ
+   */
+  async approveIntake(id, info = {}) {
+    const body = {
+      status: 'merged',
+      target_table: info.target_table || null,
+      target_id:    info.target_id || null,
+      merge_mode:   info.merge_mode || null,
+      approved_by:  session?.user?.id || null,
+    };
+    if (info.edited !== undefined) body.edited = info.edited;
+    const rows = await rest(`/intake_items?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    if (!rows?.length) throw new Error('อนุมัติรายการนี้ไม่ได้ — อยู่นอกทีมที่คุณมีสิทธิ์');
+    return rows[0];
+  },
+
+  async rejectIntake(id) {
+    const rows = await rest(`/intake_items?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ status: 'rejected' }),
+    });
+    if (!rows?.length) throw new Error('ทิ้งรายการนี้ไม่ได้ — อยู่นอกทีมที่คุณมีสิทธิ์');
     return rows[0];
   },
 };

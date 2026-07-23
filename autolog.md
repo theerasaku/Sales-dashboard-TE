@@ -27,6 +27,38 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-23 21:38 · ยังไม่ commit · 3.5 AI Intake — staging + preview + merge (งานใหญ่ L)
+**step:** 3.5 | **ประเภท:** ฟีเจอร์ (โมดูลใหม่ + ตารางใหม่ + ปุ่ม 2 แถบ)
+- **DB `db/phase3-5.sql`** — ตาราง `intake_items` (staging): source · target_type · parsed/edited/confidence (jsonb) · status(draft/approved/merged/rejected) · target_table/target_id/merge_mode · approved_by
+  - RLS: อ่าน `can_access_team` · เขียน/ลบ `can_edit_team` (sale เห็น/แก้เฉพาะทีมตัวเอง · หัวหน้าตามสิทธิ์ · anon ปิด)
+  - ⭐ ตารางนี้เป็น "ล็อกการนำเข้า" ในตัว — แถว merged + target_id + approved_by = หลักฐานว่าอะไรมาจากเอกสารไหน ใครอนุมัติ
+- **adapter (3 ไฟล์)** +6 เมธอด: listIntake/getIntake/saveIntake/deleteIntake/approveIntake/rejectIntake (parity 53 ครบทั้งคู่)
+- **`docs/js/modules/ai-intake.js`** (จากสตับ → เต็ม) — modal 2 แท็บ:
+  - นำเข้าใหม่: เลือกแหล่ง (นามบัตร/ฟอร์ม/Obsidian/Notion) → คำสั่งสำเร็จรูป(ก๊อป) → วาง JSON → พักเข้า staging
+  - รอตรวจ: การ์ดต่อรายการ · ไฮไลต์เหลืองเฉพาะช่องที่ AI มั่นใจ <80% · dedup กันซ้ำ (เลือกอัปเดตทับ/สร้างใหม่) · บันทึกเข้าระบบจริง
+  - แกะ JSON ทน code fence / ข้อความห่อ / object แบน · แปลงปี พ.ศ.→ค.ศ. อัตโนมัติ · value_baht ตัดคอมมา
+- **ปุ่ม 🤖 AI Import** เพิ่มในแถบ Pending + Book 3 สี · **CSS** บล็อกใหม่ (var() ล้วน) · **bump v0.15.0** (config + sw)
+**ไฟล์:** db/phase3-5.sql · docs/js/data/{adapter,supabase-adapter,local-adapter}.js · docs/js/modules/{ai-intake,pending,book3}.js · docs/css/app.css · docs/js/config.js · docs/sw.js
+**ทดสอบ:** SQL parse 13/13 (libpg-query) · intake RLS 24/24 (PGlite = Postgres จริง) · UI 27/27 (puppeteer คลิกจริง โหมด local · dedup/ปี พ.ศ./staging ข้ามครั้ง/แยกผู้ติดต่อ · ไม่มี JS error + unhandled rejection) · parity 53 ครบ · grep secret/hex/PII ผ่าน
+**เจอบั๊กระหว่างทำ (แก้แล้ว):** ① dedup เดิมใช้ `search` ilike → เบอร์มีขีดไม่ match เบอร์ไม่มีขีด · เปลี่ยนเป็นดึงทั้งชุดเทียบเลขล้วน  ② regex/DB constraint ปล่อยปี พ.ศ. 2569 ผ่าน → เพิ่มแปลง พ.ศ.→ค.ศ. ใน buildPayload
+**ค้าง:** ยังไม่ทดสอบบน Supabase จริง — **เจ้าของต้องรัน `db/phase3-5.sql` ก่อน** แล้วลองปุ่ม 🤖 AI Import (วาง JSON จาก Claude) · 3.8 จะเปลี่ยนที่มา JSON เป็น Edge Function (staging/preview/merge ใช้ของนี้ต่อ)
+
+## 2026-07-23 · ยังไม่ commit · 🔴 แก้บั๊ก login พังทั้งระบบ — "more than one relationship" profiles↔teams
+**step:** — (hotfix) | **ประเภท:** แก้บั๊ก 🔴 login ใช้ไม่ได้ทั้งระบบ
+- **อาการ:** login แล้วเด้ง error `Could not embed because more than one relationship was found for 'profiles' and 'teams'`
+- **ต้นเหตุ:** `fetchProfile()` ดึง profile ด้วย embed `teams(code,name)` แบบไม่ระบุ FK
+  ตั้งแต่มีตาราง **`team_access`** (2.4, profile_id×team_id) และ **`team_targets`** (3.10, team_id→teams + updated_by→profiles)
+  PostgREST เห็นความสัมพันธ์ profiles↔teams **มากกว่า 1 เส้น** (เส้นตรง `profiles.team_id` + เส้นผ่าน junction) → embed ไม่ถูก
+- **แก้:** ระบุ FK ให้ชัด `teams!team_id(code,name)` ทั้ง 2 จุด (`fetchProfile` + `listProfiles`)
+  — junction ไม่คั่น `pending_projects`/`customers` → teams เลย 2 จุดนั้นไม่ต้องแก้
+
+**ไฟล์:** `docs/js/data/supabase-adapter.js` (บรรทัด ~167 + ~948)
+**ทดสอบ:** `node --check` ผ่าน · grep ยืนยันไม่เหลือ `profiles…teams(` แบบไม่ระบุ FK ที่อื่น ·
+⚠️ **ยังไม่ได้ทดสอบ login จริงบน Supabase** (ผู้ช่วยไม่มีรหัสผ่าน) — เจ้าของต้องลอง login ยืนยัน
+**ค้าง:** 🔴 **ยังไม่ commit โดยตั้งใจ** — ไฟล์นี้มีงาน B9 AI Intake (step 3.5) ของอีก session ค้างอยู่ +90 บรรทัด
+ในไฟล์เดียวกัน + มี `db/phase3-5.sql` ยัง untracked · commit ตอนนี้จะกวาดงาน 3.5 ที่ยังไม่เสร็จติดไปด้วย
+→ ปล่อยให้ไหลไปกับ commit ปกติของ session ที่ทำ 3.5 · **การแก้อยู่บนดิสก์แล้ว มีผลทันทีเมื่อ reload**
+
 ## 2026-07-23 07:40 · 60aee7b · ลืมรหัสผ่าน (รีเซ็ตทางอีเมล) + วินิจฉัย login เครื่องอื่น
 **step:** 3.11 (ใหม่ · เจ้าของขอ) | **ประเภท:** ฟีเจอร์ + ความปลอดภัย
 - เจ้าของแจ้ง: รัน phase3-9 + phase3-10 แล้ว (ผ่านครบ) · admin login จากแล็ปท็อปอื่นไม่ได้แม้รหัสถูก

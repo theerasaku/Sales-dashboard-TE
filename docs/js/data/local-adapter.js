@@ -21,6 +21,7 @@ const emptyDb = () => ({
   signoffs: [],
   pending_products: [],
   team_targets: [],
+  intake_items: [],
   lead_sources: [],
   expo_customers: [],
   teams_custom: [],
@@ -532,6 +533,61 @@ const localAdapter = {
     db.app_settings = { ...(db.app_settings || {}), [key]: value };
     save();
     return { key, value };
+  },
+
+  // B9 — AI Intake staging (step 3.5) · จำลอง RLS ให้พฤติกรรมตรงกับ supabase-adapter
+  async listIntake(opt = {}) {
+    const { targetType, status, limit = 200 } = opt;
+    let rows = [...(db.intake_items || [])];
+    if (targetType) rows = rows.filter(r => r.target_type === targetType);
+    if (status) {
+      const set = new Set(String(status).split(',').map(s => s.trim()).filter(Boolean));
+      rows = rows.filter(r => set.has(r.status));
+    }
+    rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    return rows.slice(0, limit);
+  },
+
+  async getIntake(id) {
+    return (db.intake_items || []).find(r => r.id === id) || null;
+  },
+
+  async saveIntake(row) {
+    const r = { ...row };
+    if (!r.id) r.created_by = db.session?.user?.id || null;
+    // เติมทีมผู้ใช้เหมือน fillTeam ของ supabase-adapter (ดูเหตุผลเรื่อง RLS ที่ไฟล์นั้น)
+    if (!r.id || 'team_id' in r) { if (!r.team_id) r.team_id = db.session?.user?.team_id || null; }
+    return upsert('intake_items', r);
+  },
+
+  async deleteIntake(id) {
+    db.intake_items = (db.intake_items || []).filter(r => r.id !== id);
+    save();
+  },
+
+  async approveIntake(id, info = {}) {
+    const row = (db.intake_items || []).find(r => r.id === id);
+    if (!row) throw new Error('ไม่พบรายการนำเข้านี้');
+    Object.assign(row, {
+      status: 'merged',
+      target_table: info.target_table || null,
+      target_id:    info.target_id || null,
+      merge_mode:   info.merge_mode || null,
+      approved_by:  db.session?.user?.id || null,
+      updated_at:   new Date().toISOString(),
+    });
+    if (info.edited !== undefined) row.edited = info.edited;
+    save();
+    return row;
+  },
+
+  async rejectIntake(id) {
+    const row = (db.intake_items || []).find(r => r.id === id);
+    if (!row) throw new Error('ไม่พบรายการนำเข้านี้');
+    row.status = 'rejected';
+    row.updated_at = new Date().toISOString();
+    save();
+    return row;
   },
 
   // B6 — Phase 1.5 จะคำนวณจริง (รูปข้อมูลต้องตรงกับ supabase-adapter: null = ยังนับไม่ได้)

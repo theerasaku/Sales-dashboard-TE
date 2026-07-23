@@ -8,6 +8,7 @@ import { dateField, thaiDate, initDatePicker } from '../ui/datepicker.js';
 import { logListHtml, bindLogEditing } from '../ui/loglist.js';
 import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
 import { printPending } from '../ui/formprint.js';
+import { openAIImport } from './ai-intake.js';
 
 // ── ขั้นตอนงานขาย ── ยกจาก prototype v3 แต่เปลี่ยน hex เป็นตัวแปร CSS ตามกติกาธีม
 export const STAGES = [
@@ -181,6 +182,7 @@ export default {
           ${STAGES.map(s => `<option value="${s.id}" ${view.stage === s.id ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}
         </select>
 
+        <button class="btn btn-ai btn-sm" id="pAI" title="แปลงรูปฟอร์ม/โน้ต เป็นงานด้วย AI">🤖 AI Import</button>
         <button class="btn btn-primary btn-sm" id="pNew">+ เพิ่มงาน</button>
       </div>
 
@@ -391,6 +393,7 @@ export default {
 
     $('pNew').addEventListener('click', () =>
       openDetail(root.querySelector('#pPanel'), null, reload, teams));
+    $('pAI').addEventListener('click', () => openAIImport('pending', { onSaved: reload }));
     $('pCsv').addEventListener('click', () => exportCsv(rows));
 
     await reload();

@@ -110,6 +110,14 @@ export const adapter = {
 
   // B6 dashboard
   getDashboardStats: ()      => need().getDashboardStats(),
+
+  // B9 AI Intake staging (step 3.5) — พักข้อมูลก่อนเข้าตารางจริง
+  listIntake:    (opt)   => need().listIntake(opt),
+  getIntake:     (id)    => need().getIntake(id),
+  saveIntake:    (row)   => need().saveIntake(row),
+  deleteIntake:  (id)    => need().deleteIntake(id),
+  approveIntake: (id, i) => need().approveIntake(id, i),
+  rejectIntake:  (id)    => need().rejectIntake(id),
 };
 
 export default adapter;
