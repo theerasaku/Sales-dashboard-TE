@@ -80,7 +80,8 @@ async function renderAdmin(root) {
       target_mb: CONFIG.TARGET_MB, from: CONFIG.TARGET_FROM,
       to: CONFIG.TARGET_TO, period: CONFIG.TARGET_PERIOD,
     };
-    const accessOf = (pid) => access.filter(a => a.profile_id === pid).map(a => a.team_id);
+    // คืนแถว team_access เต็ม (มี can_edit) ไม่ใช่แค่ team_id — step 3.10 ต้องรู้ว่าดูได้/แก้ได้
+    const accessOf = (pid) => access.filter(a => a.profile_id === pid);
 
     root.innerHTML = `
       <div class="card sec">
@@ -124,13 +125,23 @@ async function renderAdmin(root) {
       </div>
 
       <div class="card sec">
-        <h3 class="sec-h">ทีม <span class="sec-sub">${teams.length} ทีม</span></h3>
+        <h3 class="sec-h">ทีม <span class="sec-sub">${teams.length} ทีม · ทีมย่อยเยื้องขวา</span></h3>
         <ul class="tmlist" id="tmList">
-          ${teams.map(t => `<li><b>${esc(t.code)}</b><span>${esc(t.name || '')}</span></li>`).join('')}
+          ${teamTree(teams).map(t => `<li class="${t.parent_team_id ? 'is-sub' : ''}">
+            <b>${esc(t.code)}</b><span>${esc(t.name || '')}</span>
+            ${t.parent_team_id ? `<em>ทีมย่อยของ ${esc(teams.find(x => x.id === t.parent_team_id)?.code || '')}</em>` : ''}
+          </li>`).join('')}
         </ul>
+        <p class="sec-foot" style="margin:8px 0 0">
+          ให้สิทธิ์ "ทีมแม่" = เห็นทีมย่อยทั้งหมดอัตโนมัติ (เช่นให้ TE-IMP = เห็น IMP1 + IMP2)
+        </p>
         <form class="qadd" id="tmForm" style="margin-top:10px">
-          <input class="inp" id="tmCode" placeholder="รหัสทีม เช่น GOV.5" maxlength="20" style="flex:0 0 150px">
+          <input class="inp" id="tmCode" placeholder="รหัสทีม เช่น GOV.5" maxlength="20" style="flex:0 0 130px">
           <input class="inp" id="tmName" placeholder="ชื่อเต็มของทีม">
+          <select class="inp" id="tmParent" style="flex:0 0 160px">
+            <option value="">— ทีมระดับบนสุด —</option>
+            ${teams.filter(t => !t.parent_team_id).map(t => `<option value="${esc(t.id)}">ทีมย่อยของ ${esc(t.code)}</option>`).join('')}
+          </select>
           <button type="submit" class="btn btn-ghost btn-sm">+ เพิ่มทีม</button>
         </form>
         <p class="login-err" id="tmErr" role="alert" hidden></p>
@@ -191,18 +202,32 @@ async function renderAdmin(root) {
                    teams, accessOf(btn.dataset.access), () => renderAdmin(root)));
     });
 
-    // ── เพิ่มทีม ──
+    // ── เพิ่มทีม (+ ทีมแม่) ──
     $('#tmForm').addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const code = $('#tmCode').value.trim(), name = $('#tmName').value.trim();
+      const parent = $('#tmParent').value || null;
       if (!code) return flash($('#tmErr'), 'กรอกรหัสทีมก่อน', true);
       if (teams.some(t => t.code.toLowerCase() === code.toLowerCase()))
         return flash($('#tmErr'), `มีทีมรหัส "${code}" อยู่แล้ว`, true);
       try {
-        await adapter.saveTeam({ code, name: name || code });
+        await adapter.saveTeam({ code, name: name || code, parent_team_id: parent });
         await renderAdmin(root);
       } catch (e) { flash($('#tmErr'), e.message, true); }
     });
+}
+
+/** เรียงทีมแบบ แม่→ลูก (ลูกอยู่ใต้แม่ทันที) สำหรับแสดงผลเป็นลำดับชั้น */
+function teamTree(teams) {
+  const tops = teams.filter(t => !t.parent_team_id);
+  const out = [];
+  for (const t of tops) {
+    out.push(t);
+    out.push(...teams.filter(c => c.parent_team_id === t.id));
+  }
+  // ทีมที่แม่ถูกลบไป (parent ไม่อยู่ในลิสต์) — ต่อท้ายไว้ ไม่ให้หาย
+  for (const t of teams) if (!out.includes(t)) out.push(t);
+  return out;
 }
 
 const monthLabel = (ym) => {
@@ -215,7 +240,12 @@ function userRow(u, teams, myAccess, me) {
   const canCross = u.role === 'manager' || u.role === 'sale';
   return `
     <tr data-uid="${esc(u.id)}" class="${u.is_active === false ? 'is-archived' : ''}">
-      <td>${esc(u.full_name || '(ยังไม่ตั้งชื่อ)')}${isMe ? ' <span class="tag-me">คุณ</span>' : ''}</td>
+      <td>
+        <div>${esc(u.full_name || '(ยังไม่ตั้งชื่อ)')}${isMe ? ' <span class="tag-me">คุณ</span>' : ''}</div>
+        <input class="inp inp-sm u-title" data-user="${esc(u.id)}" data-field="title"
+               value="${esc(u.title || '')}" placeholder="ตำแหน่ง เช่น ผู้จัดการส่วน IMP1"
+               title="ตำแหน่งตาม org chart — แสดงบนหน้าทีมขาย">
+      </td>
       <td class="t-mail">${esc(u.email)}</td>
       <td>
         <select data-user="${esc(u.id)}" data-field="role" ${isMe ? 'disabled title="เปลี่ยนสิทธิ์ของตัวเองไม่ได้ — กันล็อกตัวเองออกจากระบบ"' : ''}>
@@ -252,6 +282,9 @@ function userRow(u, teams, myAccess, me) {
 function openAccess(host, user, teams, current, onSaved) {
   if (!user) return;
   const own = user.team_id;
+  // current = แถว team_access เดิม (มี can_edit) · แปลงเป็น map ไว้เช็ก
+  const cur = new Map((current || []).map(a => [a.team_id, a.can_edit !== false]));
+  const ordered = teamTree(teams);
 
   host.innerHTML = `
     <div class="modal" id="acModal">
@@ -261,20 +294,29 @@ function openAccess(host, user, teams, current, onSaved) {
           <button type="button" class="btn btn-ghost btn-sm" id="acClose">ปิด</button>
         </div>
         <div class="modal-body">
-          <p class="sec-foot" style="margin:0 0 12px">
-            ติ๊กทีมที่ให้ดูข้ามได้ · <b>ทีมหลักของตัวเองเห็นอยู่แล้ว ไม่ต้องติ๊ก</b><br>
-            ให้สิทธิ์ตรงนี้แล้วเห็นครบทุกแถบ — งาน Pending · Book 3 สี · แผนติดต่อลูกค้า
+          <p class="sec-foot" style="margin:0 0 10px">
+            ติ๊ก <b>ดู</b> = เห็นข้อมูลทีมนั้น · ติ๊ก <b>แก้</b> = แก้ข้อมูลได้ด้วย (ไม่ติ๊ก = ดูอย่างเดียว)<br>
+            <b>ทีมหลักของตัวเองเห็น+แก้อยู่แล้ว</b> · ให้สิทธิ์ทีมแม่ = ครอบทีมย่อยทั้งหมด
           </p>
+          <div class="ac-quick">
+            <button type="button" class="btn btn-ghost btn-sm" id="acAll">✓ เห็นทั้งองค์กร (ทุกทีมบนสุด)</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="acNone">ล้างทั้งหมด</button>
+          </div>
           <ul class="aclist">
-            ${teams.map(t => {
+            <li class="ac-head"><span></span><span class="ac-col">ดู</span><span class="ac-col">แก้</span></li>
+            ${ordered.map(t => {
               const isOwn = t.id === own;
-              return `<li>
-                <label class="${isOwn ? 'is-own' : ''}">
-                  <input type="checkbox" value="${esc(t.id)}"
-                         ${current.includes(t.id) || isOwn ? 'checked' : ''} ${isOwn ? 'disabled' : ''}>
-                  <b>${esc(t.code)}</b> <span>${esc(t.name || '')}</span>
-                  ${isOwn ? '<em>ทีมหลัก</em>' : ''}
-                </label>
+              const view = cur.has(t.id) || isOwn;
+              const edit = isOwn || cur.get(t.id) === true;
+              const sub = t.parent_team_id ? 'is-sub' : '';
+              return `<li class="acrow ${isOwn ? 'is-own' : ''} ${sub}" data-team="${esc(t.id)}"
+                          data-top="${t.parent_team_id ? '' : '1'}">
+                <span class="ac-name"><b>${esc(t.code)}</b> <span>${esc(t.name || '')}</span>
+                  ${isOwn ? '<em>ทีมหลัก</em>' : ''}</span>
+                <span class="ac-col"><input type="checkbox" data-view value="${esc(t.id)}"
+                       ${view ? 'checked' : ''} ${isOwn ? 'disabled' : ''}></span>
+                <span class="ac-col"><input type="checkbox" data-edit
+                       ${edit ? 'checked' : ''} ${isOwn ? 'disabled' : ''} ${view ? '' : 'disabled'}></span>
               </li>`;
             }).join('')}
           </ul>
@@ -294,14 +336,38 @@ function openAccess(host, user, teams, current, onSaved) {
   q('#acCancel').addEventListener('click', close);
   q('#acModal').addEventListener('mousedown', (e) => { if (e.target.id === 'acModal') close(); });
 
+  // "แก้" ติ๊กได้เฉพาะเมื่อ "ดู" ติ๊กอยู่ — ยกเลิกดู = ยกเลิกแก้ตาม
+  host.querySelectorAll('.acrow').forEach(row => {
+    const v = row.querySelector('[data-view]'), e = row.querySelector('[data-edit]');
+    if (!v || !e) return;
+    v.addEventListener('change', () => {
+      e.disabled = !v.checked;
+      if (!v.checked) e.checked = false;
+    });
+  });
+
+  q('#acAll').addEventListener('click', () => {
+    host.querySelectorAll('.acrow[data-top="1"] [data-view]:not(:disabled)').forEach(v => {
+      v.checked = true; const e = v.closest('.acrow').querySelector('[data-edit]'); if (e) e.disabled = false;
+    });
+  });
+  q('#acNone').addEventListener('click', () => {
+    host.querySelectorAll('.acrow [data-view]:not(:disabled)').forEach(v => { v.checked = false; });
+    host.querySelectorAll('.acrow [data-edit]:not(:disabled)').forEach(e => { e.checked = false; e.disabled = true; });
+  });
+
   q('#acForm').addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    // ทีมหลักถูก disabled ไว้ → ไม่ถูกเก็บลง team_access (ถูกแล้ว ไม่ต้องเก็บซ้ำ)
-    const picked = [...host.querySelectorAll('.aclist input:checked:not(:disabled)')].map(i => i.value);
+    // ทีมหลัก (disabled) ไม่เก็บซ้ำ — เจ้าของทีมเห็น+แก้อยู่แล้วโดย RLS
+    const grants = [...host.querySelectorAll('.acrow')].map(row => {
+      const v = row.querySelector('[data-view]');
+      if (!v || v.disabled || !v.checked) return null;
+      return { team_id: v.value, can_edit: row.querySelector('[data-edit]')?.checked === true };
+    }).filter(Boolean);
     const btn = q('#acSave');
     btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
     try {
-      await adapter.setTeamAccess(user.id, picked);
+      await adapter.setTeamAccess(user.id, grants);
       close();
       await onSaved();
     } catch (e) {

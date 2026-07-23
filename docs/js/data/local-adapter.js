@@ -20,6 +20,7 @@ const emptyDb = () => ({
   team_access: [],
   signoffs: [],
   pending_products: [],
+  team_targets: [],
   lead_sources: [],
   expo_customers: [],
   teams_custom: [],
@@ -94,12 +95,15 @@ const localAdapter = {
 
   // B1
   async listTeams() {
+    // ลำดับชั้น (step 3.10): TE-IMP เป็นแม่ · IMP1/IMP2 เป็นลูก
     const base = [
-      { id: 'GOV.1',  code: 'GOV.1',  name: 'GOV.1' },
-      { id: 'GOV.3',  code: 'GOV.3',  name: 'GOV.3' },
-      { id: 'GOV.4',  code: 'GOV.4',  name: 'GOV.4' },
-      { id: 'TE-IMP', code: 'TE-IMP', name: 'TE-IMP' },
-      { id: 'SYSTEM', code: 'SYSTEM', name: 'System Project' },
+      { id: 'GOV.1',  code: 'GOV.1',  name: 'GOV.1',          parent_team_id: null,     sort_order: 10 },
+      { id: 'GOV.3',  code: 'GOV.3',  name: 'GOV.3',          parent_team_id: null,     sort_order: 20 },
+      { id: 'GOV.4',  code: 'GOV.4',  name: 'GOV.4',          parent_team_id: null,     sort_order: 30 },
+      { id: 'TE-IMP', code: 'TE-IMP', name: 'TE-IMP',         parent_team_id: null,     sort_order: 40 },
+      { id: 'IMP1',   code: 'IMP1',   name: 'TE IMP · ทีม 1', parent_team_id: 'TE-IMP', sort_order: 41 },
+      { id: 'IMP2',   code: 'IMP2',   name: 'TE IMP · ทีม 2', parent_team_id: 'TE-IMP', sort_order: 42 },
+      { id: 'SYSTEM', code: 'SYSTEM', name: 'System Project', parent_team_id: null,     sort_order: 50 },
     ];
     // ทีมที่เพิ่มจากหน้า Admin ตอนทดสอบโหมดออฟไลน์ (ของจริงอยู่ในตาราง teams)
     const extra = db.teams_custom.filter(t => !base.some(b => b.code === t.code));
@@ -487,13 +491,27 @@ const localAdapter = {
     return db.team_access.filter(r => !profileId || r.profile_id === profileId);
   },
 
-  async setTeamAccess(profileId, teamIds) {
+  async setTeamAccess(profileId, grants) {
     db.team_access = db.team_access.filter(r => r.profile_id !== profileId);
-    for (const team_id of (teamIds || []).filter(Boolean)) {
-      db.team_access.push({ profile_id: profileId, team_id, can_edit: true });
+    for (const g of (grants || []).filter(Boolean)) {
+      const o = typeof g === 'string' ? { team_id: g, can_edit: true } : g;
+      if (o.team_id) db.team_access.push({ profile_id: profileId, team_id: o.team_id, can_edit: o.can_edit !== false });
     }
     save();
     return db.team_access.filter(r => r.profile_id === profileId);
+  },
+
+  // B10 เป้ารายทีม (step 3.10)
+  async listTeamTargets(period = 'H2-2026') {
+    return (db.team_targets || []).filter(r => r.period === period);
+  },
+  async saveTeamTarget(teamId, targetBaht, period = 'H2-2026') {
+    db.team_targets = db.team_targets || [];
+    const i = db.team_targets.findIndex(r => r.team_id === teamId && r.period === period);
+    const row = { team_id: teamId, period, target_baht: Number(targetBaht) || 0 };
+    if (i >= 0) db.team_targets[i] = row; else db.team_targets.push(row);
+    save();
+    return [row];
   },
 
   async saveTeam(row) { return upsert('teams_custom', row); },

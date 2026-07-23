@@ -27,6 +27,31 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-23 05:30 · ยังไม่ commit · step 3.10 ช่วง A — โครงสร้างทีมตาม org chart + สิทธิ์
+**step:** 3.10 (ใหม่ · เจ้าของขอเอง พร้อม org chart) | **ประเภท:** ฟีเจอร์ + ความปลอดภัย
+- เจ้าของเคาะ 23 ก.ค. 2569: IMP1/IMP2 เป็นทีมจริง · TE-IMP เป็นกลุ่มแม่ · เป้าตั้งระดับทีม
+- `db/phase3-10.sql` — `teams.parent_team_id` (self-ref) · seed IMP1/IMP2 ใต้ TE-IMP ·
+  `profiles.title` (ตำแหน่งตาม org chart) · ตาราง `team_targets` (ใช้ช่วง B)
+- ⭐ **can_access_team() เพิ่มการไล่ขึ้นทีมแม่ (recursive) — จุดเดียวที่แก้ ทั้งระบบตามหมด**
+  ให้สิทธิ์ TE-IMP = เห็น IMP1+IMP2 อัตโนมัติ · หัวหน้าแผนกอื่น/นันทวันเห็น IMP ได้
+- 🔴 **ปิดช่องโหว่ can_edit ที่ค้างมาตั้งแต่ 2.4** — team_access มีคอลัมน์ can_edit แต่ไม่เคยมี policy ใช้
+  → เพิ่ม `can_edit_team()` + เปลี่ยน policy ฝั่งเขียนทั้งหมดให้ใช้ (pending/customers/activities/
+  logs/contacts/products) · แยก for-all ของ contacts/products เป็น select(view) + write(edit)
+  ผล: หัวหน้าที่ได้สิทธิ์ "ดูอย่างเดียว" IMP เห็นงานได้ แต่แก้ไม่ได้
+- adapter: setTeamAccess รับ can_edit รายทีม · listTeams คืน parent_team_id · +team_targets methods
+- หน้า Admin: ทีมแสดงลำดับชั้น (ทีมย่อยเยื้อง) · เพิ่มทีมเลือกทีมแม่ได้ ·
+  แผงสิทธิ์แยกคอลัมน์ "ดู"/"แก้" + ปุ่ม "เห็นทั้งองค์กร" · ช่องกรอกตำแหน่งรายคน
+- bump v0.13.0
+**ไฟล์:** db/phase3-10.sql · docs/js/modules/admin.js · docs/js/data/{supabase,local,}adapter.js ·
+docs/css/app.css · docs/sw.js · docs/js/config.js
+**ทดสอบ:** RLS จริงบน PGlite **96/96** (เดิม 80 — เพิ่ม 16 เคส: ไล่ทีมแม่ · can_edit gate ·
+sale ทีมตัวเองไม่กระทบ · view แยกจาก edit · team_targets) · หน้า Admin จริง **17/17** ·
+regression เดิมครบ (adm 40 · pdf 43 · pwa 38 · src 38 · tm 32 · b3 31 · act 42 · sign 35 ·
+arc 25 · unit 26 · imp 23 · team 22 · nosup 17 · fix 17 · ui3 17 · reg 12 · parity) — **รวม ~560**
+**ค้าง:** ช่วง B — เป้ารายทีม + ตัวเลือกดูเป้าในหน้า dashboard (รวมขึ้นเป็นทีม/องค์กร) ·
+หน้าทีมขายควรให้การ์ดทีมแม่รวมยอดทีมย่อย (ทำในช่วง B) ·
+เจ้าของต้องรัน `db/phase3-10.sql` + ตั้งค่าใน Admin: นันทวัน→เห็นทั้งองค์กร · IMP1/IMP2 managers→ทีมย่อยตัวเอง
+
 ## 2026-07-23 04:30 · b6a1a24 · ปรับ UI 3 จุด + ช่องรูปลูกค้า (ตามที่เจ้าของสั่ง)
 **step:** 3.9 (ตามเก็บ) | **ประเภท:** ฟีเจอร์ + ปรับ UI
 - **ย้ายตาราง PRODUCT ขึ้นเหนือหมวด "เงิน & เวลา"** — รายการสินค้าคือที่มาของยอดเงิน ควรกรอกก่อน

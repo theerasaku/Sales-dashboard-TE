@@ -97,6 +97,10 @@ export const adapter = {
 
   // ค่าตั้งระบบ (เป้ายอดขาย ฯลฯ)
   getSettings:       ()        => need().getSettings(),
+
+  // B10 เป้ารายทีม (step 3.10)
+  listTeamTargets:   (p)        => need().listTeamTargets(p),
+  saveTeamTarget:    (t, v, p)  => need().saveTeamTarget(t, v, p),
   saveSetting:       (k, v)    => need().saveSetting(k, v),
 
   // B6 dashboard

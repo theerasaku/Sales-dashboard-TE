@@ -1167,3 +1167,32 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .pf-thumb-x { font-size: 10.5px; color: var(--text-mute); text-align: center; padding: 4px; }
 .pf-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .pf-hint { flex-basis: 100%; font-size: 11px; color: var(--text-mute); margin: 0; }
+
+/* ── Admin step 3.10: แผงสิทธิ์ดู/แก้ + ทีมย่อย + ตำแหน่ง ── */
+.tmlist .is-sub { padding-left: 22px; }
+.tmlist .is-sub b::before { content: "↳ "; color: var(--text-mute); }
+.tmlist em { font-size: 11px; color: var(--text-mute); margin-left: 6px; font-style: normal; }
+
+.u-title { margin-top: 4px; font-size: 11.5px; width: 100%; max-width: 200px; }
+
+.ac-quick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+
+.aclist .ac-head {
+  display: flex; align-items: center;
+  font-size: 10.5px; color: var(--text-mute);
+  border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 2px;
+}
+.acrow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 4px; border-bottom: 1px solid var(--border-soft);
+}
+.ac-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; }
+.ac-name b { font-size: 12.5px; }
+.ac-name span { color: var(--text-dim); font-size: 11.5px; }
+.ac-name em { font-size: 10.5px; color: var(--green); font-style: normal; margin-left: 4px; }
+.ac-col { flex: 0 0 42px; text-align: center; }
+.aclist .ac-head .ac-col { flex: 0 0 42px; }
+.acrow.is-sub .ac-name { padding-left: 18px; }
+.acrow.is-sub .ac-name b::before { content: "↳ "; color: var(--text-mute); }
+.acrow.is-own { opacity: .7; }
+.acrow input[type="checkbox"] { width: 18px; height: 18px; }

@@ -323,7 +323,7 @@ const supabaseAdapter = {
   // ---------- B1 Teams ----------
 
   async listTeams() {
-    return rest('/teams?select=id,code,name,description&is_active=eq.true&order=sort_order.asc');
+    return rest('/teams?select=id,code,name,description,parent_team_id,sort_order&is_active=eq.true&order=sort_order.asc');
   },
 
   // ---------- B2 Pending Projects ----------
@@ -526,6 +526,20 @@ const supabaseAdapter = {
    * customers/activities ยังไม่มีตาราง (step 2.1) · ยอดรวม/ยอดปิดต้องใช้ views.sql (step 1.5)
    * คืน null สำหรับตัวที่ยังไม่มี เพื่อให้ UI แสดง "—" ได้ ไม่ใช่พังทั้งหน้า
    */
+  // B10 เป้ารายทีม (step 3.10)
+  async listTeamTargets(period = 'H2-2026') {
+    return rest(`/team_targets?select=team_id,period,target_baht&period=eq.${encodeURIComponent(period)}`);
+  },
+  async saveTeamTarget(teamId, targetBaht, period = 'H2-2026') {
+    const body = { team_id: teamId, period, target_baht: Number(targetBaht) || 0,
+                   updated_by: session?.user?.id || null };
+    return rest('/team_targets?on_conflict=team_id,period', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(body),
+    });
+  },
+
   async getDashboardStats() {
     // ตารางของ Phase 2 อาจยังไม่ถูกสร้าง (เจ้าของยังไม่ได้รัน phase2.sql)
     // → นับไม่ได้ก็คืน null ให้ UI แสดง "—" ไม่ใช่พังทั้งหน้า
@@ -874,7 +888,7 @@ const supabaseAdapter = {
 
   /** รายชื่อผู้ใช้ — RLS คัดให้เอง (admin เห็นหมด · คนอื่นเห็นเฉพาะตัวเอง+เพื่อนร่วมทีม) */
   async listProfiles() {
-    return rest('/profiles?select=id,email,full_name,role,team_id,is_active,teams(code,name)'
+    return rest('/profiles?select=id,email,full_name,title,role,team_id,is_active,teams(code,name)'
               + '&order=role.asc,full_name.asc');
   },
 
@@ -908,11 +922,14 @@ const supabaseAdapter = {
    * ⚠️ ลบก่อนแล้วค่อยเพิ่ม ไม่ใช่ upsert
    *    เพราะการ "เอาสิทธิ์ออก" สำคัญพอ ๆ กับการให้สิทธิ์ ถ้า upsert อย่างเดียวจะถอนไม่ได้
    */
-  async setTeamAccess(profileId, teamIds) {
+  async setTeamAccess(profileId, grants) {
     await rest(`/team_access?profile_id=eq.${encodeURIComponent(profileId)}`, { method: 'DELETE' });
-    const rows = (teamIds || []).filter(Boolean).map(team_id => ({
-      profile_id: profileId, team_id, granted_by: session?.user?.id || null,
-    }));
+    // รับได้ทั้ง ['teamId', …] (เดิม → แก้ได้) และ [{team_id, can_edit}, …] (ใหม่ step 3.10)
+    const rows = (grants || []).filter(Boolean).map(g => {
+      const o = typeof g === 'string' ? { team_id: g, can_edit: true } : g;
+      return { profile_id: profileId, team_id: o.team_id, can_edit: o.can_edit !== false,
+               granted_by: session?.user?.id || null };
+    }).filter(r => r.team_id);
     if (!rows.length) return [];
     return rest('/team_access', {
       method: 'POST',
