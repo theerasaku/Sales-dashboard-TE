@@ -37,6 +37,11 @@ export const adapter = {
   signIn:            (e, p)  => need().signIn(e, p),
   signOut:           ()      => need().signOut(),
 
+  // ลืมรหัสผ่าน / ตั้งรหัสใหม่ (step 3.11)
+  requestPasswordReset: (email) => need().requestPasswordReset(email),
+  readRecoveryToken:    ()      => need().readRecoveryToken(),
+  updatePassword:       (pw, t) => need().updatePassword(pw, t),
+
   // B1 teams
   listTeams:         ()      => need().listTeams(),
 

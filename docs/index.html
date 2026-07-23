@@ -58,9 +58,51 @@
 
     <button class="btn btn-primary" type="submit" id="loginBtn">เข้าสู่ระบบ</button>
 
+    <button type="button" class="link-btn" id="forgotLink">ลืมรหัสผ่าน?</button>
+
     <p class="login-note">
       ระบบนี้ปิดรับสมัครสาธารณะ — ใช้บัญชีที่ผู้ดูแลเชิญเท่านั้น
     </p>
+  </form>
+
+  <!-- ─── ขอลิงก์ตั้งรหัสผ่านใหม่ทางอีเมล ─── -->
+  <form class="login-box" id="resetForm" hidden autocomplete="on">
+    <div class="brand-mark login-mark">TE</div>
+    <h1>ลืมรหัสผ่าน</h1>
+    <p class="login-sub">กรอกอีเมลของคุณ ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้</p>
+
+    <label class="fld">
+      <span>อีเมล</span>
+      <input type="email" id="resetEmail" required autocomplete="username"
+             inputmode="email" autocapitalize="off" spellcheck="false" placeholder="you@dos.co.th">
+    </label>
+
+    <p class="login-err" id="resetErr" role="alert" hidden></p>
+    <p class="login-ok" id="resetOk" hidden></p>
+
+    <button class="btn btn-primary" type="submit" id="resetBtn">ส่งลิงก์ไปที่อีเมล</button>
+    <button type="button" class="link-btn" id="resetBack">← กลับไปหน้าเข้าสู่ระบบ</button>
+  </form>
+
+  <!-- ─── ตั้งรหัสผ่านใหม่ (แสดงเมื่อกดลิงก์ในเมลกลับมา · มี token recovery ใน URL) ─── -->
+  <form class="login-box" id="newpassForm" hidden autocomplete="off">
+    <div class="brand-mark login-mark">TE</div>
+    <h1>ตั้งรหัสผ่านใหม่</h1>
+    <p class="login-sub">ตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ</p>
+
+    <label class="fld">
+      <span>รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)</span>
+      <input type="password" id="newpass1" required autocomplete="new-password" placeholder="••••••••">
+    </label>
+    <label class="fld">
+      <span>พิมพ์รหัสผ่านใหม่อีกครั้ง</span>
+      <input type="password" id="newpass2" required autocomplete="new-password" placeholder="••••••••">
+    </label>
+
+    <p class="login-err" id="newpassErr" role="alert" hidden></p>
+    <p class="login-ok" id="newpassOk" hidden></p>
+
+    <button class="btn btn-primary" type="submit" id="newpassBtn">บันทึกรหัสผ่านใหม่</button>
   </form>
 </div>
 

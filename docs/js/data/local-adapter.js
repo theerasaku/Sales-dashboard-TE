@@ -93,6 +93,14 @@ const localAdapter = {
   },
   async signOut() { db.session = null; save(); },
 
+  // โหมด local ไม่มีเมลจริง — ทำเป็น no-op ให้ UI ทำงานได้เหมือนกัน (รูปข้อมูลตรงกับ supabase-adapter)
+  async requestPasswordReset() { /* ออฟไลน์ไม่ส่งเมล */ },
+  async readRecoveryToken() { return null; },
+  async updatePassword(newPassword) {
+    if (!newPassword || newPassword.length < 6) throw new Error('รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร');
+    return true;
+  },
+
   // B1
   async listTeams() {
     // ลำดับชั้น (step 3.10): TE-IMP เป็นแม่ · IMP1/IMP2 เป็นลูก

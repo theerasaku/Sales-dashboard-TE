@@ -320,6 +320,62 @@ const supabaseAdapter = {
     } catch { /* ออฟไลน์ก็ถือว่าออกจากระบบแล้ว */ }
   },
 
+  /**
+   * ขอลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมล (Supabase ส่งเมลให้)
+   *
+   * ⚠️ redirect_to ต้องอยู่ในรายการที่อนุญาตใน Supabase → Authentication → URL Configuration
+   *    (ใส่ URL ของ GitHub Pages ทั้ง Site URL และ Redirect URLs) ไม่งั้นลิงก์ในเมลจะเด้งกลับไม่ได้
+   *
+   * 🔒 ตั้งใจไม่บอกว่า "ไม่พบอีเมลนี้" — กันคนไล่เดาว่าอีเมลไหนมีบัญชีในระบบ
+   *    Supabase คืน 200 เสมอไม่ว่าอีเมลมีจริงไหม เราก็แสดงข้อความเดียวกันหมด
+   */
+  async requestPasswordReset(email) {
+    const redirect_to = location.origin + location.pathname;
+    try {
+      await fetch(url('/auth/v1/recover'), {
+        method: 'POST',
+        headers: { apikey: apikey(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: String(email || '').trim(), redirect_to }),
+      });
+    } catch {
+      throw new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่');
+    }
+    // ไม่เช็ก res.ok — Supabase คืน 200 เสมอ (กันเดาอีเมล) เราถือว่าส่งแล้วทุกกรณี
+  },
+
+  /**
+   * อ่าน token กู้คืนรหัสผ่านจาก URL (Supabase แนบมาใน hash ตอนกดลิงก์ในเมล)
+   * คืน token ถ้าเป็นลิงก์ recovery · null ถ้าไม่ใช่
+   */
+  async readRecoveryToken() {
+    const h = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+    if (h.get('type') === 'recovery' && h.get('access_token')) return h.get('access_token');
+    return null;
+  },
+
+  /**
+   * ตั้งรหัสผ่านใหม่ — ใช้ token จากลิงก์ recovery (ถ้าส่งมา) หรือ session ปัจจุบัน
+   */
+  async updatePassword(newPassword, recoveryToken) {
+    const token = recoveryToken || session?.access_token;
+    if (!token) throw new Error('ลิงก์ตั้งรหัสผ่านหมดอายุหรือไม่ถูกต้อง — ขอลิงก์ใหม่อีกครั้ง');
+    if (!newPassword || newPassword.length < 6) throw new Error('รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร');
+
+    let res, data;
+    try {
+      res = await fetch(url('/auth/v1/user'), {
+        method: 'PUT',
+        headers: { apikey: apikey(), Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      data = await res.json().catch(() => ({}));
+    } catch {
+      throw new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่');
+    }
+    if (!res.ok) throw new Error(friendlyError(data, res));
+    return true;
+  },
+
   // ---------- B1 Teams ----------
 
   async listTeams() {

@@ -41,15 +41,41 @@ const el = {
   whoAvatar:  document.getElementById('whoAvatar'),
   whoName:    document.getElementById('whoName'),
   whoMeta:    document.getElementById('whoMeta'),
+
+  // ลืมรหัสผ่าน / ตั้งรหัสใหม่ (step 3.11)
+  forgotLink:  document.getElementById('forgotLink'),
+  resetForm:   document.getElementById('resetForm'),
+  resetEmail:  document.getElementById('resetEmail'),
+  resetErr:    document.getElementById('resetErr'),
+  resetOk:     document.getElementById('resetOk'),
+  resetBtn:    document.getElementById('resetBtn'),
+  resetBack:   document.getElementById('resetBack'),
+  newpassForm: document.getElementById('newpassForm'),
+  newpass1:    document.getElementById('newpass1'),
+  newpass2:    document.getElementById('newpass2'),
+  newpassErr:  document.getElementById('newpassErr'),
+  newpassOk:   document.getElementById('newpassOk'),
+  newpassBtn:  document.getElementById('newpassBtn'),
 };
 
 let current = null;
+let recoveryToken = null;   // token จากลิงก์ในเมล (ตอนตั้งรหัสผ่านใหม่)
 
 // ---------- สลับหน้าจอ ----------
+
+// สลับระหว่าง 3 ฟอร์มในหน้าล็อกอิน: เข้าสู่ระบบ / ขอลิงก์รีเซ็ต / ตั้งรหัสใหม่
+function showLoginPanel(which) {
+  el.login.hidden = false;
+  el.app.hidden = true;
+  el.loginForm.hidden   = which !== 'login';
+  el.resetForm.hidden   = which !== 'reset';
+  el.newpassForm.hidden = which !== 'newpass';
+}
 
 function showLogin() {
   el.app.hidden = true;
   el.login.hidden = false;
+  showLoginPanel('login');
   el.loginEmail?.focus();
 }
 
@@ -168,6 +194,61 @@ async function signOut() {
   showLogin();
 }
 
+// ---------- ลืมรหัสผ่าน / ตั้งรหัสใหม่ (step 3.11) ----------
+
+function bindPasswordReset() {
+  el.forgotLink?.addEventListener('click', () => {
+    el.resetErr.hidden = true; el.resetOk.hidden = true;
+    el.resetEmail.value = el.loginEmail.value.trim();   // เผื่อกรอกอีเมลไว้แล้ว
+    showLoginPanel('reset');
+    el.resetEmail.focus();
+  });
+  el.resetBack?.addEventListener('click', () => showLoginPanel('login'));
+
+  el.resetForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    el.resetErr.hidden = true; el.resetOk.hidden = true;
+    const email = el.resetEmail.value.trim();
+    if (!email) { el.resetErr.textContent = 'กรอกอีเมลก่อน'; el.resetErr.hidden = false; return; }
+
+    el.resetBtn.disabled = true; el.resetBtn.textContent = 'กำลังส่ง…';
+    try {
+      await adapter.requestPasswordReset(email);
+      // 🔒 ไม่บอกว่าอีเมลมีในระบบไหม — กันคนไล่เดาบัญชี
+      el.resetOk.innerHTML = 'ถ้ามีบัญชีที่ใช้อีเมลนี้ ระบบส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้แล้ว<br>'
+        + '<span class="t2">เปิดเมลแล้วกดลิงก์ (เช็กในกล่อง Junk/Spam ด้วย)</span>';
+      el.resetOk.hidden = false;
+    } catch (err) {
+      el.resetErr.textContent = err.message; el.resetErr.hidden = false;
+    } finally {
+      el.resetBtn.disabled = false; el.resetBtn.textContent = 'ส่งลิงก์ไปที่อีเมล';
+    }
+  });
+
+  el.newpassForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    el.newpassErr.hidden = true; el.newpassOk.hidden = true;
+    const p1 = el.newpass1.value, p2 = el.newpass2.value;
+    if (p1.length < 6) { el.newpassErr.textContent = 'รหัสผ่านต้องยาวอย่างน้อย 6 ตัว'; el.newpassErr.hidden = false; return; }
+    if (p1 !== p2)     { el.newpassErr.textContent = 'รหัสผ่านสองช่องไม่ตรงกัน'; el.newpassErr.hidden = false; return; }
+
+    el.newpassBtn.disabled = true; el.newpassBtn.textContent = 'กำลังบันทึก…';
+    try {
+      await adapter.updatePassword(p1, recoveryToken);
+      el.newpass1.value = ''; el.newpass2.value = '';
+      recoveryToken = null;
+      history.replaceState(null, '', location.pathname);   // ลบ token ออกจาก URL
+      el.newpassOk.textContent = '✓ ตั้งรหัสผ่านใหม่แล้ว — เข้าสู่ระบบด้วยรหัสใหม่ได้เลย';
+      el.newpassOk.hidden = false;
+      setTimeout(() => showLoginPanel('login'), 1800);
+    } catch (err) {
+      el.newpassErr.textContent = err.message; el.newpassErr.hidden = false;
+    } finally {
+      el.newpassBtn.disabled = false; el.newpassBtn.textContent = 'บันทึกรหัสผ่านใหม่';
+    }
+  });
+}
+
 // ---------- boot ----------
 
 async function boot() {
@@ -178,6 +259,7 @@ async function boot() {
 
   bindNav();
   el.loginForm.addEventListener('submit', onLoginSubmit);
+  bindPasswordReset();
   document.getElementById('logoutBtn')?.addEventListener('click', signOut);
   document.getElementById('logoutBtnTop')?.addEventListener('click', signOut);
 
@@ -194,6 +276,12 @@ async function boot() {
     showLoginError('ระบบตั้งค่าไม่ครบ: ' + e.message);
     return showLogin();
   }
+
+  // กดลิงก์ตั้งรหัสผ่านใหม่จากเมลกลับมา → มี token recovery ใน URL → โชว์ฟอร์มตั้งรหัสใหม่ก่อนเลย
+  try {
+    recoveryToken = await adapter.readRecoveryToken();
+    if (recoveryToken) { showLoginPanel('newpass'); el.newpass1?.focus(); return; }
+  } catch { /* ไม่ใช่ลิงก์ recovery ก็ทำงานต่อปกติ */ }
 
   // มี session ค้างอยู่ไหม (เปิดเบราว์เซอร์ใหม่แล้วไม่ต้องล็อกอินซ้ำ)
   let session = null;
