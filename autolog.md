@@ -27,6 +27,21 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-23 22:27 · ยังไม่ commit · 3.8 AI Intake อัตโนมัติ — Edge Function + อ่านรูปด้วย Claude vision
+**step:** 3.8 (จบ roadmap!) | **ประเภท:** ฟีเจอร์ (Edge Function + frontend)
+- `supabase/functions/ai-intake/index.ts` (ใหม่ · Deno): ถือ `ANTHROPIC_API_KEY` ฝั่งเซิร์ฟเวอร์ →
+  รับรูป/ข้อความ → เรียก Claude vision (อ่านลายมือไทยได้) → คืนข้อความ JSON · ตรวจ JWT ก่อน (กันคนนอกใช้ key ฟรี) · CORS ครบ
+  - 🔒 ไม่มีค่า key ในไฟล์เลย — อ่านจาก Deno.env · deploy: `supabase functions deploy ai-intake --no-verify-jwt` + `supabase secrets set ANTHROPIC_API_KEY=...`
+  - README คู่มือ deploy ครบ · โมเดลตั้งต้น claude-sonnet-5 (เปลี่ยนได้ด้วย secret AI_INTAKE_MODEL)
+- adapter +1 เมธอด `aiExtract(payload)`: supabase = POST ไป Edge Function (token อยู่ใน adapter UI ไม่แตะ) · local = คืน demo stub ให้ทดสอบ flow
+- `ai-intake.js`: ปุ่ม "📷 ให้ AI อ่านรูป" ในโมดัล → ย่อรูป(≤1600px)→base64→aiExtract→แกะด้วย parsePasted เดิม→พัก staging
+  - ⭐ 3.8 เปลี่ยนแค่ "JSON มาจากไหน" · staging/preview/merge/confidence ใช้ของ 3.5 ทั้งหมด (refactor เป็น stageRecords ใช้ร่วม)
+  - ไม่ deploy ก็ยังใช้ได้ — ตกไปทางก๊อปคำสั่งวางเอง (3.5) ฟรี · ถ้า Edge Function ไม่มีขึ้น 404 บอกให้ใช้ทางสำรอง
+- CSS auto-read (var ล้วน) · bump v0.19.0
+**ไฟล์:** supabase/functions/ai-intake/{index.ts,README.md} · docs/js/data/{adapter,supabase-adapter,local-adapter}.js · docs/js/modules/ai-intake.js · docs/css/app.css · docs/js/config.js · docs/sw.js
+**ทดสอบ:** auto-read **9/9** (puppeteer local: อัปโหลดรูป→demo→staging→บันทึกเข้า pending จริง · ไฮไลต์ confidence · ไม่มี JS error) · parity 56 ครบ · intake-ui ซ้ำ 27/27 ไม่ regression · ไม่มี key/hex รั่ว · Edge Function ตรวจสายตา (ไม่มี deno ในเครื่อง)
+**ค้าง:** **เจ้าของต้อง deploy Edge Function + ตั้ง `ANTHROPIC_API_KEY`** (ดู README) ปุ่มอ่านรูปถึงจะใช้ของจริงได้ · ยังไม่ทดสอบเรียก Claude จริง
+
 ## 2026-07-23 22:18 · ยังไม่ commit · 3.7 ธีม/สี — Dark / สว่าง / คอนทราสต์สูง + สีเน้น 5 สี
 **step:** 3.7 | **ประเภท:** ฟีเจอร์ (ธีม)
 - `docs/js/ui/theme.js` (ใหม่): เลือกธีม 3 แบบ + สีเน้น 5 สี · จำใน localStorage · สลับด้วย `data-theme`/`data-accent` บน `<html>`

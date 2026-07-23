@@ -1521,3 +1521,24 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .th-themes { grid-template-columns: 1fr; }
   .th-dot { width: 44px; height: 44px; }
 }
+
+/* ── AI Intake: อ่านรูปอัตโนมัติ (step 3.8) ── */
+.ai-auto {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; margin-top: 6px;
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: var(--r-md);
+}
+.ai-auto-l { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ai-auto-l strong { font-size: 13px; color: var(--text); }
+.ai-auto-l span { font-size: 11.5px; color: var(--text-dim); line-height: 1.4; }
+.ai-autobtn { cursor: pointer; margin: 0; white-space: nowrap; }
+.ai-autobtn.is-loading { opacity: .7; pointer-events: none; }
+.ai-or {
+  display: flex; align-items: center; gap: 10px; margin: 14px 0 2px;
+  font-size: 11.5px; color: var(--text-mute);
+}
+.ai-or::before, .ai-or::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
+@media (max-width: 430px) {
+  .ai-autobtn { flex: 1 1 100%; min-height: 44px; }
+}

@@ -122,6 +122,9 @@ export const adapter = {
   // Backup & กู้คืน (step 3.6) — ดึงทุกตาราง / เขียนกลับทุกตาราง
   exportAll:     ()      => need().exportAll(),
   restoreBackup: (t)     => need().restoreBackup(t),
+
+  // AI Intake อัตโนมัติ (step 3.8) — ส่งรูป/ข้อความไป Edge Function อ่านด้วย Claude
+  aiExtract:     (p)     => need().aiExtract(p),
 };
 
 export default adapter;

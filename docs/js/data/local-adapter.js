@@ -642,6 +642,17 @@ const localAdapter = {
     return summary;
   },
 
+  // AI Intake อัตโนมัติ (step 3.8) — โหมดออฟไลน์ไม่มี Edge Function/Claude
+  // คืนข้อมูล "ตัวอย่าง" ให้ทดสอบ flow ได้ (ของจริงมาจาก Claude vision ผ่าน Edge Function)
+  async aiExtract(payload) {
+    const demo = payload?.target_type === 'pending'
+      ? [{ fields: { project_name: '(ตัวอย่าง) งานจากรูปฟอร์ม', value_baht: '1000000', pending_no: 'PD-DEMO' },
+           confidence: { project_name: 0.7, value_baht: 0.5 } }]
+      : [{ fields: { name: '(ตัวอย่าง) ชื่อจากนามบัตร', org: 'บริษัทตัวอย่าง', tel: '0800000000' },
+           confidence: { name: 0.7, tel: 0.6 } }];
+    return { text: JSON.stringify(demo) };
+  },
+
   // B6 — Phase 1.5 จะคำนวณจริง (รูปข้อมูลต้องตรงกับ supabase-adapter: null = ยังนับไม่ได้)
   async getDashboardStats() {
     return {

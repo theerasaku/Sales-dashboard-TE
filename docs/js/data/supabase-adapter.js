@@ -1181,6 +1181,39 @@ const supabaseAdapter = {
     }
     return summary;
   },
+
+  // ---------- AI Intake อัตโนมัติ (step 3.8) ----------
+  //
+  // ส่งรูป/ข้อความไป Edge Function (ถือ ANTHROPIC_API_KEY ฝั่งเซิร์ฟเวอร์) → คืนข้อความ JSON
+  // token ของผู้ใช้อยู่ในนี้เท่านั้น UI ไม่แตะ · ฟังก์ชันตรวจ JWT ก่อนเรียก Claude (กันคนนอกใช้ key ฟรี)
+  //
+  // payload: { prompt, image?: {media_type, data}, text?, source, target_type }
+  // คืน: { text }  (frontend แกะด้วย parsePasted ของ 3.5)
+  async aiExtract(payload) {
+    const s = await ensureFreshToken();
+    if (!s) throw new Error('เซสชันหมดอายุ — กรุณาเข้าสู่ระบบใหม่');
+    const endpoint = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/ai-intake';
+
+    let res, data;
+    try {
+      res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          apikey: apikey(),
+          Authorization: `Bearer ${s.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload || {}),
+      });
+      data = await res.json().catch(() => null);
+    } catch {
+      throw new Error('เรียก AI ไม่สำเร็จ — ตรวจอินเทอร์เน็ต (หรือยังไม่ได้ deploy Edge Function ให้ใช้วิธีก๊อปคำสั่งไปวางแทน)');
+    }
+    if (res.status === 404)
+      throw new Error('ยังไม่ได้ deploy Edge Function "ai-intake" (step 3.8) — ใช้วิธีก๊อปคำสั่งไปวางใน Claude เองด้านล่างได้เลย');
+    if (!res.ok) throw new Error(data?.error || `AI อ่านไม่สำเร็จ (${res.status})`);
+    return data;
+  },
 };
 
 const notReady = (what, phase) => {

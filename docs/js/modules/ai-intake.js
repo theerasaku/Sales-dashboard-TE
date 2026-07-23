@@ -261,6 +261,34 @@ function matchDuplicate(targetType, fields, candidates) {
 }
 
 // ══════════════════════════════════════════════════════════
+// อ่านรูป → base64 (ย่อก่อนส่ง กันไฟล์ใหญ่/เปลืองเน็ต · OCR ไม่ต้องความละเอียดเต็ม)
+// คืน { media_type, data } พร้อมส่งเข้า Claude vision
+// ══════════════════════════════════════════════════════════
+
+function fileToImagePart(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) return reject(new Error('ไฟล์นี้ไม่ใช่รูปภาพ'));
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1600;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (Math.max(w, h) > MAX) { const s = MAX / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = cv.toDataURL('image/jpeg', 0.85);
+      const m = dataUrl.match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
+      if (!m) return reject(new Error('แปลงรูปไม่สำเร็จ'));
+      resolve({ media_type: m[1], data: m[2] });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('เปิดรูปไม่ได้ — ไฟล์อาจเสียหาย')); };
+    img.src = url;
+  });
+}
+
+// ══════════════════════════════════════════════════════════
 // เปิด modal
 // ══════════════════════════════════════════════════════════
 
@@ -310,6 +338,18 @@ export function openAIImport(targetType = 'customer', opts = {}) {
             ${SOURCES_FOR[targetType].map(s =>
               `<button type="button" class="ai-srcbtn ${s === source ? 'on' : ''}" data-src="${s}">${esc(SOURCE_LABEL[s])}</button>`).join('')}
           </div>
+
+          <div class="ai-auto">
+            <div class="ai-auto-l">
+              <strong>📷 ให้ AI อ่านรูปอัตโนมัติ</strong>
+              <span>เลือกรูป/ถ่ายรูป นามบัตร · ฟอร์มกระดาษ · ลายมือ → ระบบส่งให้ Claude อ่านแล้วพักในรายการรอตรวจ (ต้องต่อเน็ต)</span>
+            </div>
+            <label class="btn btn-primary ai-autobtn" id="aiImgBtn">
+              เลือกรูป
+              <input type="file" id="aiImg" accept="image/*" hidden>
+            </label>
+          </div>
+          <div class="ai-or"><span>หรือทำเองแบบไม่ใช้เน็ต · ฟรี</span></div>
 
           <p class="ai-step">2 · ก๊อปคำสั่งนี้ไปวางใน Claude พร้อมรูป/โน้ต แล้วรอ JSON</p>
           <div class="ai-prompt-wrap">
@@ -383,7 +423,22 @@ export function openAIImport(targetType = 'customer', opts = {}) {
   }
   host.querySelectorAll('.ai-tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
-  // ── ตรวจ + เพิ่มเข้า staging ──
+  // พักผลลง staging แล้วเด้งไปแท็บรอตรวจ — ใช้ร่วมทั้งทางวางเอง (3.5) และ AI อ่านรูป (3.8)
+  async function stageRecords(records, raw) {
+    for (const r of records) {
+      await adapter.saveIntake({
+        source,
+        target_type: targetType,
+        parsed:     r.fields,
+        confidence: r.confidence || {},
+        raw_input:  String(raw || '').slice(0, 4000),
+        status:     'draft',
+      });
+    }
+    switchTab('stage');
+  }
+
+  // ── ตรวจ + เพิ่มเข้า staging (วาง JSON เอง · 3.5) ──
   q('#aiParse').addEventListener('click', async () => {
     setErr('');
     let records;
@@ -393,23 +448,38 @@ export function openAIImport(targetType = 'customer', opts = {}) {
     const btn = q('#aiParse');
     btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
     try {
-      for (const r of records) {
-        await adapter.saveIntake({
-          source,
-          target_type: targetType,
-          parsed:     r.fields,
-          confidence: r.confidence || {},
-          raw_input:  q('#aiPaste').value.slice(0, 4000),
-          status:     'draft',
-        });
-      }
+      await stageRecords(records, q('#aiPaste').value);
       q('#aiPaste').value = '';
-      switchTab('stage');
     } catch (e) {
-      // ตารางยังไม่ถูกสร้าง (ยังไม่รัน phase3-5.sql) จะเด้งตรงนี้
-      setErr(e.message);
+      setErr(e.message);   // ตารางยังไม่ถูกสร้าง (ยังไม่รัน phase3-5.sql) จะเด้งตรงนี้
     } finally {
       btn.disabled = false; btn.textContent = 'ตรวจ + เพิ่มเข้ารายการรอตรวจ →';
+    }
+  });
+
+  // ── AI อ่านรูปอัตโนมัติ (Edge Function · 3.8) ──
+  q('#aiImg').addEventListener('change', async (ev) => {
+    const file = ev.target.files?.[0];
+    ev.target.value = '';                 // เลือกไฟล์เดิมซ้ำได้
+    if (!file) return;
+    setErr('');
+    const btn = q('#aiImgBtn');
+    const label = btn.childNodes[0];
+    btn.classList.add('is-loading');
+    if (label) label.nodeValue = 'กำลังให้ AI อ่าน… ';
+    try {
+      const image = await fileToImagePart(file);
+      const res = await adapter.aiExtract({
+        prompt: promptFor(targetType, source),
+        image, source, target_type: targetType,
+      });
+      const records = parsePasted(res?.text || '');
+      await stageRecords(records, '[AI อ่านจากรูป]');
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      btn.classList.remove('is-loading');
+      if (label) label.nodeValue = 'เลือกรูป';
     }
   });
 
