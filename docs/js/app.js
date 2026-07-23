@@ -7,6 +7,7 @@
 import { CONFIG } from './config.js';
 import { initAdapter, adapter } from './data/adapter.js';
 import { initPWA } from './ui/pwa.js';
+import { applyTheme, openThemePicker } from './ui/theme.js';
 
 import dashboard  from './modules/dashboard.js';
 import pending    from './modules/pending.js';
@@ -270,11 +271,13 @@ async function boot() {
   if (el.verTag)  el.verTag.textContent  = `${v} · Phase 1`;
   if (el.verPill) el.verPill.textContent = v;
 
+  applyTheme();   // ตั้ง data-theme/accent ให้ตรงกับที่จำไว้ (สคริปต์ inline ใน head ทำแล้ว · เรียกซ้ำกันพลาด)
   bindNav();
   el.loginForm.addEventListener('submit', onLoginSubmit);
   bindPasswordReset();
   document.getElementById('logoutBtn')?.addEventListener('click', signOut);
   document.getElementById('logoutBtnTop')?.addEventListener('click', signOut);
+  document.getElementById('themeBtn')?.addEventListener('click', openThemePicker);
 
   try {
     const info = await initAdapter();

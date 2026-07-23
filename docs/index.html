@@ -25,6 +25,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
 
+<!-- ตั้งธีมก่อน CSS วาด กันจอกระพริบ (dark→light) · ค่าจริงอยู่ใน localStorage · js/ui/theme.js จัดการตอนเปลี่ยน -->
+<script>try{var d=document.documentElement,t=localStorage.getItem('te-dashboard:theme'),a=localStorage.getItem('te-dashboard:accent');if(t)d.dataset.theme=t;if(a)d.dataset.accent=a;}catch(e){}</script>
+
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/print.css" media="print">
 </head>
@@ -152,6 +155,7 @@
       <div class="topbar-right">
         <span class="pill" id="statusPill">กำลังโหลด…</span>
         <span class="pill" id="verPill" title="เวอร์ชันของโค้ดที่เบราว์เซอร์กำลังใช้">—</span>
+        <button class="btn btn-ghost btn-sm" id="themeBtn" title="ธีม & สี" aria-label="ธีม & สี">🎨</button>
         <!-- iPad/มือถือซ่อน sidebar-foot → ต้องมีทางออกจากระบบตรงนี้ด้วย -->
         <button class="btn btn-ghost btn-sm only-compact" id="logoutBtnTop">ออกจากระบบ</button>
       </div>

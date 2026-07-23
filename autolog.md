@@ -27,6 +27,19 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-23 22:18 · ยังไม่ commit · 3.7 ธีม/สี — Dark / สว่าง / คอนทราสต์สูง + สีเน้น 5 สี
+**step:** 3.7 | **ประเภท:** ฟีเจอร์ (ธีม)
+- `docs/js/ui/theme.js` (ใหม่): เลือกธีม 3 แบบ + สีเน้น 5 สี · จำใน localStorage · สลับด้วย `data-theme`/`data-accent` บน `<html>`
+  - ⭐ ไม่มี hex ในไฟล์นี้เลย — แค่สลับ attribute · ค่าสีจริงอยู่ใน app.css ที่เดียว (ตามกติกา)
+- app.css: `[data-theme="light"]` · `[data-theme="contrast"]` (ดำสนิท) + `[data-accent="blue/teal/amber/rose"]`
+  - `--accent-soft`/`--accent-text` เปลี่ยนมา derive จาก `--accent` + `--text` (color-mix) → เปลี่ยนสีเน้น/ธีมทีเดียว ตามหมด
+  - swatch ในหน้าเลือกธีม preview ด้วย data-theme/data-accent + var() (ไม่ hardcode สีตัวอย่าง)
+- index.html: สคริปต์ inline ใน `<head>` อ่าน localStorage ตั้ง data-theme ก่อน CSS วาด → กันจอกระพริบ dark→light + ปุ่ม 🎨 ในแถบบน
+- app.js: import theme.js · applyTheme() ตอน boot · ผูกปุ่ม 🎨
+- เพิ่ม theme.js ใน sw SHELL · bump v0.18.0
+**ไฟล์:** docs/js/ui/theme.js · docs/css/app.css · docs/index.html · docs/js/app.js · docs/sw.js · docs/js/config.js
+**ทดสอบ:** ธีม **15/15** (puppeteer โหมด local: สลับ 3 ธีม + 5 สีเน้น · พื้นเปลี่ยนจริง (light=rgb(245..) · contrast=ดำสนิท) · reload แล้วจำได้ (ไม่กระพริบ) · ไม่มี JS error) · ดูภาพธีมสว่างแล้ว คอนทราสต์ดี ไม่มีอะไรแตก · parity 55 · ไม่มี hex ใน JS
+
 ## 2026-07-23 22:09 · ยังไม่ commit · 3.6 Export / Backup รวมทุกตาราง + กู้คืน
 **step:** 3.6 | **ประเภท:** ฟีเจอร์ (backup ครบระบบ + วงจรกู้คืน)
 - adapter (3 ไฟล์) +2 เมธอด: `exportAll()` (ดึงทุกตาราง) · `restoreBackup(tables)` (เขียนกลับ upsert ตาม id)

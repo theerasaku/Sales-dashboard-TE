@@ -12,9 +12,11 @@
   --text-dim:    #9aa0ad;
   --text-mute:   #656b78;
 
+  /* --accent มาจาก "สีเน้น" ที่เลือก ([data-accent]) · soft/text คิดจาก --accent + --text
+     → เปลี่ยนสีเน้นหรือธีมทีเดียว ทั้ง 2 ตัวตามเอง ไม่ต้องแก้ทีละสี (step 3.7) */
   --accent:      #5e6ad2;
-  --accent-soft: #5e6ad226;
-  --accent-text: #c3c9f5;   /* ตัวหนังสือบนพื้น accent-soft */
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);  /* พื้นจาง (nav active ฯลฯ) */
+  --accent-text: color-mix(in srgb, var(--accent) 30%, var(--text));  /* ตัวหนังสือบนพื้น accent-soft */
   --on-accent:   #ffffff;   /* ตัวหนังสือบนพื้น accent เต็มสี */
 
   --green:  #3fb950;
@@ -66,6 +68,63 @@
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai",
           "Sarabun", Roboto, sans-serif;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ธีม (step 3.7) — เขียนทับเฉพาะสีพื้น/ตัวอักษร/ขอบ
+   สีขั้นตอน/กราฟ/สีเน้น คิดต่อจากตัวแปรกลาง จึงตามธีมเอง
+   สลับด้วย <html data-theme="..."> · :root = Linear Dark (ค่าตั้งต้น)
+   ═══════════════════════════════════════════════════════════ */
+
+/* สว่าง */
+[data-theme="light"] {
+  --bg:          #f5f6f8;
+  --bg-panel:    #ffffff;
+  --bg-elev:     #f0f2f5;
+  --bg-hover:    #e7eaf0;
+  --border:      #d3d8e0;
+  --border-soft: #e5e8ee;
+
+  --text:        #1a1d24;
+  --text-dim:    #4a5160;
+  --text-mute:   #868d9b;
+
+  --green:  #1a9e4b;
+  --yellow: #b0790f;
+  --red:    #d93a30;
+  --blue:   #2a72d0;
+  --green-line: color-mix(in srgb, var(--green) 40%, transparent);
+  --red-line:   color-mix(in srgb, var(--red) 40%, transparent);
+}
+
+/* คอนทราสต์สูง (ดำสนิท ตัวอักษรสว่างเต็ม ขอบชัด) — สำหรับกลางแดด/สายตาไม่ชัด */
+[data-theme="contrast"] {
+  --bg:          #000000;
+  --bg-panel:    #0b0b0d;
+  --bg-elev:     #16161a;
+  --bg-hover:    #26262c;
+  --border:      #55555f;
+  --border-soft: #38383f;
+
+  --text:        #ffffff;
+  --text-dim:    #d5d7dd;
+  --text-mute:   #a6a8b0;
+
+  --accent:      #7c8cff;
+  --green:  #4ade5a;
+  --yellow: #f2b829;
+  --red:    #ff6b60;
+  --blue:   #6fb4ff;
+  --green-line: color-mix(in srgb, var(--green) 55%, transparent);
+  --red-line:   color-mix(in srgb, var(--red) 55%, transparent);
+}
+
+/* ── สีเน้น (accent presets) — คัดมาแล้ว CVD-safe · เปลี่ยนแค่ --accent ที่เหลือ derive เอง ──
+   ห้ามเปิดให้จิ้มสีอิสระ (กัน palette เสีย/คอนทราสต์ตก) — เลือกจากชุดนี้เท่านั้น */
+[data-accent="blue"]  { --accent: #3987e5; }
+[data-accent="teal"]  { --accent: #199e70; }
+[data-accent="amber"] { --accent: #c88a1a; }
+[data-accent="rose"]  { --accent: #d9556f; }
+/* indigo = ค่าตั้งต้นใน :root ไม่ต้องประกาศซ้ำ */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1416,4 +1475,49 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .bk-warn b { color: var(--red); }
 @media (max-width: 430px) {
   .bk-actions .btn, .bk-file { flex: 1 1 100%; min-height: 44px; justify-content: center; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   หน้าต่างเลือกธีม & สี (step 3.7)
+   swatch แสดงตัวอย่างธีมด้วย data-theme/data-accent + var() — ไม่ hardcode hex
+   ═══════════════════════════════════════════════════════════ */
+#themeBtn { font-size: 15px; line-height: 1; padding: 6px 10px; }
+
+.th-label { font-size: 12px; font-weight: 600; color: var(--text-dim); margin: 14px 0 8px; }
+.modal-body > .th-label:first-child { margin-top: 4px; }
+
+.th-themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.th-card {
+  appearance: none; cursor: pointer; font: inherit; text-align: left;
+  background: var(--bg-elev); border: 1.5px solid var(--border); border-radius: var(--r-md);
+  padding: 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.th-card:hover { border-color: var(--text-mute); }
+.th-card.on { border-color: var(--accent); background: var(--accent-soft); }
+
+/* swatch = ตัวอย่างธีม (มี data-theme/data-accent → ตัวแปรข้างในเป็นของธีมนั้น) */
+.th-swatch {
+  height: 40px; border-radius: var(--r-sm); border: 1px solid var(--border);
+  background: var(--bg); display: flex; align-items: center; gap: 5px; padding: 0 8px;
+}
+.th-swatch i { display: block; border-radius: 3px; }
+.th-swatch .s-bg { width: 22px; height: 14px; background: var(--bg-panel); border: 1px solid var(--border); }
+.th-swatch .s-ac { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); }
+.th-swatch .s-tx { flex: 1; height: 4px; background: var(--text); opacity: .8; }
+.th-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.th-note { font-size: 11px; color: var(--text-mute); line-height: 1.35; }
+
+.th-accents { display: flex; gap: 12px; flex-wrap: wrap; }
+.th-dot {
+  appearance: none; cursor: pointer; padding: 0; background: none;
+  width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent;
+  display: grid; place-items: center;
+}
+.th-dot i { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); display: block; }
+.th-dot.on { border-color: var(--text); }
+.th-hint { font-size: 11.5px; color: var(--text-mute); margin-top: 14px; }
+
+@media (max-width: 430px) {
+  .th-themes { grid-template-columns: 1fr; }
+  .th-dot { width: 44px; height: 44px; }
 }
