@@ -58,13 +58,14 @@ async function renderAdmin(root) {
 
     root.innerHTML = '<div class="skeleton">กำลังโหลด…</div>';
 
-    let profiles = [], teams = [], access = [], settings = {};
+    let profiles = [], teams = [], access = [], settings = {}, teamTargets = [];
     try {
-      [profiles, teams, access, settings] = await Promise.all([
+      [profiles, teams, access, settings, teamTargets] = await Promise.all([
         adapter.listProfiles(),
         adapter.listTeams(),
         adapter.listTeamAccess(),
         adapter.getSettings().catch(() => ({})),
+        adapter.listTeamTargets().catch(() => []),
       ]);
     } catch (e) {
       const missing = /ยังไม่ได้สร้างตาราง|does not exist|42P01/i.test(e.message);
@@ -98,6 +99,27 @@ async function renderAdmin(root) {
             <span class="lg-hint" id="tgMsg"></span>
           </div>
         </form>
+      </div>
+
+      <div class="card sec">
+        <h3 class="sec-h">เป้ารายทีม <span class="sec-sub">ตั้งที่ทีมย่อย · ทีมแม่/องค์กร = ผลรวม</span></h3>
+        <p class="sec-foot" style="margin:0 0 10px">
+          กรอกเป้าของแต่ละทีม (ล้านบาท) — หน้าภาพรวมจะรวมขึ้นเป็นทีมใหญ่และองค์กรให้เอง
+        </p>
+        <div class="ttedit" id="ttEdit">
+          ${teamTree(teams).map(t => {
+            const cur = teamTargets.find(x => x.team_id === t.id);
+            const isParent = teams.some(x => x.parent_team_id === t.id);
+            return `<label class="ttrow ${t.parent_team_id ? 'is-sub' : ''}">
+              <span class="ttrow-name"><b>${esc(t.code)}</b> <span>${esc(t.name || '')}</span>
+                ${isParent ? '<em>= ผลรวมทีมย่อย</em>' : ''}</span>
+              <input type="number" min="0" step="0.1" class="inp inp-sm ttrow-inp"
+                     data-team="${esc(t.id)}" ${isParent ? 'disabled title="เป้าทีมแม่คิดจากผลรวมทีมย่อย"' : ''}
+                     value="${cur ? esc(Number(cur.target_baht) / 1e6) : ''}" placeholder="—">
+            </label>`;
+          }).join('')}
+        </div>
+        <p class="login-err" id="ttErr" role="alert" hidden></p>
       </div>
 
       <div class="card sec">
@@ -173,6 +195,21 @@ async function renderAdmin(root) {
         flash($('#tgMsg'), '✓ บันทึกแล้ว — หน้าภาพรวมจะใช้เป้าใหม่ทันที');
       } catch (e) { flash($('#tgMsg'), e.message, true); }
       btn.disabled = false;
+    });
+
+    // ── เป้ารายทีม: บันทึกเมื่อออกจากช่อง (เก็บเป็นบาท · จอกรอกล้านบาท) ──
+    root.querySelectorAll('.ttrow-inp').forEach(inp => {
+      inp.addEventListener('change', async () => {
+        const mb = Number(inp.value);
+        if (inp.value !== '' && (!Number.isFinite(mb) || mb < 0))
+          return flash($('#ttErr'), 'เป้าต้องเป็นตัวเลขไม่ติดลบ', true);
+        inp.disabled = true;
+        try {
+          await adapter.saveTeamTarget(inp.dataset.team, (Number(inp.value) || 0) * 1e6);
+          flash($('#ttErr'), '✓ บันทึกเป้าทีมแล้ว');
+        } catch (e) { flash($('#ttErr'), e.message, true); }
+        inp.disabled = false;
+      });
     });
 
     // ── ผู้ใช้: เปลี่ยน role / ทีม / สถานะ ──

@@ -1196,3 +1196,45 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .acrow.is-sub .ac-name b::before { content: "↳ "; color: var(--text-mute); }
 .acrow.is-own { opacity: .7; }
 .acrow input[type="checkbox"] { width: 18px; height: 18px; }
+
+/* ── Dashboard step 3.10 ช่วง B: เป้าหมายตามทีม ── */
+.tt-scope { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+.tt-scope-l { font-size: 12px; color: var(--text-mute); margin-right: 2px; }
+.chip {
+  font-size: 12px; padding: 5px 11px; border-radius: 999px; min-height: 32px;
+  border: 1px solid var(--border); color: var(--text-dim); background: var(--bg-elev);
+}
+.chip:hover { color: var(--text); border-color: var(--text-mute); }
+.chip.on { background: var(--accent-soft); color: var(--accent-text); border-color: transparent; }
+.chip-sub { font-size: 11px; opacity: .85; }
+.chip-sub b::before { content: "↳ "; }
+
+.tt-summary { background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: var(--r-md); padding: 14px 16px; }
+.tt-sum-head { font-size: 12.5px; color: var(--text-dim); margin-bottom: 10px; }
+.tt-sum-head b { color: var(--text); }
+.tt-sum-nums { display: flex; gap: 10px; flex-wrap: wrap; }
+.tt-sum-nums > div { flex: 1 1 110px; min-width: 0; }
+.tt-sum-n { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.tt-sum-l { display: block; font-size: 10.5px; color: var(--text-mute); }
+
+.tt-bar { height: 6px; border-radius: 999px; background: var(--bg-panel); overflow: hidden; flex: 1; min-width: 60px; }
+.tt-bar > span { display: block; height: 100%; background: var(--chart-3); }
+.tt-bar-lg { height: 8px; margin-top: 12px; background: var(--bg-panel); }
+
+.tt-tbl .tt-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tt-tbl td > .tt-bar { display: inline-block; vertical-align: middle; width: 70px; margin-right: 6px; }
+.tt-pct { font-size: 11.5px; color: var(--text-dim); }
+.tt-name { color: var(--text-dim); font-size: 11.5px; }
+.tt-tbl .tt-sub td:first-child { padding-left: 22px; }
+.tt-tbl .tt-sub td:first-child b::before { content: "↳ "; color: var(--text-mute); }
+.tt-tbl .tt-parent { color: var(--text-dim); }
+
+/* ── Admin: เป้ารายทีม ── */
+.ttedit { display: flex; flex-direction: column; gap: 4px; }
+.ttrow { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--border-soft); }
+.ttrow-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; }
+.ttrow-name span { color: var(--text-dim); font-size: 11.5px; }
+.ttrow-name em { font-size: 10.5px; color: var(--text-mute); font-style: normal; margin-left: 4px; }
+.ttrow-inp { flex: 0 0 110px; text-align: right; }
+.ttrow.is-sub .ttrow-name { padding-left: 18px; }
+.ttrow.is-sub .ttrow-name b::before { content: "↳ "; color: var(--text-mute); }

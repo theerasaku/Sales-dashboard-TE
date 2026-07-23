@@ -125,6 +125,74 @@ export function summarize(rows, opt = {}) {
 }
 
 // ══════════════════════════════════════════════════════════
+// เป้ารายทีม + รวมขึ้นตามลำดับชั้น (step 3.10 ช่วง B)
+//
+// เป้าตั้งที่ "ทีมใบ" · ทีมแม่/องค์กร = ผลรวมของทีมลูก (เจ้าของเคาะ 23 ก.ค. 2569)
+// ══════════════════════════════════════════════════════════
+
+/** ขยายชุดทีมที่เลือก → รวมทีมลูก-หลานทั้งหมด (กันนับซ้ำเวลาเลือกทีมแม่+ลูกพร้อมกัน) */
+export function expandTeams(teams, ids) {
+  const want = new Set(ids || []);
+  const out = new Set();
+  let changed = true;
+  // เพิ่มทีมที่เลือก แล้วไล่หาลูกจนไม่มีอะไรเพิ่ม
+  for (const t of teams || []) if (want.has(t.id)) out.add(t.id);
+  while (changed) {
+    changed = false;
+    for (const t of teams || []) {
+      if (!out.has(t.id) && t.parent_team_id && out.has(t.parent_team_id)) { out.add(t.id); changed = true; }
+    }
+  }
+  return out;
+}
+
+/**
+ * รวมตัวเลขของ "ขอบเขต" ที่เลือก (ทีม + ทีมลูกทั้งหมด)
+ * งาน 1 ชิ้นมี team_id เดียว → นับครั้งเดียวเสมอ แม้เลือกทั้งแม่และลูก
+ */
+export function sumScope(rows, teams, targetsMap, selectedIds, opt = {}) {
+  const from = opt.from ?? CONFIG.TARGET_FROM;
+  const to   = opt.to   ?? CONFIG.TARGET_TO;
+  const inRange = (ym) => !!ym && ym >= from && ym <= to;
+  const exp = expandTeams(teams, selectedIds);
+  const live = (rows || []).filter(r => r.is_active !== false && exp.has(r.team_id));
+
+  const wonRows = live.filter(r => r.stage === 'won' && inRange(monthOf(r)));
+  const won = wonRows.reduce((a, r) => a + Number(r.value_baht || 0), 0);
+  const openRows = live.filter(r => r.stage !== 'won' && r.stage !== 'lost');
+  const pipeline = openRows.reduce((a, r) => a + Number(r.value_baht || 0), 0);
+
+  // เป้า = ผลรวมของเป้าทุกทีมในขอบเขต (ปกติตั้งที่ทีมใบ ทีมแม่เป็น 0 → ไม่ซ้ำ)
+  let target = 0;
+  for (const id of exp) target += Number(targetsMap?.[id] || 0);
+
+  return {
+    teamIds: [...exp], won, pipeline,
+    openCount: openRows.length, wonCount: wonRows.length,
+    target, gap: Math.max(0, target - won),
+    pct: target ? (won / target) * 100 : 0,
+  };
+}
+
+/** ตารางรายทีม (แม่โชว์ยอดรวมลูก) เรียงตามลำดับชั้น */
+export function teamBreakdown(rows, teams, targetsMap, opt = {}) {
+  const tops = (teams || []).filter(t => !t.parent_team_id);
+  const ordered = [];
+  for (const t of tops) {
+    ordered.push({ ...t, depth: 0 });
+    for (const c of (teams || []).filter(x => x.parent_team_id === t.id)) ordered.push({ ...c, depth: 1 });
+  }
+  for (const t of teams || []) if (!ordered.some(o => o.id === t.id)) ordered.push({ ...t, depth: 0 });
+
+  return ordered.map(t => {
+    const st = sumScope(rows, teams, targetsMap, [t.id], opt);
+    return { id: t.id, code: t.code, name: t.name, depth: t.depth,
+             isParent: (teams || []).some(x => x.parent_team_id === t.id),
+             ...st };
+  });
+}
+
+// ══════════════════════════════════════════════════════════
 // กราฟ — SVG ล้วน ไม่มี library
 // ⚠️ สีต้องอ้าง var(--chart-N) เท่านั้น ห้ามฝัง hex (กติกาธีมใน CLAUDE.md)
 // ══════════════════════════════════════════════════════════
@@ -282,6 +350,15 @@ export default {
     }
 
     const s = summarize(rows, { from: goal.from, to: goal.to, targetMB: goal.target_mb });
+    const opt = { from: goal.from, to: goal.to };
+
+    // เป้ารายทีม + ลำดับชั้น (step 3.10 ช่วง B) — ยังไม่ได้รัน phase3-10.sql ก็ข้ามไปเงียบ ๆ
+    let teams = [], targetsMap = {};
+    try {
+      teams = await adapter.listTeams();
+      const tt = await adapter.listTeamTargets();
+      targetsMap = Object.fromEntries((tt || []).map(r => [r.team_id, Number(r.target_baht || 0)]));
+    } catch { teams = []; }
     // ความกว้างที่กราฟใช้ได้จริง = กว้างของพื้นที่เนื้อหา ลบ padding ของ .card (18px สองข้าง)
     const chartW = Math.max(300, (root.clientWidth || 720) - 40);
     const cov = s.coverage === Infinity ? '∞' : s.coverage.toFixed(1) + '×';
@@ -310,6 +387,8 @@ export default {
         ${barChart(s.byMonth, chartW)}
         <p class="sec-foot">แผนรายเดือนตอนนี้เกลี่ยเป้าเท่ากันทุกเดือน — ตั้งแผนรายเดือนเองได้ใน Phase 3.1</p>
       </div>
+
+      ${teams.length > 1 ? teamTargetSection(rows, teams, targetsMap, opt) : ''}
 
       <div class="grid cols-2 sec-grid">
         <div class="card sec">
@@ -349,5 +428,98 @@ export default {
         : '<p class="sec-foot">ไม่มีงานเลยกำหนด 👍</p>'}
         ${s.noMonth ? `<p class="sec-foot">⚠ มี ${s.noMonth} งานที่ยังไม่ระบุเดือนคาดปิด — จะไม่ถูกนับในกราฟรายเดือน</p>` : ''}
       </div>`;
+
+    // ผูกตัวเลือกขอบเขตเป้า (ทำหลัง innerHTML เพราะต้องหา element ที่เพิ่งวาด)
+    if (teams.length > 1) bindTeamScope(root, rows, teams, targetsMap, opt);
   },
 };
+
+// ══════════════════════════════════════════════════════════
+// ส่วน "เป้าหมายตามทีม" — ตาราง + ตัวเลือกกลุ่ม + กล่องสรุป (step 3.10 ช่วง B)
+// ══════════════════════════════════════════════════════════
+
+function teamTargetSection(rows, teams, targetsMap, opt) {
+  const rowsB = teamBreakdown(rows, teams, targetsMap, opt);
+  const tops = teams.filter(t => !t.parent_team_id);
+
+  const bar = (pct) => `<div class="tt-bar"><span style="width:${Math.min(100, pct).toFixed(0)}%"></span></div>`;
+
+  return `
+    <div class="card sec">
+      <h3 class="sec-h">เป้าหมายตามทีม
+        <span class="sec-sub">เป้าตั้งที่ทีมย่อย · ทีมแม่/องค์กร = ผลรวม</span></h3>
+
+      <div class="tt-scope" id="ttScope">
+        <span class="tt-scope-l">เลือกดู:</span>
+        <button type="button" class="chip on" data-scope="all">ทั้งองค์กร</button>
+        ${teams.map(t => `<button type="button" class="chip ${t.parent_team_id ? 'chip-sub' : ''}"
+                            data-scope="team" data-team="${esc(t.id)}">${esc(t.code)}</button>`).join('')}
+      </div>
+
+      <div class="tt-summary" id="ttSummary"></div>
+
+      <div class="tbl-wrap" style="margin-top:14px">
+        <table class="tbl tt-tbl">
+          <thead><tr>
+            <th style="min-width:150px">ทีม</th>
+            <th class="tt-num">เป้า (ล้าน)</th>
+            <th class="tt-num">ปิดได้ (ล้าน)</th>
+            <th style="min-width:120px">ความคืบหน้า</th>
+            <th class="tt-num">งานที่เดินอยู่</th>
+          </tr></thead>
+          <tbody>
+            ${rowsB.map(t => `<tr class="${t.depth ? 'tt-sub' : ''} ${t.isParent ? 'tt-parent' : ''}">
+              <td><b>${esc(t.code)}</b> <span class="tt-name">${esc(t.name || '')}</span></td>
+              <td class="tt-num">${t.target ? fmtMB(t.target) : '—'}</td>
+              <td class="tt-num">${fmtMB(t.won)}</td>
+              <td>${bar(t.pct)}<span class="tt-pct">${t.target ? t.pct.toFixed(0) + '%' : '—'}</span></td>
+              <td class="tt-num">${t.openCount}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="sec-foot">ตั้งตัวเลขเป้าของแต่ละทีมได้ที่หน้า "ตั้งค่าระบบ" (เฉพาะผู้ดูแล/หัวหน้าที่แก้ทีมนั้นได้)</p>
+    </div>`;
+}
+
+function bindTeamScope(root, rows, teams, targetsMap, opt) {
+  const scope = root.querySelector('#ttScope');
+  const box = root.querySelector('#ttSummary');
+  if (!scope || !box) return;
+  const tops = teams.filter(t => !t.parent_team_id).map(t => t.id);
+  let selected = new Set();          // ว่าง = ทั้งองค์กร
+
+  const paint = () => {
+    const ids = selected.size ? [...selected] : tops;
+    const st = sumScope(rows, teams, targetsMap, ids, opt);
+    const picked = selected.size
+      ? teams.filter(t => selected.has(t.id)).map(t => t.code).join(' + ')
+      : 'ทั้งองค์กร';
+    box.innerHTML = `
+      <div class="tt-sum-head">รวมกลุ่มที่เลือก: <b>${esc(picked)}</b></div>
+      <div class="tt-sum-nums">
+        <div><span class="tt-sum-n">${fmtMB(st.target)}</span><span class="tt-sum-l">เป้า (ล้านบาท)</span></div>
+        <div><span class="tt-sum-n">${fmtMB(st.won)}</span><span class="tt-sum-l">ปิดได้แล้ว (ล้านบาท)</span></div>
+        <div><span class="tt-sum-n">${st.target ? st.pct.toFixed(1) + '%' : '—'}</span><span class="tt-sum-l">ของเป้า</span></div>
+        <div><span class="tt-sum-n">${fmtMB(st.gap)}</span><span class="tt-sum-l">ยังขาด (ล้านบาท)</span></div>
+      </div>
+      <div class="tt-bar tt-bar-lg"><span style="width:${Math.min(100, st.pct).toFixed(0)}%"></span></div>`;
+  };
+
+  scope.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-scope]');
+    if (!btn) return;
+    if (btn.dataset.scope === 'all') {
+      selected.clear();
+    } else {
+      const id = btn.dataset.team;
+      if (selected.has(id)) selected.delete(id); else selected.add(id);
+    }
+    scope.querySelector('[data-scope="all"]').classList.toggle('on', selected.size === 0);
+    scope.querySelectorAll('[data-scope="team"]').forEach(b =>
+      b.classList.toggle('on', selected.has(b.dataset.team)));
+    paint();
+  });
+
+  paint();
+}
