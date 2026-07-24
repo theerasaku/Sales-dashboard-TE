@@ -172,7 +172,9 @@ export function pendingFormHtml(row, contacts, products, logs) {
 //   NICKNAME (ชื่อเล่น) · ORGANIZATION (หน่วยงาน/บริษัท)
 // ══════════════════════════════════════════════════════════
 
-const CUST_LOG_ROWS_P1 = 12;   // ต้นฉบับหน้า 1 มี 12 บรรทัด
+// หน้า 1 เผื่อพื้นที่ให้ฟิลด์ข้อมูลจริงตกบรรทัด (ที่อยู่/ครอบครัวยาว) — 10 แถวพอดีไม่ทะลุหน้า
+// ที่เหลือขึ้นหน้าใหม่เป็นตาราง activities เต็มหน้า (CUST_LOG_ROWS_P2)
+const CUST_LOG_ROWS_P1 = 10;   // เดิม 12 — ข้อมูลยาวตกบรรทัดแล้วบรรทัดสุดท้ายทะลุไปหน้า 2
 const CUST_LOG_ROWS_P2 = 34;   // หน้า 2 เป็นตารางเต็มหน้า
 
 export function customerFormHtml(row, logs) {
