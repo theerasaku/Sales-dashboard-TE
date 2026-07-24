@@ -1,5 +1,15 @@
 /* TE Sales Dashboard — Linear-style dark theme (ยกจาก prototype v3) */
 
+/* ฟอนต์ Inter ของจริง — bundle ในเว็บ (docs/fonts/) ไม่พึ่ง CDN → PWA ออฟไลน์ก็ใช้ได้
+   Latin variable (100–900) · ไทยตกไปใช้ Noto Sans Thai / ฟอนต์ระบบ (Inter ไม่มี glyph ไทย) */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/inter-latin.woff2') format('woff2');
+}
+
 :root {
   --bg:          #0d0e12;
   --bg-panel:    #14161c;
@@ -65,8 +75,9 @@
   --safe-t-env: env(safe-area-inset-top, 0px);
   --safe-t: var(--safe-t-env);
 
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai",
-          "Sarabun", Roboto, sans-serif;
+  /* Inter (Latin) มาก่อน → ตัวอังกฤษใช้ Inter · ตัวไทยตกไป Noto Sans Thai/ระบบ (per-glyph fallback) */
+  --font: "Inter", "Noto Sans Thai", "Sarabun", -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, sans-serif;
 }
 
 /* ═══════════════════════════════════════════════════════════

@@ -27,6 +27,18 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-24 08:09 · ยังไม่ commit · ตั้ง Noir เป็นธีมเริ่มต้น + bundle ฟอนต์ Inter จริง
+**step:** — (เจ้าของขอ) | **ประเภท:** ฟีเจอร์ (ธีม/ฟอนต์)
+- **ธีมเริ่มต้น = Noir** (ดีไซน์จาก Claude) — คนเปิดใหม่/ยังไม่เคยเลือกธีมเห็นดีไซน์นี้ก่อน
+  - `index.html` `<html data-theme="noir">` · `theme.js currentTheme()` fallback → 'noir' · จัดลำดับ THEMES ใหม่ (noir/brown ขึ้นก่อน)
+  - คนที่เคยเลือกธีมเองยังได้ธีมเดิม (localStorage ทับ) · สลับได้ที่ปุ่ม 🎨
+- **ฟอนต์ Inter ของจริง (bundle ไม่พึ่ง CDN)** — `docs/fonts/inter-latin.woff2` (Latin variable 100–900 · 48KB · OFL) จาก @fontsource
+  - `@font-face` + `--font: "Inter","Noto Sans Thai",...` → ตัวอังกฤษใช้ Inter · ตัวไทยตกไป Noto/ระบบ (per-glyph fallback)
+  - เพิ่มใน sw SHELL → PWA ออฟไลน์โหลดฟอนต์ได้
+- bump v0.25.0
+**ไฟล์:** docs/fonts/inter-latin.woff2 (ใหม่) · docs/css/app.css · docs/index.html · docs/js/ui/theme.js · docs/sw.js · docs/js/config.js
+**ทดสอบ:** ธีม **19/19** (default=noir · Inter โหลดได้จริง (document.fonts.check) · สลับ 5 ธีมได้ · reload จำได้) · **ดูภาพ default noir+Inter แล้ว** ตัวอังกฤษเป็น Inter ชัด ธีมม่วงสวย · intake-ui 27/27 ไม่ regression
+
 ## 2026-07-24 08:00 · ยังไม่ commit · จัดหน้าพิมพ์ Book 3 สี ไม่ให้บรรทัดหน้า 1 ทะลุ
 **step:** — (เจ้าของขอ) | **ประเภท:** แก้บั๊ก (พิมพ์)
 - ปัญหา: ข้อมูลจริง (ที่อยู่/ครอบครัวยาว) ตกบรรทัด → ตาราง log แถวท้ายทะลุไปหน้า 2
