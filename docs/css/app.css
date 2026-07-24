@@ -1621,3 +1621,27 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   padding: 2px 12px 10px 30px; font-size: 12.5px; color: var(--text-dim);
   font-style: italic; line-height: 1.5;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ตัวกรองทีมบน Dashboard (รวม/แยก) + การ์ดลูกค้า Book 3 สี รายทีม
+   ═══════════════════════════════════════════════════════════ */
+.dash-scope {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin-bottom: 16px; padding: 10px 12px;
+  background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: var(--r-md);
+}
+.dash-scope-l { font-size: 12px; font-weight: 600; color: var(--text-dim); margin-right: 4px; }
+.dash-scope-note {
+  font-size: 12.5px; color: var(--accent-text);
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: var(--r-sm); padding: 8px 12px; margin-bottom: 14px;
+}
+.dash-scope-note b { color: var(--text); }
+
+.cust-sum { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 4px 0; }
+.cust-total { display: flex; flex-direction: column; }
+.cust-total .cust-n { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1.1; }
+.cust-total .cust-l { font-size: 11.5px; color: var(--text-mute); }
+.cust-c { display: flex; align-items: center; gap: 5px; font-size: 16px; }
+.cust-c b { font-size: 18px; color: var(--text); }
+.cust-dot { font-size: 15px; }

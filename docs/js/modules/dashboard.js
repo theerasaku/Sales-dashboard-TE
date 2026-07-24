@@ -349,88 +349,135 @@ export default {
       return;
     }
 
-    const s = summarize(rows, { from: goal.from, to: goal.to, targetMB: goal.target_mb });
     const opt = { from: goal.from, to: goal.to };
+    // ความกว้างที่กราฟใช้ได้จริง = กว้างของพื้นที่เนื้อหา ลบ padding ของ .card (18px สองข้าง)
+    const chartW = Math.max(300, (root.clientWidth || 720) - 40);
 
-    // เป้ารายทีม + ลำดับชั้น (step 3.10 ช่วง B) — ยังไม่ได้รัน phase3-10.sql ก็ข้ามไปเงียบ ๆ
-    let teams = [], targetsMap = {};
+    // เป้ารายทีม + ลำดับชั้น + ลูกค้า Book 3 สี (ใช้กับตัวกรองทีมทั้งหน้า) — ไม่มีก็ข้ามเงียบ ๆ
+    let teams = [], targetsMap = {}, custs = [];
     try {
       teams = await adapter.listTeams();
       const tt = await adapter.listTeamTargets();
       targetsMap = Object.fromEntries((tt || []).map(r => [r.team_id, Number(r.target_baht || 0)]));
     } catch { teams = []; }
-    // ความกว้างที่กราฟใช้ได้จริง = กว้างของพื้นที่เนื้อหา ลบ padding ของ .card (18px สองข้าง)
-    const chartW = Math.max(300, (root.clientWidth || 720) - 40);
-    const cov = s.coverage === Infinity ? '∞' : s.coverage.toFixed(1) + '×';
-    // ต่ำกว่า 3 เท่า = pipeline บางเกินกว่าจะปิดส่วนที่ขาดได้ตามสถิติงานประมูล
-    const covRisk = s.coverage !== Infinity && s.coverage < 3;
+    try { custs = await adapter.listCustomers({ status: 'active', limit: 2000 }); } catch { custs = []; }
 
+    const tops = teams.filter(t => !t.parent_team_id).map(t => t.id);
+    const showFilter = teams.length > 1;   // admin/หัวหน้าที่เห็นหลายทีม
+    let selected = new Set();               // ว่าง = ทั้งองค์กร (รวม)
+
+    // ── โครงหน้า: ตัวกรองทีมบนสุด (รวม/แยก) + เนื้อหาที่กรองได้ ──
     root.innerHTML = `
-      <div class="grid cols-4">
-        ${card('เป้ายอดขาย', `${esc(goal.target_mb)} ล้านบาท`, esc(goal.period))}
-        ${card('ปิดได้แล้ว', `${fmtMB(s.won)} ล้าน`,
-               `${s.pct.toFixed(1)}% ของเป้า · ขาดอีก ${fmtMB(s.gap)} ล้าน`)}
-        ${card('Pipeline ถ่วงน้ำหนัก', `${fmtMB(s.weighted)} ล้าน`,
-               `จากงานที่ยังเดินอยู่ ${fmtMB(s.pipeline)} ล้าน`)}
-        ${card('Pipeline coverage', cov,
-               covRisk ? '⚠ ต่ำกว่า 3 เท่า — เสี่ยงพลาดเป้า' : 'ครอบคลุมส่วนที่ยังขาด',
-               covRisk ? 'is-risk' : '')}
-      </div>
+      ${showFilter ? `<div class="dash-scope" id="dashScope">
+        <span class="dash-scope-l">ดูทีม:</span>
+        <button type="button" class="chip on" data-scope="all">ทั้งองค์กร (รวม)</button>
+        ${teams.map(t => `<button type="button" class="chip ${t.parent_team_id ? 'chip-sub' : ''}"
+                            data-scope="team" data-team="${esc(t.id)}">${esc(t.code)}</button>`).join('')}
+      </div>` : ''}
+      <div id="dashBody"></div>`;
 
-      <div class="prog-wrap">
-        <div class="prog"><i style="width:${Math.min(100, s.pct).toFixed(1)}%"></i></div>
-        <div class="prog-note">${fmtMB(s.won)} / ${esc(goal.target_mb)} ล้านบาท (${s.pct.toFixed(1)}%)</div>
-      </div>
+    const body = root.querySelector('#dashBody');
 
-      <div class="card sec">
-        <h3 class="sec-h">แผน vs ปิดจริง รายเดือน <span class="sec-sub">หน่วย: ล้านบาท</span></h3>
-        ${barChart(s.byMonth, chartW)}
-        <p class="sec-foot">แผนรายเดือนตอนนี้เกลี่ยเป้าเท่ากันทุกเดือน — ตั้งแผนรายเดือนเองได้ใน Phase 3.1</p>
-      </div>
+    // วาดเนื้อหาทั้งหมดตาม "ขอบเขตทีม" ที่เลือก — เลือกทีมไหน ทุกส่วน (KPI/กราฟ/funnel/top3/
+    // เลยกำหนด/ลูกค้า Book 3 สี) นับเฉพาะทีมนั้น · ไม่เลือก = รวมทั้งองค์กร
+    function paintBody() {
+      const ids = selected.size ? [...selected] : tops;
+      const exp = expandTeams(teams, ids);
+      const scoped  = selected.size ? rows.filter(r => exp.has(r.team_id))  : rows;
+      const scopedC = selected.size ? custs.filter(c => exp.has(c.team_id)) : custs;
+      const picked  = selected.size
+        ? teams.filter(t => selected.has(t.id)).map(t => t.code).join(' + ')
+        : 'ทั้งองค์กร';
 
-      ${teams.length > 1 ? teamTargetSection(rows, teams, targetsMap, opt) : ''}
+      // เป้าของขอบเขต: ทั้งองค์กร = เป้ารวม (settings) · เลือกทีม = ผลรวมเป้าทีมในขอบเขต
+      let targetBaht = Number(goal.target_mb || 0) * 1e6;
+      if (selected.size) { targetBaht = 0; for (const id of exp) targetBaht += Number(targetsMap[id] || 0); }
 
-      <div class="grid cols-2 sec-grid">
-        <div class="card sec">
-          <h3 class="sec-h">Funnel งานขาย <span class="sec-sub">ขั้น "ปิดได้" นับเฉพาะในช่วงเป้า</span></h3>
-          ${funnelHtml(s.funnel)}
-          ${s.lostCount ? `<p class="sec-foot">แพ้/ยกเลิก ${s.lostCount} งาน · ${fmtMB(s.lostValue)} ล้าน</p>` : ''}
+      const s = summarize(scoped, { from: goal.from, to: goal.to, targetMB: targetBaht / 1e6 });
+      const cov = s.coverage === Infinity ? '∞' : s.coverage.toFixed(1) + '×';
+      const covRisk = s.coverage !== Infinity && s.coverage < 3;
+      const pctTxt = targetBaht ? s.pct.toFixed(1) + '%' : '—';
+
+      body.innerHTML = `
+        ${selected.size ? `<div class="dash-scope-note">กำลังดูเฉพาะ <b>${esc(picked)}</b> · ตัวเลขด้านล่างนับเฉพาะขอบเขตนี้</div>` : ''}
+        <div class="grid cols-4">
+          ${card('เป้ายอดขาย', `${targetBaht ? fmtMB(targetBaht) : '—'} ล้านบาท`,
+                 selected.size ? esc(picked) : esc(goal.period))}
+          ${card('ปิดได้แล้ว', `${fmtMB(s.won)} ล้าน`,
+                 `${pctTxt} ของเป้า · ขาดอีก ${fmtMB(s.gap)} ล้าน`)}
+          ${card('Pipeline ถ่วงน้ำหนัก', `${fmtMB(s.weighted)} ล้าน`,
+                 `จากงานที่ยังเดินอยู่ ${fmtMB(s.pipeline)} ล้าน`)}
+          ${card('Pipeline coverage', cov,
+                 covRisk ? '⚠ ต่ำกว่า 3 เท่า — เสี่ยงพลาดเป้า' : 'ครอบคลุมส่วนที่ยังขาด',
+                 covRisk ? 'is-risk' : '')}
+        </div>
+
+        <div class="prog-wrap">
+          <div class="prog"><i style="width:${Math.min(100, s.pct).toFixed(1)}%"></i></div>
+          <div class="prog-note">${fmtMB(s.won)} / ${targetBaht ? fmtMB(targetBaht) : '—'} ล้านบาท (${pctTxt})</div>
         </div>
 
         <div class="card sec">
-          <h3 class="sec-h">3 งานใหญ่ที่สุดที่ยังไม่ปิด</h3>
-          ${s.top3.length ? `<ol class="top3">
-            ${s.top3.map(r => `<li>
-              <span class="t3-name">${esc(r.project_name)}</span>
-              <span class="t3-meta">${esc(r.customer_name || '')}</span>
-              <b>${fmtMB(r.value_baht)} ล้าน</b>
+          <h3 class="sec-h">แผน vs ปิดจริง รายเดือน <span class="sec-sub">หน่วย: ล้านบาท</span></h3>
+          ${barChart(s.byMonth, chartW)}
+        </div>
+
+        ${teams.length > 1 ? teamBreakdownSection(rows, teams, targetsMap, opt) : ''}
+        ${(custs.length || showFilter) ? customerCard(scopedC, picked, selected.size > 0) : ''}
+
+        <div class="grid cols-2 sec-grid">
+          <div class="card sec">
+            <h3 class="sec-h">Funnel งานขาย <span class="sec-sub">ขั้น "ปิดได้" นับเฉพาะในช่วงเป้า</span></h3>
+            ${funnelHtml(s.funnel)}
+            ${s.lostCount ? `<p class="sec-foot">แพ้/ยกเลิก ${s.lostCount} งาน · ${fmtMB(s.lostValue)} ล้าน</p>` : ''}
+          </div>
+
+          <div class="card sec">
+            <h3 class="sec-h">3 งานใหญ่ที่สุดที่ยังไม่ปิด</h3>
+            ${s.top3.length ? `<ol class="top3">
+              ${s.top3.map(r => `<li>
+                <span class="t3-name">${esc(r.project_name)}</span>
+                <span class="t3-meta">${esc(r.customer_name || '')}</span>
+                <b>${fmtMB(r.value_baht)} ล้าน</b>
+              </li>`).join('')}
+            </ol>` : '<p class="sec-foot">ยังไม่มีงานที่เปิดอยู่ในขอบเขตนี้</p>'}
+          </div>
+        </div>
+
+        ${selected.size ? '' : actSection(acts)}
+
+        <div class="card sec">
+          <h3 class="sec-h">
+            งาน Pending ที่เลยกำหนดติดตาม
+            ${s.overdue.length ? `<span class="badge-risk">${s.overdue.length}</span>` : ''}
+            <span class="sec-sub">จากช่อง NEXT DATE ของงาน</span>
+          </h3>
+          ${s.overdue.length ? `<ul class="odlist">
+            ${s.overdue.slice(0, 8).map(r => `<li>
+              <span class="od-date">${esc(thaiDate(r.next_date) || r.next_date)}</span>
+              <span class="od-name">${esc(r.project_name)}</span>
+              <span class="od-act">${esc(r.next_action || '')}</span>
             </li>`).join('')}
-          </ol>` : '<p class="sec-foot">ยังไม่มีงานที่เปิดอยู่</p>'}
-        </div>
-      </div>
+          </ul>
+          ${s.overdue.length > 8 ? `<p class="sec-foot">และอีก ${s.overdue.length - 8} งาน — ดูทั้งหมดในแถบ Pending Project</p>` : ''}`
+          : '<p class="sec-foot">ไม่มีงานเลยกำหนด 👍</p>'}
+          ${s.noMonth ? `<p class="sec-foot">⚠ มี ${s.noMonth} งานที่ยังไม่ระบุเดือนคาดปิด — จะไม่ถูกนับในกราฟรายเดือน</p>` : ''}
+        </div>`;
+    }
 
-      ${actSection(acts)}
-
-      <div class="card sec">
-        <h3 class="sec-h">
-          งาน Pending ที่เลยกำหนดติดตาม
-          ${s.overdue.length ? `<span class="badge-risk">${s.overdue.length}</span>` : ''}
-          <span class="sec-sub">จากช่อง NEXT DATE ของงาน</span>
-        </h3>
-        ${s.overdue.length ? `<ul class="odlist">
-          ${s.overdue.slice(0, 8).map(r => `<li>
-            <span class="od-date">${esc(thaiDate(r.next_date) || r.next_date)}</span>
-            <span class="od-name">${esc(r.project_name)}</span>
-            <span class="od-act">${esc(r.next_action || '')}</span>
-          </li>`).join('')}
-        </ul>
-        ${s.overdue.length > 8 ? `<p class="sec-foot">และอีก ${s.overdue.length - 8} งาน — ดูทั้งหมดในแถบ Pending Project</p>` : ''}`
-        : '<p class="sec-foot">ไม่มีงานเลยกำหนด 👍</p>'}
-        ${s.noMonth ? `<p class="sec-foot">⚠ มี ${s.noMonth} งานที่ยังไม่ระบุเดือนคาดปิด — จะไม่ถูกนับในกราฟรายเดือน</p>` : ''}
-      </div>`;
-
-    // ผูกตัวเลือกขอบเขตเป้า (ทำหลัง innerHTML เพราะต้องหา element ที่เพิ่งวาด)
-    if (teams.length > 1) bindTeamScope(root, rows, teams, targetsMap, opt);
+    if (showFilter) {
+      const scope = root.querySelector('#dashScope');
+      scope.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-scope]');
+        if (!btn) return;
+        if (btn.dataset.scope === 'all') selected.clear();
+        else { const id = btn.dataset.team; if (selected.has(id)) selected.delete(id); else selected.add(id); }
+        scope.querySelector('[data-scope="all"]').classList.toggle('on', selected.size === 0);
+        scope.querySelectorAll('[data-scope="team"]').forEach(b => b.classList.toggle('on', selected.has(b.dataset.team)));
+        paintBody();
+      });
+    }
+    paintBody();
   },
 };
 
@@ -438,27 +485,17 @@ export default {
 // ส่วน "เป้าหมายตามทีม" — ตาราง + ตัวเลือกกลุ่ม + กล่องสรุป (step 3.10 ช่วง B)
 // ══════════════════════════════════════════════════════════
 
-function teamTargetSection(rows, teams, targetsMap, opt) {
+// ตารางรายทีม = มุมมอง "แยก" (โชว์ทุกทีมเสมอ · ตัวกรองบนสุดคุมมุมมอง "รวม" ที่ KPI แทน)
+function teamBreakdownSection(rows, teams, targetsMap, opt) {
   const rowsB = teamBreakdown(rows, teams, targetsMap, opt);
-  const tops = teams.filter(t => !t.parent_team_id);
-
   const bar = (pct) => `<div class="tt-bar"><span style="width:${Math.min(100, pct).toFixed(0)}%"></span></div>`;
 
   return `
     <div class="card sec">
-      <h3 class="sec-h">เป้าหมายตามทีม
-        <span class="sec-sub">เป้าตั้งที่ทีมย่อย · ทีมแม่/องค์กร = ผลรวม</span></h3>
+      <h3 class="sec-h">เป้าหมายตามทีม (แยก)
+        <span class="sec-sub">ทุกทีม · เป้าตั้งที่ทีมย่อย · ทีมแม่ = ผลรวม</span></h3>
 
-      <div class="tt-scope" id="ttScope">
-        <span class="tt-scope-l">เลือกดู:</span>
-        <button type="button" class="chip on" data-scope="all">ทั้งองค์กร</button>
-        ${teams.map(t => `<button type="button" class="chip ${t.parent_team_id ? 'chip-sub' : ''}"
-                            data-scope="team" data-team="${esc(t.id)}">${esc(t.code)}</button>`).join('')}
-      </div>
-
-      <div class="tt-summary" id="ttSummary"></div>
-
-      <div class="tbl-wrap" style="margin-top:14px">
+      <div class="tbl-wrap">
         <table class="tbl tt-tbl">
           <thead><tr>
             <th style="min-width:150px">ทีม</th>
@@ -482,44 +519,19 @@ function teamTargetSection(rows, teams, targetsMap, opt) {
     </div>`;
 }
 
-function bindTeamScope(root, rows, teams, targetsMap, opt) {
-  const scope = root.querySelector('#ttScope');
-  const box = root.querySelector('#ttSummary');
-  if (!scope || !box) return;
-  const tops = teams.filter(t => !t.parent_team_id).map(t => t.id);
-  let selected = new Set();          // ว่าง = ทั้งองค์กร
-
-  const paint = () => {
-    const ids = selected.size ? [...selected] : tops;
-    const st = sumScope(rows, teams, targetsMap, ids, opt);
-    const picked = selected.size
-      ? teams.filter(t => selected.has(t.id)).map(t => t.code).join(' + ')
-      : 'ทั้งองค์กร';
-    box.innerHTML = `
-      <div class="tt-sum-head">รวมกลุ่มที่เลือก: <b>${esc(picked)}</b></div>
-      <div class="tt-sum-nums">
-        <div><span class="tt-sum-n">${fmtMB(st.target)}</span><span class="tt-sum-l">เป้า (ล้านบาท)</span></div>
-        <div><span class="tt-sum-n">${fmtMB(st.won)}</span><span class="tt-sum-l">ปิดได้แล้ว (ล้านบาท)</span></div>
-        <div><span class="tt-sum-n">${st.target ? st.pct.toFixed(1) + '%' : '—'}</span><span class="tt-sum-l">ของเป้า</span></div>
-        <div><span class="tt-sum-n">${fmtMB(st.gap)}</span><span class="tt-sum-l">ยังขาด (ล้านบาท)</span></div>
+// ลูกค้า Book 3 สี ในขอบเขตที่เลือก (นับตามสี) — ให้ตัวกรองครอบทั้ง Pending + Book 3 สี ตามที่ขอ
+const DASH_COLORS = [['green', '🟢'], ['yellow', '🟡'], ['red', '🔴']];
+function customerCard(custs, picked, scoped) {
+  const total = (custs || []).length;
+  return `
+    <div class="card sec">
+      <h3 class="sec-h">ลูกค้า Book 3 สี
+        <span class="sec-sub">${scoped ? esc(picked) : 'ทั้งองค์กร'}</span></h3>
+      <div class="cust-sum">
+        <div class="cust-total"><span class="cust-n">${total}</span><span class="cust-l">รายในขอบเขต</span></div>
+        ${DASH_COLORS.map(([c, dot]) =>
+          `<div class="cust-c"><span class="cust-dot">${dot}</span><b>${(custs || []).filter(x => x.color === c).length}</b></div>`).join('')}
       </div>
-      <div class="tt-bar tt-bar-lg"><span style="width:${Math.min(100, st.pct).toFixed(0)}%"></span></div>`;
-  };
-
-  scope.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-scope]');
-    if (!btn) return;
-    if (btn.dataset.scope === 'all') {
-      selected.clear();
-    } else {
-      const id = btn.dataset.team;
-      if (selected.has(id)) selected.delete(id); else selected.add(id);
-    }
-    scope.querySelector('[data-scope="all"]').classList.toggle('on', selected.size === 0);
-    scope.querySelectorAll('[data-scope="team"]').forEach(b =>
-      b.classList.toggle('on', selected.has(b.dataset.team)));
-    paint();
-  });
-
-  paint();
+      <p class="sec-foot"><a class="lnk" href="#book3">เปิด Book 3 สี →</a></p>
+    </div>`;
 }
