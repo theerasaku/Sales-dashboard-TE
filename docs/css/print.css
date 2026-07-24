@@ -15,10 +15,46 @@
 
   #printRoot { display: block !important; }
 
+  /* margin:0 เพื่อให้สามเหลี่ยมมุม (Book 3 สี) ชิดขอบกระดาษจริงได้
+     ระยะขอบเนื้อหาย้ายไปเป็น padding บน .pf-page แทน (กติกาเดียวกับสเปกฟอร์ม)
+     ⚠️ ตอนสั่งพิมพ์ให้ตั้ง Margins = None + เปิด Background graphics มุมสีถึงจะชิดขอบ/ไม่หาย */
   @page {
     size: A4 portrait;
-    margin: 12mm 10mm;
+    margin: 0;
   }
+
+  .pf-page {
+    padding: 12mm 10mm;
+    position: relative;
+    box-sizing: border-box;
+  }
+  /* ── หน้า Potential (Book 3 สี) — ระยะขอบตามสเปกฟอร์ม + เป็นกรอบให้มุม/รูปวางแบบ absolute ── */
+  .pf-page-potential { padding: 14mm 13mm; }
+
+  /* สามเหลี่ยมมุมขวาบน = ระดับความสัมพันธ์ (ด้านละ ~20% ของ A4 = 42mm) */
+  .pf-corner {
+    position: absolute; top: 0; right: 0;
+    width: 42mm; height: 42mm; pointer-events: none;
+  }
+  .pf-corner svg { display: block; width: 100%; height: 100%; }
+  .pf-corner-green  polygon { fill: #1f9d55; }
+  .pf-corner-yellow polygon { fill: #e3b000; }
+  .pf-corner-red    polygon { fill: #e23b3b; }
+
+  /* ช่องติดรูปวางแบบ absolute ให้อยู่ใต้สามเหลี่ยม ไม่ทับกัน */
+  .pf-photo-abs {
+    position: absolute; top: 34mm; right: 13mm;
+    width: 34mm; height: 40mm; border: 1px solid #000;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .pf-photo-abs img { width: 100%; height: 100%; object-fit: cover; }
+
+  .pf-pot-head { text-align: center; margin-bottom: 2mm; }
+  .pf-pot-head h1 { font-size: 20pt; font-weight: normal; margin-bottom: 4px; }
+  .pf-pot-head .pf-l { min-width: auto; }
+  .pf-pot-head .pf-v { flex: 0 0 45mm; }
+  /* เนื้อหาเลื่อนลงพ้นสามเหลี่ยม + ช่องรูป */
+  .pf-frm { margin-top: 46mm; }
 
   html, body {
     background: #fff !important;
@@ -128,33 +164,7 @@
   .pf-log th:nth-child(4), .pf-log td:nth-child(4) { width: 22%; }
   .pf-wide { width: 48%; }
 
-  /* ── หัวฟอร์ม Potential ── */
-  .pf-potential {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12mm;
-    margin-bottom: 10px;
-  }
-  .pf-pot-t { flex: 1 1 auto; min-width: 0; text-align: center; }
-  .pf-pot-t h1 {
-    font-size: 20pt;
-    font-weight: normal;
-    margin-bottom: 4px;
-  }
-  .pf-pot-t .pf-l { min-width: auto; }
-  .pf-pot-t .pf-v { flex: 0 0 45mm; }
-
-  .pf-photo {
-    flex: 0 0 34mm;
-    height: 34mm;
-    border: 1px solid #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
-  .pf-photo img { width: 100%; height: 100%; object-fit: cover; }
+  /* ข้อความ placeholder ในช่องติดรูป (ตอนไม่มีรูป) */
   .pf-photo-x { font-size: 8pt; color: #888; }
 
   /* กันเบราว์เซอร์ตัดสีพื้น/ขอบทิ้งตอนพิมพ์ */

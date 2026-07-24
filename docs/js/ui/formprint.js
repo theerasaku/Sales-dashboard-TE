@@ -175,63 +175,63 @@ export function pendingFormHtml(row, contacts, products, logs) {
 const CUST_LOG_ROWS_P1 = 12;   // ต้นฉบับหน้า 1 มี 12 บรรทัด
 const CUST_LOG_ROWS_P2 = 34;   // หน้า 2 เป็นตารางเต็มหน้า
 
-const COLOR_LABEL = {
-  green:  '🟢 เขียว — สนิท / ซื้อประจำ',
-  yellow: '🟡 เหลือง — มีโอกาส',
-  red:    '🔴 แดง — เพิ่งเริ่มติดต่อ',
-};
-
 export function customerFormHtml(row, logs) {
   const first = paginate(logs, CUST_LOG_ROWS_P1)[0] || [];
   const rest  = (logs || []).slice(CUST_LOG_ROWS_P1);
   const restPages = rest.length ? paginate(rest, CUST_LOG_ROWS_P2) : [[]];
 
+  // สามเหลี่ยมมุมขวาบน = ระดับความสัมพันธ์ (แทนแถว "สีในสมุด" ที่ตัดออก · เจ้าของสั่ง 24 ก.ค. 2569)
+  const cornerCls = ['green', 'yellow', 'red'].includes(row.color) ? row.color : 'red';
+
   const page1 = `
-  <section class="pf-page">
-    <div class="pf-potential">
-      <div class="pf-pot-t">
-        <h1>Potential</h1>
-        <div class="pf-row pf-center"><span class="pf-l">No.</span> ${V(row.no)}</div>
-      </div>
-      <div class="pf-photo">${
-        row.photo_url
-          ? `<img src="${esc(row.photo_url)}" alt="">`
-          : '<span class="pf-photo-x">รูปลูกค้า</span>'}</div>
+  <section class="pf-page pf-page-potential">
+    <div class="pf-corner pf-corner-${cornerCls}" aria-hidden="true">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,0 100,0 100,100"/></svg>
+    </div>
+    <div class="pf-photo-abs">${
+      row.photo_url
+        ? `<img src="${esc(row.photo_url)}" alt="">`
+        : '<span class="pf-photo-x">ติดรูป</span>'}</div>
+
+    <div class="pf-pot-head">
+      <h1>Potential</h1>
+      <div class="pf-row pf-center"><span class="pf-l">No.</span> ${V(row.no)}</div>
     </div>
 
-    <div class="pf-row"><span class="pf-l">NAME</span> ${V(row.name)}
-      <span class="pf-l">ชื่อเล่น</span> ${V(row.nickname)}</div>
-    <div class="pf-row"><span class="pf-l">หน่วยงาน / บริษัท</span> ${V(row.org)}</div>
+    <div class="pf-frm">
+      <div class="pf-row"><span class="pf-l">NAME</span> ${V(row.name)}
+        <span class="pf-l">ชื่อเล่น</span> ${V(row.nickname)}</div>
+      <div class="pf-row"><span class="pf-l">หน่วยงาน / บริษัท</span> ${V(row.org)}</div>
 
-    <div class="pf-row"><span class="pf-l">BIRTHDAY</span> ${V(thaiDate(row.birthday))}
-      <span class="pf-l">AGE</span> ${V(ageOf(row.birthday))}</div>
-    <div class="pf-row"><span class="pf-l">POSITION</span> ${V(row.position)}</div>
+      <div class="pf-row"><span class="pf-l">BIRTHDAY</span> ${V(thaiDate(row.birthday))}
+        <span class="pf-l">AGE</span> ${V(ageOf(row.birthday))}</div>
+      <div class="pf-row"><span class="pf-l">POSITION</span> ${V(row.position)}</div>
 
-    <div class="pf-row"><span class="pf-l">CONTACT</span>
-      <span class="pf-n">(TELEPHONE)</span> ${V(row.tel)}</div>
-    <div class="pf-row"><span class="pf-l"></span>
-      <span class="pf-n">(EMAIL)</span> ${V(row.email)}</div>
+      <div class="pf-row"><span class="pf-l">CONTACT</span>
+        <span class="pf-n">(TELEPHONE)</span> ${V(row.tel)}</div>
+      <div class="pf-row"><span class="pf-l"></span>
+        <span class="pf-n">(EMAIL)</span> ${V(row.email)}</div>
 
-    <div class="pf-row"><span class="pf-l">ADDRESS(OFFICE)</span> ${V(row.addr_office)}</div>
-    <div class="pf-row"><span class="pf-l">ADDRESS(HOME)</span> ${V(row.addr_home)}</div>
-    <div class="pf-row"><span class="pf-l">ADDRESS(HOMETOWN)</span> ${V(row.addr_hometown)}</div>
+      <div class="pf-row"><span class="pf-l">ADDRESS(OFFICE)</span> ${V(row.addr_office)}</div>
+      <div class="pf-row"><span class="pf-l">ADDRESS(HOME)</span> ${V(row.addr_home)}</div>
+      <div class="pf-row"><span class="pf-l">ADDRESS(HOMETOWN)</span> ${V(row.addr_hometown)}</div>
 
-    ${(() => {
-      const ed = String(row.education || '').split('\n');
-      return [1, 2, 3].map(i => `
-        <div class="pf-row"><span class="pf-l">${i === 1 ? 'EDUCATION' : ''}</span>
-          <span class="pf-n">${i}.)</span> ${V(ed[i - 1] || '')}</div>`).join('');
-    })()}
+      ${(() => {
+        const ed = String(row.education || '').split('\n');
+        return [1, 2, 3].map(i => `
+          <div class="pf-row"><span class="pf-l">${i === 1 ? 'EDUCATION' : ''}</span>
+            <span class="pf-n">${i}.)</span> ${V(ed[i - 1] || '')}</div>`).join('');
+      })()}
 
-    <div class="pf-row"><span class="pf-l">FAMILY</span> ${V(row.family)}</div>
-    <div class="pf-row"><span class="pf-l">HOBBY</span> ${V(row.hobby)}</div>
-    <div class="pf-row"><span class="pf-l">FAVORITE</span> ${V(row.favorite)}</div>
-    <div class="pf-row"><span class="pf-l">สีในสมุด</span> ${V(COLOR_LABEL[row.color] || '')}</div>
+      <div class="pf-row"><span class="pf-l">FAMILY</span> ${V(row.family)}</div>
+      <div class="pf-row"><span class="pf-l">HOBBY</span> ${V(row.hobby)}</div>
+      <div class="pf-row"><span class="pf-l">FAVORITE</span> ${V(row.favorite)}</div>
 
-    <table class="pf-tbl pf-log">
-      <thead><tr><th>DATE</th><th>BY</th><th>RESPONSE</th><th>NEXT DOING</th></tr></thead>
-      <tbody>${logRows(first, CUST_LOG_ROWS_P1)}</tbody>
-    </table>
+      <table class="pf-tbl pf-log">
+        <thead><tr><th>DATE</th><th>BY</th><th>RESPONSE</th><th>NEXT DOING</th></tr></thead>
+        <tbody>${logRows(first, CUST_LOG_ROWS_P1)}</tbody>
+      </table>
+    </div>
   </section>`;
 
   const more = restPages.map(chunk => `

@@ -27,6 +27,18 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-24 07:43 · ยังไม่ commit · Book 3 สี พิมพ์ = สามเหลี่ยมมุมสีตามระดับ (แทนแถว "สีในสมุด")
+**step:** — (เจ้าของขอ) | **ประเภท:** ฟีเจอร์ (พิมพ์ฟอร์ม)
+- ฟอร์ม Potential (Book 3 สี) เพิ่ม **สามเหลี่ยมมุมขวาบนสีตามระดับ** (green #1f9d55 · yellow #e3b000 · red #e23b3b) แทนแถว "สีในสมุด" ที่ตัดออก
+  - SVG `<polygon points="0,0 100,0 100,100">` 42mm (20% ของ A4) · สีอยู่ใน print.css (ไฟล์ข้อยกเว้น) · `print-color-adjust:exact`
+- **`@page{margin:0}`** (เดิม 12mm 10mm) → ย้ายระยะขอบไป padding บน `.pf-page` (12mm 10mm) · `.pf-page-potential` = 14mm 13mm ตามสเปก → มุมสีชิดขอบกระดาษจริงได้
+  - รูป/หัว/เนื้อหาจัดใหม่แบบ absolute: `.pf-corner` (top:0,right:0) · `.pf-photo-abs` (top:34mm) · `.pf-frm{margin-top:46mm}` → ไม่ทับกัน
+- ปุ่มพิมพ์ Book 3 เพิ่ม tooltip เตือน "ตั้ง Margins: None + Background graphics"
+- bump v0.23.0
+**ไฟล์:** docs/js/ui/formprint.js · docs/css/print.css · docs/js/modules/book3.js · docs/js/config.js · docs/sw.js
+**ทดสอบ:** Book3 PDF **7/7** + **render PDF จริงดูแล้ว** ตรงกับรูปเป้าหมายเป๊ะ (สามเหลี่ยมเขียวชิดมุม · รูปไม่ทับ · ตัดแถวสีออก · ฟิลด์ครบ) · **Pending PDF render ดูแล้ว margin:0 ไม่พัง** (ทุกช่องตรง) · regression success-miss 14 · feat 14 (sign-off PDF) ผ่าน
+**หมายเหตุ:** มุมสีชิดขอบต้องตั้ง Margins: None ตอนพิมพ์ (browser default margin จะทับ @page)
+
 ## 2026-07-24 07:11 · ยังไม่ commit · เพิ่มธีมจาก Claude design — noir + brown
 **step:** — (เจ้าของส่ง design มา) | **ประเภท:** ฟีเจอร์ (ธีม)
 - เจ้าของส่งไฟล์จาก Claude design 3 ไฟล์ · ตัวที่ใช้ได้จริง = `te-theme.css` (สกินสำหรับแอปนี้โดยตรง 2 ธีม noir/brown · ใช้ชื่อตัวแปร CSS ตรงกับระบบเดิมทุกตัว)

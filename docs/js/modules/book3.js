@@ -490,7 +490,7 @@ async function openDetail(host, id, onSaved, teams) {
                     title="ลบออกจากฐานข้อมูลถาวร — กู้กลับไม่ได้">🗑 ลบถาวร</button>` : ''}` : ''}
           <span class="spacer"></span>
           ${id ? `<button type="button" class="btn btn-ghost" id="bPrint"
-                    title="พิมพ์ตามฟอร์ม Potential ต้นฉบับ หรือบันทึกเป็น PDF">🖨 พิมพ์ / PDF</button>` : ''}
+                    title="พิมพ์ฟอร์ม Potential (มุมสีตามระดับ) — ตอนพิมพ์ตั้ง Margins: None + เปิด Background graphics ให้มุมสีชิดขอบ">🖨 พิมพ์ / PDF</button>` : ''}
           <button type="button" class="btn btn-ghost" id="bCancel">ยกเลิก</button>
           <button type="submit" class="btn btn-primary" id="bSave">บันทึก</button>
         </div>
