@@ -727,7 +727,10 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .top3 li::before { content: counter(t); color: var(--text-mute); font-size: 12px; }
 .t3-name { font-size: 13.5px; }
 .t3-meta { grid-column: 2; font-size: 11.5px; color: var(--text-mute); }
-.top3 b { grid-row: 1; font-variant-numeric: tabular-nums; }
+/* ต้องปักคอลัมน์ให้ b (มูลค่า) — มันมี grid-row:1 (ล็อกแถว ไม่ล็อกคอลัมน์)
+   อัลกอริทึม auto-placement ของ grid วางไอเท็มที่ล็อกแถวก่อนไอเท็ม auto ล้วน
+   ถ้าไม่ปักคอลัมน์ b จะไปแย่งคอลัมน์ 1 (ช่องอันดับ 22px) → "12.4 ล้าน" ตกบรรทัดไปอยู่ซ้าย */
+.top3 b { grid-column: 3; grid-row: 1; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* งานเลยกำหนด */
 .odlist { list-style: none; }

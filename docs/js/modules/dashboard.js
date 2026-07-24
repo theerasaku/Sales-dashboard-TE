@@ -412,7 +412,9 @@ export default {
                  covRisk ? 'is-risk' : '')}
         </div>
 
-        <div class="prog-wrap">
+        <div class="card sec prog-card">
+          <h3 class="sec-h">ความคืบหน้าเทียบเป้า
+            <span class="sec-sub">${selected.size ? esc(picked) : esc(goal.period)}</span></h3>
           <div class="prog"><i style="width:${Math.min(100, s.pct).toFixed(1)}%"></i></div>
           <div class="prog-note">${fmtMB(s.won)} / ${targetBaht ? fmtMB(targetBaht) : '—'} ล้านบาท (${pctTxt})</div>
         </div>
