@@ -1545,3 +1545,42 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 
 /* ตัวกรองเดือนถูกปิดตอนดู Archive (งานจบแล้วไม่กรองตามเดือนคาดปิด) */
 .toolbar-sub.filter-off .tl-label { opacity: .4; }
+
+/* ═══════════════════════════════════════════════════════════
+   เป้ารายทีม: กล่องรวมทั้งองค์กร (step 3.11)
+   ═══════════════════════════════════════════════════════════ */
+.tt-total {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 10px; padding: 10px 12px;
+  border-top: 1.5px solid var(--border); font-size: 13px;
+}
+.tt-total > span { color: var(--text-dim); }
+.tt-total b { color: var(--accent-text); font-size: 15px; }
+
+/* ═══════════════════════════════════════════════════════════
+   ประวัติการเซ็นรับทราบ (timeline ใกล้กิจกรรม · step 3.11)
+   ═══════════════════════════════════════════════════════════ */
+.so-hist-wrap { margin: 12px 0 4px; }
+.so-hist-h { font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; }
+.so-hist { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.so-hist-item {
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: var(--r-sm); overflow: hidden;
+}
+.so-hist-head {
+  width: 100%; appearance: none; background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  padding: 8px 10px; font: inherit; font-size: 12.5px; color: var(--text);
+}
+.so-hist-head[disabled] { cursor: default; }
+.so-hist-ico { flex: 0 0 auto; }
+.so-hist-txt { flex: 1 1 auto; min-width: 0; }
+.so-hist-txt b { color: var(--accent-text); }
+.so-hist-caret { flex: 0 0 auto; font-size: 11px; color: var(--accent-text); }
+.so-hist-head.open .so-hist-caret::first-letter { content: ""; }
+.so-hist-head.open .so-hist-caret { opacity: .6; }
+.so-hist-nonote { flex: 0 0 auto; font-size: 11px; color: var(--text-mute); }
+.so-hist-note {
+  padding: 2px 12px 10px 30px; font-size: 12.5px; color: var(--text-dim);
+  font-style: italic; line-height: 1.5;
+}

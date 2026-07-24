@@ -290,6 +290,13 @@ const localAdapter = {
     return row;
   },
 
+  async deleteCustomer(id) {
+    // เลียนแบบ RLS: ลบได้เฉพาะ archived (ยกเว้น admin) — โหมด local เป็น admin จึงลบได้เสมอ
+    db.customers = db.customers.filter(r => r.id !== id);
+    db.customer_logs = db.customer_logs.filter(l => l.customer_id !== id);   // cascade
+    save();
+  },
+
   async countCustomers(status = 'active') {
     return db.customers.filter(r =>
       status === 'archived' ? r.is_active === false : r.is_active !== false).length;
@@ -446,6 +453,12 @@ const localAdapter = {
     const latest = new Map();
     for (const r of rows) if (!latest.has(r.target_id)) latest.set(r.target_id, r);
     return [...latest.values()];
+  },
+
+  async listSignoffHistory(targetTable, targetId) {
+    return db.signoffs
+      .filter(r => r.target_table === targetTable && r.target_id === targetId)
+      .sort((a, b) => String(a.signed_at).localeCompare(String(b.signed_at)));
   },
 
   async addSignoff(targetTable, targetId, note) {

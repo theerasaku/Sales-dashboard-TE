@@ -71,6 +71,7 @@ export const adapter = {
   getCustomer:       (id)    => need().getCustomer(id),
   saveCustomer:      (row)   => need().saveCustomer(row),
   archiveCustomer:   (id, a) => need().archiveCustomer(id, a),
+  deleteCustomer:    (id)    => need().deleteCustomer(id),
   countCustomers:    (st)    => need().countCustomers(st),
 
   // B3 บันทึกติดตามลูกค้า
@@ -90,8 +91,9 @@ export const adapter = {
   saveExpoCustomer:  (row)     => need().saveExpoCustomer(row),
 
   // B8 sign-off — หัวหน้าเซ็นรับทราบ (step 2.6)
-  listSignoffs:      (t, ids)  => need().listSignoffs(t, ids),
-  addSignoff:        (t, id, n)=> need().addSignoff(t, id, n),
+  listSignoffs:       (t, ids)  => need().listSignoffs(t, ids),
+  listSignoffHistory: (t, id)   => need().listSignoffHistory(t, id),
+  addSignoff:         (t, id, n)=> need().addSignoff(t, id, n),
 
   // B1 admin — ผู้ใช้ / ทีม / สิทธิ์ข้ามทีม (step 2.4)
   listProfiles:      ()        => need().listProfiles(),

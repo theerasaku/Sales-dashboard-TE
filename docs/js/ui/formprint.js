@@ -292,6 +292,25 @@ function doPrint(html, title) {
 /** ชื่อไฟล์: ตัดอักขระที่ใช้ตั้งชื่อไฟล์ไม่ได้ออก */
 const fileName = (s) => String(s || '').replace(/[\\/:*?"<>|]/g, ' ').trim().slice(0, 80);
 
+/**
+ * แปลงประวัติการเซ็นรับทราบ → แถวบันทึก (pseudo-log) เพื่อแทรกในไทม์ไลน์ PDF (step 3.11)
+ * ให้เห็นว่า "ช่วงเวลานั้นมีหัวหน้าตรวจ + คอมเมนต์อะไร" ต่อท้ายวันที่ที่บันทึก
+ */
+function signoffPseudoLogs(list) {
+  return (list || []).map(s => ({
+    log_date:   String(s.signed_at || '').slice(0, 10),
+    by_name:    (s.profiles?.full_name || s.profiles?.email || 'หัวหน้างาน') + ' (ตรวจ)',
+    response:   '✓ เซ็นรับทราบ' + (s.reviewed_note ? ' — ' + s.reviewed_note : ''),
+    next_doing: '',
+  }));
+}
+
+/** รวมบันทึกติดตาม + ประวัติการเซ็น แล้วเรียงตามวันที่ (เก่า→ใหม่) */
+function mergeLogsWithSignoffs(logs, signoffs) {
+  return [...(logs || []), ...signoffPseudoLogs(signoffs)]
+    .sort((a, b) => String(a.log_date).localeCompare(String(b.log_date)));
+}
+
 export async function printPending(id) {
   const row = await adapter.getPending(id);
   if (!row) throw new Error('ไม่พบงานนี้ (อาจถูกลบหรือไม่มีสิทธิ์เข้าถึง)');
@@ -302,8 +321,10 @@ export async function printPending(id) {
   catch { products = []; }        // ยังไม่ได้รัน phase3-9.sql ก็พิมพ์ตารางเปล่าไปก่อน
 
   const logs = row.follow_logs || await adapter.listFollowLogs(id);
-  const sorted = [...(logs || [])].sort((a, b) =>
-    String(a.log_date).localeCompare(String(b.log_date)));   // เก่า→ใหม่ เหมือนเขียนไล่ลงกระดาษ
+  // แทรกประวัติการเซ็นรับทราบเข้าไปในไทม์ไลน์ด้วย (เห็นว่ามีตรวจ + คอมเมนต์ช่วงไหน)
+  let signoffs = [];
+  try { signoffs = await adapter.listSignoffHistory('pending_projects', id); } catch { signoffs = []; }
+  const sorted = mergeLogsWithSignoffs(logs, signoffs);   // เก่า→ใหม่ เหมือนเขียนไล่ลงกระดาษ
 
   doPrint(pendingFormHtml(row, row.project_contacts || [], products, sorted),
           fileName(`Pending ${row.pending_no || ''} ${row.project_name || ''}`));
@@ -314,8 +335,9 @@ export async function printCustomer(id) {
   if (!row) throw new Error('ไม่พบลูกค้ารายนี้ (อาจถูกลบหรือไม่มีสิทธิ์เข้าถึง)');
 
   const logs = row.customer_logs || await adapter.listCustomerLogs(id);
-  const sorted = [...(logs || [])].sort((a, b) =>
-    String(a.log_date).localeCompare(String(b.log_date)));
+  let signoffs = [];
+  try { signoffs = await adapter.listSignoffHistory('customers', id); } catch { signoffs = []; }
+  const sorted = mergeLogsWithSignoffs(logs, signoffs);
 
   doPrint(customerFormHtml(row, sorted),
           fileName(`Book3 ${row.no || ''} ${row.name || ''}`));

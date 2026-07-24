@@ -714,6 +714,11 @@ const supabaseAdapter = {
     return rows?.[0] || null;
   },
 
+  /** ลบถาวร — admin ทุกกรณี · คนอื่นได้เฉพาะลูกค้าที่ archive แล้วในทีมที่แก้ได้ (RLS cust_delete) */
+  async deleteCustomer(id) {
+    await rest(`/customers?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
   async countCustomers(status = 'active') {
     const flag = status === 'archived' ? 'eq.false' : 'eq.true';
     return countRows(`/customers?select=id&is_active=${flag}`);
@@ -937,6 +942,20 @@ const supabaseAdapter = {
     const latest = new Map();
     for (const r of rows || []) if (!latest.has(r.target_id)) latest.set(r.target_id, r);
     return [...latest.values()];
+  },
+
+  /**
+   * ประวัติการเซ็นรับทราบ "ทั้งหมด" ของรายการเดียว (ไม่ dedup) — เก่า→ใหม่
+   * ใช้แสดงเป็น timeline ในหน้ารายละเอียด + ต่อท้ายใน PDF (step 3.11)
+   * (signoffs เป็น append-only จึงมีได้หลายแถวต่อรายการ = ประวัติการตรวจแต่ละรอบ)
+   */
+  async listSignoffHistory(targetTable, targetId) {
+    const p = new URLSearchParams();
+    p.set('select', 'signed_at,signed_by,reviewed_note,signed_version,profiles(full_name,email)');
+    p.set('target_table', `eq.${targetTable}`);
+    p.set('target_id', `eq.${encodeURIComponent(targetId)}`);
+    p.set('order', 'signed_at.asc');
+    return rest('/signoffs?' + p.toString());
   },
 
   /**

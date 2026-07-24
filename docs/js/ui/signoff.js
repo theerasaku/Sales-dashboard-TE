@@ -95,6 +95,42 @@ export function signoffBarHtml(st, sign) {
 }
 
 /**
+ * ประวัติการเซ็นรับทราบทั้งหมด (timeline เล็ก ๆ) — ใช้แสดงใกล้บันทึกกิจกรรม (step 3.11)
+ * แต่ละครั้ง: 🔖 วันที่ + ผู้ตรวจ + ปุ่มขยายดูคอมเมนต์ (reviewed_note)
+ * list = จาก adapter.listSignoffHistory() (เก่า→ใหม่)
+ */
+export function signoffHistoryHtml(list) {
+  if (!list?.length) return '';
+  return `<ul class="so-hist">
+    ${list.map((s, i) => {
+      const who  = s.profiles?.full_name || s.profiles?.email || 'หัวหน้างาน';
+      const when = String(s.signed_at || '').slice(0, 10);
+      const note = s.reviewed_note || '';
+      return `<li class="so-hist-item">
+        <button type="button" class="so-hist-head"${note ? ` data-so-toggle="${i}"` : ' disabled'}>
+          <span class="so-hist-ico">🔖</span>
+          <span class="so-hist-txt">เซ็นรับทราบ · ${esc(thaiDate(when) || when)} · <b>${esc(who)}</b></span>
+          ${note ? '<span class="so-hist-caret">▾ ดูคอมเมนต์</span>' : '<span class="so-hist-nonote">— ไม่มีคอมเมนต์ —</span>'}
+        </button>
+        ${note ? `<div class="so-hist-note" id="soHistNote${i}" hidden>“${esc(note)}”</div>` : ''}
+      </li>`;
+    }).join('')}
+  </ul>`;
+}
+
+/** ผูกปุ่มขยาย/ยุบคอมเมนต์ในประวัติการเซ็น */
+export function bindSignoffHistory(host) {
+  host.querySelectorAll('[data-so-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = host.querySelector('#soHistNote' + btn.dataset.soToggle);
+      if (!el) return;
+      el.hidden = !el.hidden;
+      btn.classList.toggle('open', !el.hidden);
+    });
+  });
+}
+
+/**
  * ผูกปุ่มเซ็นในแถบข้างบน
  * @param host        element ที่มีแถบอยู่ข้างใน
  * @param targetTable 'pending_projects' | 'customers'

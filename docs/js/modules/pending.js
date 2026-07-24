@@ -6,7 +6,8 @@
 import { adapter } from '../data/adapter.js';
 import { dateField, thaiDate, initDatePicker, todayISO } from '../ui/datepicker.js';
 import { logListHtml, bindLogEditing } from '../ui/loglist.js';
-import { signoffState, signoffBarHtml, bindSignoff, canSign } from '../ui/signoff.js';
+import { signoffState, signoffBarHtml, bindSignoff, canSign,
+         signoffHistoryHtml, bindSignoffHistory } from '../ui/signoff.js';
 import { printPending } from '../ui/formprint.js';
 import { openAIImport } from './ai-intake.js';
 
@@ -647,11 +648,14 @@ async function openDetail(host, id, onSaved, teams) {
 
   // ลายเซ็นหัวหน้า — ยังไม่ได้รัน signoffs.sql ก็ต้องเปิดฟอร์มได้ตามปกติ
   let soState = { kind: 'none' };
+  let soHist  = [];
   if (id) {
     try {
       const list = await adapter.listSignoffs('pending_projects', [id]);
       soState = signoffState(row, list?.[0]);
     } catch { soState = null; }
+    // ประวัติการตรวจทั้งหมด (แสดงเป็น timeline ใกล้บันทึกกิจกรรม)
+    try { soHist = await adapter.listSignoffHistory('pending_projects', id); } catch { soHist = []; }
   }
 
   host.innerHTML = `
@@ -712,6 +716,11 @@ async function openDetail(host, id, onSaved, teams) {
                 <span class="lg-hint">หรือกด "บันทึก" ด้านล่างก็เก็บให้เหมือนกัน</span>
               </div>
 
+              ${soHist.length ? `<div class="so-hist-wrap">
+                <div class="so-hist-h">🔖 การตรวจของหัวหน้า (${soHist.length})</div>
+                ${signoffHistoryHtml(soHist)}
+              </div>` : ''}
+
               <ul class="loglist" id="logList">${logListHtml(logs, me)}</ul>
             </section>`
           : `<section class="fgroup">
@@ -747,6 +756,8 @@ async function openDetail(host, id, onSaved, teams) {
                     class="btn btn-sm ${archived ? 'btn-ghost' : 'btn-danger'}">
                     ${archived ? '↩ ปลุกกลับมาทำต่อ' : 'Project จบแล้ว — เก็บเข้าคลัง Archives'}
                   </button>` : ''}
+          ${id && archived ? `<button type="button" id="pDelete" class="btn btn-sm btn-danger"
+                    title="ลบออกจากฐานข้อมูลถาวร — กู้กลับไม่ได้">🗑 ลบถาวร</button>` : ''}
           <span class="spacer"></span>
           ${id ? `<button type="button" class="btn btn-ghost" id="pPrint"
                     title="พิมพ์ตามฟอร์มกระดาษต้นฉบับ หรือบันทึกเป็น PDF">🖨 พิมพ์ / PDF</button>` : ''}
@@ -765,6 +776,7 @@ async function openDetail(host, id, onSaved, teams) {
       await onSaved();
     });
   }
+  bindSignoffHistory(host);   // ปุ่มขยายดูคอมเมนต์ในประวัติการตรวจ
 
   // ── ปิดงานแล้วเตือนให้เก็บเข้าคลัง (step 2.5) ──
   // ไม่เก็บให้อัตโนมัติ เพราะบางทีปิดการขายแล้วยังต้องตามส่งของ/วางบิลอีกหลายเดือน
@@ -1023,6 +1035,34 @@ async function openDetail(host, id, onSaved, teams) {
       close();
       await onSaved();
     } catch (e) { fail(e.message); }
+  });
+
+  // ── ลบถาวร (เฉพาะงานที่ archive แล้ว · step 3.11) — กด 2 ครั้งยืนยัน กู้กลับไม่ได้ ──
+  let delArmed = false;
+  const delBtn = q('#pDelete');
+  delBtn?.addEventListener('click', async () => {
+    if (!delArmed) {
+      delArmed = true;
+      delBtn.textContent = 'ลบถาวร? กดอีกครั้ง (กู้กลับไม่ได้)';
+      delBtn.classList.add('is-armed');
+      setTimeout(() => {
+        if (!delArmed) return;
+        delArmed = false;
+        delBtn.textContent = '🗑 ลบถาวร';
+        delBtn.classList.remove('is-armed');
+      }, 4000);
+      return;
+    }
+    delBtn.disabled = true; delBtn.textContent = 'กำลังลบ…';
+    try {
+      await adapter.deletePending(id);
+      close();
+      await onSaved();
+    } catch (e) {
+      delBtn.disabled = false; delBtn.textContent = '🗑 ลบถาวร'; delArmed = false;
+      delBtn.classList.remove('is-armed');
+      fail(e.message);
+    }
   });
 
   q('#lgAdd')?.addEventListener('click', async () => {

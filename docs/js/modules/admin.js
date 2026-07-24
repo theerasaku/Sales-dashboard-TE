@@ -122,6 +122,10 @@ async function renderAdmin(root) {
             </label>`;
           }).join('')}
         </div>
+        <div class="tt-total">
+          <span>รวมทั้งองค์กร (ทุกทีม)</span>
+          <b><span id="ttOrgTotal">0</span> ล้านบาท</b>
+        </div>
         <p class="login-err" id="ttErr" role="alert" hidden></p>
       </div>
 
@@ -219,7 +223,32 @@ async function renderAdmin(root) {
     });
 
     // ── เป้ารายทีม: บันทึกเมื่อออกจากช่อง (เก็บเป็นบาท · จอกรอกล้านบาท) ──
+    //
+    // ⭐ ทีมแม่ (TE-IMP) แสดง "ผลรวมทีมย่อย" อัตโนมัติ + กล่องรวมทั้งองค์กร — คิดสด ๆ ตอนพิมพ์
+    //    ทีมแม่ input ถูก disabled (ตั้งเป้าที่ทีมใบเท่านั้น) เราแค่เอาผลรวมมาโชว์ในช่องนั้น
+    function recomputeTT() {
+      const val = {};
+      root.querySelectorAll('.ttrow-inp:not([disabled])').forEach(inp => {
+        val[inp.dataset.team] = Number(inp.value) || 0;
+      });
+      const sumOf = (id) => {
+        const kids = teams.filter(t => t.parent_team_id === id);
+        return kids.length ? kids.reduce((a, k) => a + sumOf(k.id), 0) : (val[id] || 0);
+      };
+      // ทีมแม่โชว์ผลรวมทีมย่อย (ยังคง disabled ไว้ — แค่แสดง)
+      root.querySelectorAll('.ttrow-inp[disabled]').forEach(inp => {
+        const s = sumOf(inp.dataset.team);
+        inp.value = s ? s : '';
+      });
+      const org = teams.filter(t => !t.parent_team_id).reduce((a, t) => a + sumOf(t.id), 0);
+      const el = $('#ttOrgTotal');
+      if (el) el.textContent = org.toLocaleString('th-TH');
+    }
+
     root.querySelectorAll('.ttrow-inp').forEach(inp => {
+      // พิมพ์ปุ๊บ ผลรวมทีมแม่/องค์กรอัปเดตทันที (ยังไม่บันทึก)
+      inp.addEventListener('input', recomputeTT);
+      // ออกจากช่อง = บันทึกจริง
       inp.addEventListener('change', async () => {
         const mb = Number(inp.value);
         if (inp.value !== '' && (!Number.isFinite(mb) || mb < 0))
@@ -230,8 +259,10 @@ async function renderAdmin(root) {
           flash($('#ttErr'), '✓ บันทึกเป้าทีมแล้ว');
         } catch (e) { flash($('#ttErr'), e.message, true); }
         inp.disabled = false;
+        recomputeTT();
       });
     });
+    recomputeTT();   // คิดผลรวมตอนเปิดหน้า
 
     // ── ผู้ใช้: เปลี่ยน role / ทีม / สถานะ ──
     root.querySelectorAll('[data-user]').forEach(el => {

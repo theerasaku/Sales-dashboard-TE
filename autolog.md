@@ -27,6 +27,18 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-24 07:01 · ยังไม่ commit · ลบถาวร + เป้ารวมทีม + ประวัติการเซ็น (timeline+PDF) + 🔴กู้ sw.js
+**step:** 3.11 (เจ้าของขอ 4 เรื่อง) | **ประเภท:** ฟีเจอร์ + แก้บั๊ก
+- **🔴 กู้ `docs/sw.js` ที่ถูก commit เป็นไฟล์ว่างมาตั้งแต่ 3.8** — ต้นเหตุ python one-liner `open(x,'w').write(open(x).read()...)` (truncate ก่อน read) · SW ว่าง 4 commit → PWA offline/แถบเวอร์ชันพัง (แอปยังเปิดได้ เพราะ register SW ล้มแบบ catch) · กู้จาก ffb8e83 (116 บรรทัด) + bump v0.21.0 · **ต่อไปใช้ sed เท่านั้น ห้าม python inline write**
+- **#1 ลบถาวร**: `db/phase3-11.sql` เปลี่ยน policy pending_delete/cust_delete = `is_admin() or (not is_active and can_edit_team(team_id))` → ลบถาวรได้เฉพาะที่ archive แล้ว (2 ขั้น: เก็บคลัง→ลบ) · งาน active ลบไม่ได้ยกเว้น admin
+  - adapter +deleteCustomer · ปุ่ม "🗑 ลบถาวร" ในโมดัล Pending+Book3 (โผล่เฉพาะ archived · กด 2 ครั้งยืนยัน)
+- **#3+#4 เป้ารายทีม**: ทีมแม่ (TE-IMP) แสดงผลรวมทีมย่อยอัตโนมัติ + กล่อง "รวมทั้งองค์กร" · คิดสด ๆ ตอนพิมพ์ (recomputeTT)
+- **#5 ประวัติการเซ็น timeline**: adapter +listSignoffHistory · signoff.js +signoffHistoryHtml/bindSignoffHistory (🔖 วันที่+ผู้ตรวจ ขยายดูคอมเมนต์ได้) แสดงในโมดัล Pending+Book3 ใกล้บันทึกกิจกรรม · **PDF แทรก sign-off ในไทม์ไลน์** (formprint mergeLogsWithSignoffs — เห็นคอมเมนต์ต่อท้ายวันที่)
+- **#2 (คำถาม design)** ตอบในแชต ไม่แตะโค้ด
+**ไฟล์:** db/phase3-11.sql · docs/js/data/{adapter,supabase-adapter,local-adapter}.js · docs/js/ui/{signoff,formprint}.js · docs/js/modules/{pending,book3,admin}.js · docs/css/app.css · docs/js/config.js · docs/sw.js
+**ทดสอบ:** ฟีเจอร์ใหม่ **14/14** (puppeteer local: ลบถาวร 2 ขั้น/เฉพาะ archived · TE-IMP=60 org=100 · ประวัติเซ็น+ขยายคอมเมนต์ · PDF มี sign-off) · delete RLS **7/7** (Postgres จริง: sale ลบ archived ทีมตัวเองได้/active+ทีมอื่นไม่ได้/admin ได้หมด) · regression: success-miss 14 · fix2 13 · intake-ui 27 · bk 12 ผ่านหมด · parity 58 · SQL parse 14/14
+**ค้าง:** **เจ้าของต้องรัน `db/phase3-11.sql`** ก่อน ปุ่มลบถาวรถึงจะทำงานบน Supabase
+
 ## 2026-07-24 04:53 · ยังไม่ commit · แก้ 2 เรื่องที่เจ้าของแจ้ง — เมนูตั้งค่า(manager) + Archive กรองเดือน
 **step:** — (แก้ตามที่เจ้าของแจ้ง) | **ประเภท:** แก้บั๊ก/ปรับ UX
 - เจ้าของแจ้ง: รัน `db/phase3-5.sql` แล้ว (ผ่าน 5/5) → AI Intake staging พร้อม
