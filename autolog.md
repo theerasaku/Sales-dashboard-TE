@@ -27,6 +27,22 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-24 · ยังไม่ commit · เลือกฟอนต์ได้ (Inter/Sarabun/ระบบ) — v0.28.0
+**step:** — (เจ้าของขอ "อยากให้เลือก font ได้") | **ประเภท:** ฟีเจอร์ (ธีม/ฟอนต์)
+- เพิ่มตัวเลือกฟอนต์ในหน้าต่าง 🎨 (ต่อจากธีม+สีเน้น) 3 ตัว: **Inter** (ค่าเริ่มต้น) · **Sarabun** (เอกสารไทย) · **ระบบ**
+  - เจ้าของเลือกชุด "Inter · Sarabun · ระบบ" (ถาม AskUserQuestion เพราะกระทบน้ำหนัก repo)
+- 🔤 **bundle Sarabun (subset ไทย) 400+700 ลง `docs/fonts/`** — ~9.8KB/ไฟล์ (ไทยมีกลิฟน้อย) · OFL · โหลดจาก fontsource
+  - `@font-face` จำกัด `unicode-range: U+0E00-0E7F` → ไทย=Sarabun · ตัวเลข/อังกฤษ=Inter (per-glyph fallback)
+  - offline ครบ ไม่พึ่ง CDN (เพิ่มลง sw.js SHELL precache) · ขึ้นครบทุกเครื่องรวม iPhone/iPad ที่ไม่มี Sarabun ในระบบ
+- สลับด้วย `data-font` บน `<html>` (ชุดเดียวกับ data-theme/data-accent) · จำใน localStorage `te-dashboard:font`
+  - `html[data-font=X]` specificity 0,1,1 → ชนะ `--font` ใน :root และ [data-theme] (0,1,0)
+  - เพิ่ม data-font ในสคริปต์ inline กันจอกระพริบ (index.html) + `applyTheme()` ตั้งให้
+- 🐛 **กันบั๊กจากการ bundle**: ลบ "Sarabun" ออกจากสแตก --font เริ่มต้น/Inter (`:root`, noir, data-font=inter)
+  → ไม่งั้น bundle Sarabun แล้ว ค่าเริ่มต้นจะกลายเป็น Sarabun บน iPhone ทันที + ตัวเลือก Inter กับ Sarabun เหมือนกัน
+  (จับได้ตอนเทสต์วัดความกว้าง: inter=sarabun=329px · แก้แล้ว sarabun=329 ≠ ระบบ=338.8)
+- ทดสอบ font-test 13/13 (โหลด/ครอบคลุมไทย/สลับ/จำค่า/no-flash/ไม่มี error) · เรนเดอร์ภาพยืนยันพิกเกอร์ + Sarabun บนหน้าจริง
+- bump v0.27.0 → v0.28.0 · DATA_MODE=supabase · ไม่มี key/PII หลุด
+
 ## 2026-07-24 · ยังไม่ commit · ปรับ UI ตามดีไซน์ Claude Design (TeDashboard mockup) — v0.27.0
 **step:** — (เจ้าของแนบ mockup "เรียนรู้แนวทาง html เพื่อปรับ UI") | **ประเภท:** แก้บั๊ก + ปรับดีไซน์ (dashboard)
 - เทียบ mockup กับ UI จริง → **UI เราตรงกับดีไซน์อยู่แล้วเกือบทั้งหมด** (ตัวแปร CSS ชุดเดียวกัน · การ์ด 14px · `.stat-value` 24px/-.4px · `.tag` = pill color-mix 18/40% เหมือน stage pill ของ mockup เป๊ะ)

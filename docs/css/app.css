@@ -10,6 +10,26 @@
   src: url('../fonts/inter-latin.woff2') format('woff2');
 }
 
+/* Sarabun (ไทย) — bundle เฉพาะ subset ไทย (~10KB/น้ำหนัก · OFL · github/google/fonts)
+   จำกัด unicode-range แค่บล็อกไทย → ตัวเลข/อังกฤษตกไปใช้ Inter ที่ bundle แล้ว (per-glyph fallback)
+   ใช้ในตัวเลือกฟอนต์ "Sarabun" (data-font=sarabun) — ขึ้นครบทุกเครื่องรวม iPhone/iPad ที่ไม่มี Sarabun ในระบบ */
+@font-face {
+  font-family: 'Sarabun';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/sarabun-thai-400.woff2') format('woff2');
+  unicode-range: U+0E00-0E7F, U+200B, U+25CC;
+}
+@font-face {
+  font-family: 'Sarabun';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/sarabun-thai-700.woff2') format('woff2');
+  unicode-range: U+0E00-0E7F, U+200B, U+25CC;
+}
+
 :root {
   --bg:          #0d0e12;
   --bg-panel:    #14161c;
@@ -75,10 +95,19 @@
   --safe-t-env: env(safe-area-inset-top, 0px);
   --safe-t: var(--safe-t-env);
 
-  /* Inter (Latin) มาก่อน → ตัวอังกฤษใช้ Inter · ตัวไทยตกไป Noto Sans Thai/ระบบ (per-glyph fallback) */
-  --font: "Inter", "Noto Sans Thai", "Sarabun", -apple-system, BlinkMacSystemFont,
+  /* Inter (Latin) มาก่อน → ตัวอังกฤษใช้ Inter · ตัวไทยตกไป Noto Sans Thai/ระบบ (per-glyph fallback)
+     ⚠️ ห้ามใส่ "Sarabun" ในสแตกนี้ — เรา bundle Sarabun (ไทย) แล้ว ถ้าใส่ ค่าเริ่มต้นจะกลายเป็น
+        Sarabun บน iPhone ทันที + ตัวเลือกฟอนต์ "Inter" กับ "Sarabun" จะเหมือนกัน (เลือก Sarabun ที่ data-font แทน) */
+  --font: "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont,
           "Segoe UI", Roboto, sans-serif;
 }
+
+/* ── ตัวเลือกฟอนต์ (step: เลือกฟอนต์ได้) · สลับด้วย <html data-font="..."> ──
+   ไม่มี attribute = ค่าเริ่มต้น (Inter) ตาม :root · จำค่าใน localStorage + สคริปต์กันจอกระพริบ
+   ⚠️ ต้องเป็น html[data-font] (specificity 0,1,1) เพื่อชนะ --font ที่ตั้งใน :root และใน [data-theme] (0,1,0) */
+html[data-font="inter"]   { --font: "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+html[data-font="sarabun"] { --font: "Sarabun", "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+html[data-font="system"]  { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans Thai", "Thonburi", sans-serif; }
 
 /* ═══════════════════════════════════════════════════════════
    ธีม (step 3.7) — เขียนทับเฉพาะสีพื้น/ตัวอักษร/ขอบ
@@ -141,7 +170,7 @@
   --stage-lead:#6d6a80; --stage-qualify:#423a6a; --stage-present:#5d5294;
   --stage-quote:#796cbf; --stage-nego:#968ae0; --stage-won:#3fb950; --stage-lost:#e66767;
   --chart-1:#9184d9; --chart-2:#7c8cff; --chart-3:#3fb950; --chart-4:#d29922; --chart-5:#e66767; --chart-6:#8a8f98;
-  --font:"Inter","Noto Sans Thai","Sarabun",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --font:"Inter","Noto Sans Thai",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
 }
 
 [data-theme="brown"] {
@@ -1557,8 +1586,21 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .th-dot.on { border-color: var(--text); }
 .th-hint { font-size: 11.5px; color: var(--text-mute); margin-top: 14px; }
 
+/* ── ตัวเลือกฟอนต์ (ใช้ปุ่ม .th-card ร่วมกับธีม · แทน swatch ด้วยตัวอย่างฟอนต์จริง) ── */
+.th-fonts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.th-fontsample {
+  height: 40px; border-radius: var(--r-sm); border: 1px solid var(--border);
+  background: var(--bg); display: grid; place-items: center;
+  font-size: 16px; color: var(--text); line-height: 1;
+}
+/* พรีวิวฟอนต์จริงในปุ่ม — font-family (ไม่ใช่สี) จึงไม่ติดกติกา "ห้าม hardcode"
+   ไทย = ฟอนต์นั้น · ตัวเลข/อังกฤษ = Inter (ตรงกับพฤติกรรมจริงของ per-glyph fallback) */
+.th-fontsample[data-font="inter"]   { font-family: "Inter","Noto Sans Thai",sans-serif; }
+.th-fontsample[data-font="sarabun"] { font-family: "Sarabun","Inter","Noto Sans Thai",sans-serif; }
+.th-fontsample[data-font="system"]  { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif; }
+
 @media (max-width: 430px) {
-  .th-themes { grid-template-columns: 1fr; }
+  .th-themes, .th-fonts { grid-template-columns: 1fr; }
   .th-dot { width: 44px; height: 44px; }
 }
 

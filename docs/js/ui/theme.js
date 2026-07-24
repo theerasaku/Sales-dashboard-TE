@@ -12,6 +12,7 @@
 
 const LS_THEME  = 'te-dashboard:theme';
 const LS_ACCENT = 'te-dashboard:accent';
+const LS_FONT   = 'te-dashboard:font';
 
 export const THEMES = [
   { id: 'noir',     label: 'Noir · ม่วงเข้ม', note: 'ค่าเริ่มต้น · ดีไซน์จาก Claude' },
@@ -30,8 +31,17 @@ export const ACCENTS = [
   { id: 'rose',   label: 'ชมพูกุหลาบ' },
 ];
 
+// ฟอนต์ — bundle offline (ไม่พึ่ง CDN) · Sarabun subset ไทยอยู่ใน docs/fonts/
+//   ไทย = ฟอนต์ที่เลือก · ตัวเลข/อังกฤษ = Inter (per-glyph fallback ใน --font)
+export const FONTS = [
+  { id: 'inter',   label: 'Inter',   note: 'ค่าเริ่มต้น · โมเดิร์น สะอาดตา' },
+  { id: 'sarabun', label: 'Sarabun', note: 'ฟอนต์เอกสารไทย · เข้ากับฟอร์มที่พิมพ์' },
+  { id: 'system',  label: 'ระบบ',    note: 'ฟอนต์เนทีฟของเครื่อง · เบาสุด' },
+];
+
 const THEME_IDS  = new Set(THEMES.map(t => t.id));
 const ACCENT_IDS = new Set(ACCENTS.map(a => a.id));
+const FONT_IDS   = new Set(FONTS.map(f => f.id));
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -45,11 +55,16 @@ export function currentAccent() {
   const a = localStorage.getItem(LS_ACCENT);
   return ACCENT_IDS.has(a) ? a : 'indigo';
 }
+export function currentFont() {
+  const f = localStorage.getItem(LS_FONT);
+  return FONT_IDS.has(f) ? f : 'inter';
+}
 
 /** ตั้ง attribute บน <html> ให้ตรงกับค่าที่จำไว้ (idempotent · เรียกซ้ำได้) */
 export function applyTheme() {
   document.documentElement.dataset.theme  = currentTheme();
   document.documentElement.dataset.accent = currentAccent();
+  document.documentElement.dataset.font   = currentFont();
 }
 
 function setTheme(id) {
@@ -61,6 +76,11 @@ function setAccent(id) {
   if (!ACCENT_IDS.has(id)) return;
   try { localStorage.setItem(LS_ACCENT, id); } catch {}
   document.documentElement.dataset.accent = id;
+}
+function setFont(id) {
+  if (!FONT_IDS.has(id)) return;
+  try { localStorage.setItem(LS_FONT, id); } catch {}
+  document.documentElement.dataset.font = id;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -75,7 +95,7 @@ export function openThemePicker() {
   document.body.appendChild(host);
 
   const paint = () => {
-    const th = currentTheme(), ac = currentAccent();
+    const th = currentTheme(), ac = currentAccent(), fo = currentFont();
     host.innerHTML = `
       <div class="modal-box modal-sm">
         <div class="modal-head">
@@ -100,7 +120,18 @@ export function openThemePicker() {
                       data-accent-pick="${a.id}" data-accent="${a.id}"
                       title="${esc(a.label)}" aria-label="${esc(a.label)}"><i></i></button>`).join('')}
           </div>
-          <p class="th-hint">ระบบจำค่าไว้ในเครื่องนี้ · เปิดครั้งหน้าจะใช้ธีมเดิม</p>
+
+          <p class="th-label">ฟอนต์</p>
+          <div class="th-fonts">
+            ${FONTS.map(f => `
+              <button type="button" class="th-card ${f.id === fo ? 'on' : ''}" data-font-pick="${f.id}">
+                <span class="th-fontsample" data-font="${f.id}">ก ข ค · Aa · 123</span>
+                <span class="th-name">${esc(f.label)}</span>
+                <span class="th-note">${esc(f.note)}</span>
+              </button>`).join('')}
+          </div>
+
+          <p class="th-hint">ระบบจำค่าไว้ในเครื่องนี้ · เปิดครั้งหน้าจะใช้ธีม/ฟอนต์เดิม</p>
         </div>
       </div>`;
 
@@ -108,6 +139,8 @@ export function openThemePicker() {
       b.addEventListener('click', () => { setTheme(b.dataset.themePick); paint(); }));
     host.querySelectorAll('[data-accent-pick]').forEach(b =>
       b.addEventListener('click', () => { setAccent(b.dataset.accentPick); paint(); }));
+    host.querySelectorAll('[data-font-pick]').forEach(b =>
+      b.addEventListener('click', () => { setFont(b.dataset.fontPick); paint(); }));
     host.querySelector('#thClose').addEventListener('click', () => host.remove());
   };
 
@@ -115,4 +148,4 @@ export function openThemePicker() {
   host.addEventListener('mousedown', (e) => { if (e.target === host) host.remove(); });
 }
 
-export default { THEMES, ACCENTS, applyTheme, openThemePicker, currentTheme, currentAccent };
+export default { THEMES, ACCENTS, FONTS, applyTheme, openThemePicker, currentTheme, currentAccent, currentFont };
