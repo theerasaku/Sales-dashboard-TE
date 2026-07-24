@@ -17,6 +17,8 @@ export const THEMES = [
   { id: 'dark',     label: 'Linear Dark', note: 'ค่าตั้งต้น · เข้าตา ใช้ในร่ม' },
   { id: 'light',    label: 'สว่าง',        note: 'พื้นขาว · อ่านง่ายบนจอสว่าง' },
   { id: 'contrast', label: 'คอนทราสต์สูง', note: 'ดำสนิท ตัวอักษรชัด · กลางแดด/สายตาไม่ชัด' },
+  { id: 'noir',     label: 'Noir · ม่วงเข้ม', note: 'ดีไซน์จาก Claude · โทนม่วงเข้ม' },
+  { id: 'brown',    label: 'Brown · กระดาษ', note: 'ดีไซน์จาก Claude · โทนน้ำตาลอุ่น' },
 ];
 
 // สีเน้น — คัดมาแล้ว CVD-safe (ตรงกับ [data-accent] ใน app.css)

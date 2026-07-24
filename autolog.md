@@ -27,6 +27,19 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-24 07:11 · ยังไม่ commit · เพิ่มธีมจาก Claude design — noir + brown
+**step:** — (เจ้าของส่ง design มา) | **ประเภท:** ฟีเจอร์ (ธีม)
+- เจ้าของส่งไฟล์จาก Claude design 3 ไฟล์ · ตัวที่ใช้ได้จริง = `te-theme.css` (สกินสำหรับแอปนี้โดยตรง 2 ธีม noir/brown · ใช้ชื่อตัวแปร CSS ตรงกับระบบเดิมทุกตัว)
+  - support.js/ds-base.js = runtime ของ Design Component ไม่เกี่ยวกับแอปเรา → ไม่ใช้
+- ผนวก `[data-theme="noir"]` (ม่วงเข้ม accent #9184d9) + `[data-theme="brown"]` (น้ำตาลกระดาษ) เข้า app.css + เพิ่มในปุ่ม 🎨 (theme.js THEMES)
+  - ⚠️ **ตัด `@import` Google Fonts ออก** (CLAUDE.md ห้าม CDN — PWA ออฟไลน์พัง) · `--font` ตั้งชื่อฟอนต์ไว้เป็นตัวเลือก มี system fallback
+  - ตัด `.te-nav/.te-seg` (คลาสของ design เอง ใช้ data-on ที่แอปไม่มี) — nav active ของแอปใช้ --accent-soft/--accent-text ตามธีมอยู่แล้ว
+  - สีเน้นที่ผู้ใช้เลือกเอง (data-accent) ทับ accent ของธีมได้ · ผู้ใช้ค่าตั้งต้น (indigo) จะได้สีของธีม (noir=ม่วง)
+- bump v0.22.0
+**ไฟล์:** docs/css/app.css · docs/js/ui/theme.js · docs/js/config.js · docs/sw.js
+**ทดสอบ:** ธีม **18/18** (puppeteer local: 5 ธีม · สลับ noir/brown ได้ · noir accent ม่วง · reload จำได้) · ดูภาพ noir จริงแล้ว สวยตามดีไซน์ layout ไม่แตก
+**หมายเหตุ:** ถ้าอยากได้ฟอนต์ Inter จริง (ไม่ใช่ fallback) ต้อง bundle .woff2 ลง repo ทีหลัง (กัน CDN)
+
 ## 2026-07-24 07:01 · ยังไม่ commit · ลบถาวร + เป้ารวมทีม + ประวัติการเซ็น (timeline+PDF) + 🔴กู้ sw.js
 **step:** 3.11 (เจ้าของขอ 4 เรื่อง) | **ประเภท:** ฟีเจอร์ + แก้บั๊ก
 - **🔴 กู้ `docs/sw.js` ที่ถูก commit เป็นไฟล์ว่างมาตั้งแต่ 3.8** — ต้นเหตุ python one-liner `open(x,'w').write(open(x).read()...)` (truncate ก่อน read) · SW ว่าง 4 commit → PWA offline/แถบเวอร์ชันพัง (แอปยังเปิดได้ เพราะ register SW ล้มแบบ catch) · กู้จาก ffb8e83 (116 บรรทัด) + bump v0.21.0 · **ต่อไปใช้ sed เท่านั้น ห้าม python inline write**
