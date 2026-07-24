@@ -36,6 +36,8 @@ export const ACCENTS = [
 export const FONTS = [
   { id: 'inter',   label: 'Inter',   note: 'ค่าเริ่มต้น · โมเดิร์น สะอาดตา' },
   { id: 'sarabun', label: 'Sarabun', note: 'ฟอนต์เอกสารไทย · เข้ากับฟอร์มที่พิมพ์' },
+  { id: 'ibmplex', label: 'IBM Plex Sans Thai', note: 'ตัวเหลี่ยมโมเดิร์น · อ่านชัด' },
+  { id: 'noto',    label: 'Noto Sans Thai',     note: 'อ่านง่าย เป็นกลาง · มาตรฐาน' },
   { id: 'system',  label: 'ระบบ',    note: 'ฟอนต์เนทีฟของเครื่อง · เบาสุด' },
 ];
 

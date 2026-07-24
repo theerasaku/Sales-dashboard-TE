@@ -89,8 +89,9 @@ function presetRange(kind, now = new Date()) {
               `${y}-${String(q * 3 + 3).padStart(2, '0')}`];
     }
     // ครึ่งปีหลัง = ช่วงเป้า 80 ล้านบาท (ก.ค.–ธ.ค.)
-    case 'h2': return [`${y}-07`, `${y}-12`];
-    default:   return ['', ''];
+    case 'h2':   return [`${y}-07`, `${y}-12`];
+    case 'year': return [`${y}-01`, `${y}-12`];   // ทั้งปี
+    default:     return ['', ''];
   }
 }
 
@@ -201,7 +202,8 @@ export default {
 
         <button class="btn btn-ghost btn-sm" data-preset="this-month">เดือนนี้</button>
         <button class="btn btn-ghost btn-sm" data-preset="quarter">ไตรมาสนี้</button>
-        <button class="btn btn-ghost btn-sm" data-preset="h2">ครึ่งปีหลัง (เป้า 80 ล้าน)</button>
+        <button class="btn btn-ghost btn-sm" data-preset="h2">ครึ่งปีหลัง</button>
+        <button class="btn btn-ghost btn-sm" data-preset="year">ทั้งปี</button>
         <button class="btn btn-ghost btn-sm" data-preset="">ล้าง</button>
 
         <div class="segmented" id="pStatus" role="tablist" aria-label="สถานะงาน">
@@ -730,6 +732,21 @@ async function openDetail(host, id, onSaved, teams) {
                  <br>จากนั้นใช้ปุ่ม <b>＋ บันทึก</b> ในตารางได้เลย ไม่ต้องเปิดฟอร์มเต็มทุกครั้ง
                </div>
              </section>`}
+
+          <!-- 🔴 แถบผล Success/Miss อยู่ "ใน" modal-body (เลื่อนตามเนื้อหา ไม่ pin ไว้ล่างจอ)
+               ของเดิมอยู่นอก body → ถูกตรึงล่างจอ บังฟิลด์บน S24 (บทเรียนเดียวกับ PWA bar)
+               ห้ามย้ายกลับออกไปนอก modal-body -->
+          ${id ? `
+          <div class="resultbar">
+            <span class="resultbar-l">ผลของงานนี้</span>
+            <button type="button" class="btn-result btn-win" id="pResWin">✓ Success — ได้งาน</button>
+            <button type="button" class="btn-result btn-miss" id="pResMiss">✗ Miss — ไม่ได้งาน</button>
+            <label class="resultbar-because">
+              <span>เพราะ</span>
+              <input type="text" name="result_because" value="${esc(row?.result_because)}"
+                     placeholder="เหตุผล เช่น ราคาสู้คู่แข่งไม่ได้ / ได้สเปกตรงงาน">
+            </label>
+          </div>` : ''}
         </div>
 
         <p class="login-err" id="pErr" role="alert" hidden></p>
@@ -738,18 +755,6 @@ async function openDetail(host, id, onSaved, teams) {
           งานนี้ปิดจบแล้ว — กด <b>"Project จบแล้ว"</b> เก็บเข้าคลังได้เลย
           จะได้ไม่มาปนกับงานที่ยังเดินอยู่ (กิจกรรมที่ผูกไว้จะหยุดเตือนด้วย)
         </p>
-
-        ${id ? `
-        <div class="resultbar">
-          <span class="resultbar-l">ผลของงานนี้</span>
-          <button type="button" class="btn-result btn-win" id="pResWin">✓ Success — ได้งาน</button>
-          <button type="button" class="btn-result btn-miss" id="pResMiss">✗ Miss — ไม่ได้งาน</button>
-          <label class="resultbar-because">
-            <span>เพราะ</span>
-            <input type="text" name="result_because" value="${esc(row?.result_because)}"
-                   placeholder="เหตุผล เช่น ราคาสู้คู่แข่งไม่ได้ / ได้สเปกตรงงาน">
-          </label>
-        </div>` : ''}
 
         <div class="modal-foot">
           ${id ? `<button type="button" id="pArch"

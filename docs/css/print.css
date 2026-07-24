@@ -117,6 +117,12 @@
     word-break: break-word;
   }
 
+  /* หัวฟอร์ม Pending: ชื่อโครงการช่องกว้าง · NO.(Sale code count) ชิดขวา ไม่ตกบรรทัด */
+  .pf-head-top { flex-wrap: nowrap; align-items: flex-end; }
+  .pf-head-top .pf-v-title { flex: 1 1 auto; }        /* ชื่อโครงการ = กินพื้นที่ที่เหลือ */
+  .pf-head-top .pf-l-no { min-width: auto; }           /* ป้าย No. ยุบชิดขวา */
+  .pf-head-top .pf-v-no { flex: 0 0 30mm; }            /* ช่องเลข No. คงที่ */
+
   .pf-center { justify-content: center; }
   .pf-hdr-r  { text-align: right; display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 10px; }
   .pf-hdr-c  { display: flex; justify-content: center; gap: 6px; margin-bottom: 12px; }

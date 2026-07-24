@@ -27,6 +27,25 @@
 
 <!-- ⬇️ เพิ่มรายการใหม่ใต้บรรทัดนี้ (ใหม่สุดอยู่บน) ⬇️ -->
 
+## 2026-07-24 · ยังไม่ commit · งานชุดกลางคืน 7 อย่าง (เจ้าของสั่งก่อนนอน) — v0.29.0
+**step:** — (เจ้าของสั่งรวด 7 ข้อ) | **ประเภท:** ฟีเจอร์ + แก้บั๊ก (หลายหน้า)
+1. **Dashboard: ตาราง "Pending Project ล่าสุด"** (`dashboard.js` `recentPendingSection`) — 8 งานที่อัปเดตล่าสุด + stage pill
+   - admin เห็นทุกทีม · sale เห็นเฉพาะทีมตัวเอง — **RLS คัดให้แล้วใน rows** (ใช้ scoped = ผ่านตัวกรองทีมอีกชั้น)
+2. **ฟอนต์: เพิ่ม IBM Plex Sans Thai + Noto Sans Thai** (bundle subset ไทย 400+700 · ~9-12KB/ไฟล์ · OFL)
+   - ตัวเลือกในหน้า 🎨 เป็น 5 ฟอนต์: Inter · Sarabun · IBM Plex · Noto · ระบบ
+   - 🐛 กันบั๊กเดิมซ้ำ: ลบ "Noto Sans Thai" ออกจากสแตก --font เริ่มต้น/inter/system ด้วย (bundle แล้วจะกลายเป็นค่าเริ่มต้นบน iPhone + ตัวเลือกซ้ำ)
+3. **AI Import: ตัด Notion + Obsidian** — เหลือแค่ นามบัตร→ลูกค้า · ฟอร์มกระดาษ→Pending (`ai-intake.js`)
+4. **AI: เชื่อม API key ของผู้ใช้เอง (BYO key)** — กล่อง 🔑 ในโมดัล AI Import
+   - 🔒 เก็บ localStorage `te-dashboard:anthropic-key` **เครื่องนี้เท่านั้น** · ไม่ลง repo/ไม่ส่ง Supabase · ยิงตรงหา Anthropic (header dangerous-direct-browser-access) · เตือน "อย่าใส่บนเครื่องสาธารณะ"
+   - มี key → `aiExtract` ยิงตรง · ไม่มี → fallback Edge Function เดิม · ใช้ได้ทั้ง pending + book3
+5. **Pending: preset "ครึ่งปีหลัง (เป้า 80 ล้าน)" → "ครึ่งปีหลัง" + เพิ่มปุ่ม "ทั้งปี"** (`pending.js` presetRange case 'year')
+6. **Pending form: ย้ายแถบ Success/Miss เข้า `.modal-body`** — เดิมอยู่นอก body ถูก pin ล่างจอ บังฟิลด์บน S24
+   - ย้ายเป็นลูกตัวสุดท้ายของ body (เลื่อนตามเนื้อหา) · CSS margin ชิดขอบล่าง body · บทเรียนเดียวกับ PWA bar
+7. **PDF print (Pending) หัวฟอร์ม** (`formprint.js` + `print.css`) — เดิม**ไม่แสดงชื่อโครงการเลย** (มีแต่ spacer ว่าง)
+   - เพิ่มช่องชื่อโครงการ (pf-v-title กว้าง) · ขยับ "NO.(Sale code count)" ไปขวา (pf-v-no คงที่ · flex-wrap:nowrap) ไม่ตกบรรทัด
+- ทดสอบ: font-test 17/17 · dash-filter 15/15 · batch-test 16/16 · เรนเดอร์ภาพยืนยัน หัว print + AI keybox + dashboard + pending form
+- bump v0.28.0 → v0.29.0 · DATA_MODE=supabase · ไม่มี key/PII หลุด (BYO key อยู่ localStorage เท่านั้น)
+
 ## 2026-07-24 · ยังไม่ commit · เลือกฟอนต์ได้ (Inter/Sarabun/ระบบ) — v0.28.0
 **step:** — (เจ้าของขอ "อยากให้เลือก font ได้") | **ประเภท:** ฟีเจอร์ (ธีม/ฟอนต์)
 - เพิ่มตัวเลือกฟอนต์ในหน้าต่าง 🎨 (ต่อจากธีม+สีเน้น) 3 ตัว: **Inter** (ค่าเริ่มต้น) · **Sarabun** (เอกสารไทย) · **ระบบ**

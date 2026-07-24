@@ -99,9 +99,10 @@ export function pendingFormHtml(row, contacts, products, logs) {
 
   const page1 = `
   <section class="pf-page">
-    <div class="pf-row"><span class="pf-l">PENDING PROJECT</span>
-      <span class="pf-sp"></span>
-      <span class="pf-l">NO.(Sale code count)</span> ${V(row.pending_no)}</div>
+    <div class="pf-row pf-head-top"><span class="pf-l">PENDING PROJECT</span>
+      <span class="pf-v pf-v-title">${esc(row.project_name ?? '') || '&nbsp;'}</span>
+      <span class="pf-l pf-l-no">NO.(Sale code count)</span>
+      <span class="pf-v pf-v-no">${esc(row.pending_no ?? '') || '&nbsp;'}</span></div>
 
     <div class="pf-row"><span class="pf-l">SITE</span> ${V(row.site)}</div>
 

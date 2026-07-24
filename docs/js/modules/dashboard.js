@@ -446,6 +446,8 @@ export default {
           </div>
         </div>
 
+        ${recentPendingSection(scoped)}
+
         ${selected.size ? '' : actSection(acts)}
 
         <div class="card sec">
@@ -518,6 +520,46 @@ function teamBreakdownSection(rows, teams, targetsMap, opt) {
         </table>
       </div>
       <p class="sec-foot">ตั้งตัวเลขเป้าของแต่ละทีมได้ที่หน้า "ตั้งค่าระบบ" (เฉพาะผู้ดูแล/หัวหน้าที่แก้ทีมนั้นได้)</p>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// Pending ล่าสุด — ตารางงานที่อัปเดตล่าสุด (เจ้าของขอ 24 ก.ค. 2569)
+// admin เห็นของทุกทีม · sale เห็นเฉพาะทีมตัวเอง — RLS คัดมาให้แล้วใน rows
+// (ที่นี่ใช้ scoped = ผ่านตัวกรองทีมบน dashboard อีกชั้น)
+// ══════════════════════════════════════════════════════════
+function recentPendingSection(scoped) {
+  const recent = (scoped || [])
+    .filter(r => r.is_active !== false)
+    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
+    .slice(0, 8);
+  if (!recent.length) return '';
+  const stagePill = (id) => {
+    const s = STAGES.find(x => x.id === id) || STAGES[0];
+    return `<span class="tag" style="--tag-c:var(--stage-${s.id})">${esc(s.label)}</span>`;
+  };
+  return `
+    <div class="card sec">
+      <h3 class="sec-h">Pending Project ล่าสุด <span class="sec-sub">${recent.length} รายการที่อัปเดตล่าสุด</span></h3>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th class="nosort">โครงการ</th>
+            <th class="nosort">หน่วยงาน</th>
+            <th class="num nosort">มูลค่า (บาท)</th>
+            <th class="nosort">ขั้นตอน</th>
+          </tr></thead>
+          <tbody>
+            ${recent.map(r => `<tr class="no-click">
+              <td><b>${esc(r.project_name || '—')}</b></td>
+              <td>${esc(r.customer_name || '')}</td>
+              <td class="num">${Number(r.value_baht || 0).toLocaleString('th-TH')}</td>
+              <td>${stagePill(r.stage)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="sec-foot"><a class="lnk" href="#pending">เปิด Pending Project →</a></p>
     </div>`;
 }
 

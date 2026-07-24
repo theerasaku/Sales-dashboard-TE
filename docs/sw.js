@@ -9,7 +9,7 @@
 //
 // สิ่งที่ cache มีไว้ทำอย่างเดียว: เปิดแอปได้ตอนเน็ตล่ม (ลิฟต์ ชั้นใต้ดิน ต่างจังหวัด)
 
-const VERSION = 'v0.28.0';
+const VERSION = 'v0.29.0';
 const CACHE = `te-dashboard-${VERSION}`;
 
 // โหลดล่วงหน้าตอนติดตั้ง — ต้องครบทุกไฟล์ที่แอปต้องใช้ ไม่งั้นเน็ตล่มครั้งแรกจะเปิดไม่ขึ้น
@@ -23,6 +23,10 @@ const SHELL = [
   './fonts/inter-latin.woff2',
   './fonts/sarabun-thai-400.woff2',
   './fonts/sarabun-thai-700.woff2',
+  './fonts/ibm-plex-sans-thai-thai-400.woff2',
+  './fonts/ibm-plex-sans-thai-thai-700.woff2',
+  './fonts/noto-sans-thai-thai-400.woff2',
+  './fonts/noto-sans-thai-thai-700.woff2',
 
   './js/app.js',
   './js/config.js',

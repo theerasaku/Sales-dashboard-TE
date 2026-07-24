@@ -30,6 +30,34 @@
   unicode-range: U+0E00-0E7F, U+200B, U+25CC;
 }
 
+/* IBM Plex Sans Thai (ไทย · subset) — ตัวเลือกฟอนต์ data-font=ibmplex · OFL */
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../fonts/ibm-plex-sans-thai-thai-400.woff2') format('woff2');
+  unicode-range: U+0E00-0E7F, U+200B, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal; font-weight: 700; font-display: swap;
+  src: url('../fonts/ibm-plex-sans-thai-thai-700.woff2') format('woff2');
+  unicode-range: U+0E00-0E7F, U+200B, U+25CC;
+}
+
+/* Noto Sans Thai (ไทย · subset) — ตัวเลือกฟอนต์ data-font=noto · OFL */
+@font-face {
+  font-family: 'Noto Sans Thai';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../fonts/noto-sans-thai-thai-400.woff2') format('woff2');
+  unicode-range: U+0E00-0E7F, U+200B, U+25CC;
+}
+@font-face {
+  font-family: 'Noto Sans Thai';
+  font-style: normal; font-weight: 700; font-display: swap;
+  src: url('../fonts/noto-sans-thai-thai-700.woff2') format('woff2');
+  unicode-range: U+0E00-0E7F, U+200B, U+25CC;
+}
+
 :root {
   --bg:          #0d0e12;
   --bg-panel:    #14161c;
@@ -95,19 +123,22 @@
   --safe-t-env: env(safe-area-inset-top, 0px);
   --safe-t: var(--safe-t-env);
 
-  /* Inter (Latin) มาก่อน → ตัวอังกฤษใช้ Inter · ตัวไทยตกไป Noto Sans Thai/ระบบ (per-glyph fallback)
-     ⚠️ ห้ามใส่ "Sarabun" ในสแตกนี้ — เรา bundle Sarabun (ไทย) แล้ว ถ้าใส่ ค่าเริ่มต้นจะกลายเป็น
-        Sarabun บน iPhone ทันที + ตัวเลือกฟอนต์ "Inter" กับ "Sarabun" จะเหมือนกัน (เลือก Sarabun ที่ data-font แทน) */
-  --font: "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont,
+  /* Inter (Latin) มาก่อน → ตัวอังกฤษใช้ Inter · ตัวไทยตกไปฟอนต์ระบบของเครื่อง (per-glyph fallback)
+     ⚠️ ห้ามใส่ฟอนต์ไทยที่ bundle (Sarabun/IBM Plex/Noto) ในสแตกเริ่มต้นนี้ —
+        ถ้าใส่ ค่าเริ่มต้นจะกลายเป็นฟอนต์นั้นบน iPhone ทันที + ตัวเลือก "Inter" จะซ้ำกับตัวเลือกนั้น
+        (ให้เลือกฟอนต์ไทยผ่าน data-font แทน) */
+  --font: "Inter", -apple-system, BlinkMacSystemFont,
           "Segoe UI", Roboto, sans-serif;
 }
 
 /* ── ตัวเลือกฟอนต์ (step: เลือกฟอนต์ได้) · สลับด้วย <html data-font="..."> ──
    ไม่มี attribute = ค่าเริ่มต้น (Inter) ตาม :root · จำค่าใน localStorage + สคริปต์กันจอกระพริบ
    ⚠️ ต้องเป็น html[data-font] (specificity 0,1,1) เพื่อชนะ --font ที่ตั้งใน :root และใน [data-theme] (0,1,0) */
-html[data-font="inter"]   { --font: "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-html[data-font="sarabun"] { --font: "Sarabun", "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-html[data-font="system"]  { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans Thai", "Thonburi", sans-serif; }
+html[data-font="inter"]   { --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+html[data-font="sarabun"] { --font: "Sarabun", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+html[data-font="ibmplex"] { --font: "IBM Plex Sans Thai", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+html[data-font="noto"]    { --font: "Noto Sans Thai", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+html[data-font="system"]  { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Thonburi", sans-serif; }
 
 /* ═══════════════════════════════════════════════════════════
    ธีม (step 3.7) — เขียนทับเฉพาะสีพื้น/ตัวอักษร/ขอบ
@@ -170,7 +201,7 @@ html[data-font="system"]  { --font: -apple-system, BlinkMacSystemFont, "Segoe UI
   --stage-lead:#6d6a80; --stage-qualify:#423a6a; --stage-present:#5d5294;
   --stage-quote:#796cbf; --stage-nego:#968ae0; --stage-won:#3fb950; --stage-lost:#e66767;
   --chart-1:#9184d9; --chart-2:#7c8cff; --chart-3:#3fb950; --chart-4:#d29922; --chart-5:#e66767; --chart-6:#8a8f98;
-  --font:"Inter","Noto Sans Thai",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
 }
 
 [data-theme="brown"] {
@@ -559,6 +590,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .tbl th:hover { color: var(--text); }
 .tbl td.num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tbl tbody tr { cursor: pointer; }
+.tbl tbody tr.no-click { cursor: default; }
 .tbl tbody tr:hover { background: var(--bg-hover); }
 .tbl tbody tr:last-child td { border-bottom: none; }
 .tbl tbody tr.is-archived td { opacity: .5; }
@@ -1502,7 +1534,9 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
    ═══════════════════════════════════════════════════════════ */
 .resultbar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 12px 18px; margin: 0 -18px;
+  padding: 12px 18px;
+  /* อยู่ท้าย modal-body (ไม่ pin) · เต็มความกว้าง + ชิดขอบล่าง body (หัก padding ของ body) */
+  margin: 14px -18px -18px;
   border-top: 1px solid var(--border-soft);
   background: var(--bg-elev);
 }
@@ -1595,9 +1629,11 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 }
 /* พรีวิวฟอนต์จริงในปุ่ม — font-family (ไม่ใช่สี) จึงไม่ติดกติกา "ห้าม hardcode"
    ไทย = ฟอนต์นั้น · ตัวเลข/อังกฤษ = Inter (ตรงกับพฤติกรรมจริงของ per-glyph fallback) */
-.th-fontsample[data-font="inter"]   { font-family: "Inter","Noto Sans Thai",sans-serif; }
-.th-fontsample[data-font="sarabun"] { font-family: "Sarabun","Inter","Noto Sans Thai",sans-serif; }
-.th-fontsample[data-font="system"]  { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif; }
+.th-fontsample[data-font="inter"]   { font-family: "Inter",sans-serif; }
+.th-fontsample[data-font="sarabun"] { font-family: "Sarabun","Inter",sans-serif; }
+.th-fontsample[data-font="ibmplex"] { font-family: "IBM Plex Sans Thai","Inter",sans-serif; }
+.th-fontsample[data-font="noto"]    { font-family: "Noto Sans Thai","Inter",sans-serif; }
+.th-fontsample[data-font="system"]  { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
 
 @media (max-width: 430px) {
   .th-themes, .th-fonts { grid-template-columns: 1fr; }
@@ -1621,8 +1657,30 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   font-size: 11.5px; color: var(--text-mute);
 }
 .ai-or::before, .ai-or::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
+
+/* ── กล่องเชื่อม API key ของผู้ใช้เอง (BYO key) ── */
+.ai-keybox {
+  margin-top: 8px; border: 1px solid var(--border-soft); border-radius: var(--r-md);
+  background: var(--bg-elev);
+}
+.ai-keybox > summary {
+  cursor: pointer; padding: 10px 12px; font-size: 12.5px; font-weight: 600; color: var(--text-dim);
+  list-style: none; display: flex; align-items: center; gap: 6px;
+}
+.ai-keybox > summary::-webkit-details-marker { display: none; }
+.ai-keybox[open] > summary { border-bottom: 1px solid var(--border-soft); }
+.ai-keystate { font-weight: 400; color: var(--text-mute); }
+.ai-keybody { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.ai-keynote { font-size: 11.5px; color: var(--text-dim); line-height: 1.5; margin: 0; }
+.ai-keynote b { color: var(--text); }
+.ai-keyrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.ai-keyrow .inp { flex: 1 1 200px; min-width: 0; }
+.ai-keylink { font-size: 11.5px; color: var(--accent-text); }
+
 @media (max-width: 430px) {
   .ai-autobtn { flex: 1 1 100%; min-height: 44px; }
+  .ai-keyrow .inp { flex: 1 1 100%; }
+  .ai-keyrow .btn { flex: 1 1 44%; min-height: 44px; }
 }
 
 /* ตัวกรองเดือนถูกปิดตอนดู Archive (งานจบแล้วไม่กรองตามเดือนคาดปิด) */

@@ -3,7 +3,7 @@
 // ไม่ใช่หน้าใน router — เป็น modal ที่แถบ Pending และ Book 3 สี เรียกผ่านปุ่ม 🤖 AI Import
 //
 // วิธีทำงาน (3.5 = คัดลอกคำสั่งไปวางใน Claude เอง ฟรี ไม่มีค่า API · 3.8 จะเปลี่ยนเป็น Edge Function):
-//   1. เลือกแหล่ง (นามบัตร / ฟอร์มกระดาษ / Obsidian / Notion)
+//   1. เลือกแหล่ง (นามบัตร / ฟอร์มกระดาษ)   ← ตัด Obsidian/Notion ออกแล้ว (24 ก.ค. 2569)
 //   2. ก๊อปคำสั่งสำเร็จรูป → วางใน Claude พร้อมรูป/โน้ต → Claude คืน JSON
 //   3. วาง JSON กลับมา → ระบบพักไว้ใน staging (intake_items) ก่อนเสมอ
 //   4. ตรวจ/แก้ (ไฮไลต์เหลืองเฉพาะช่องที่ AI ไม่มั่นใจ) + เช็กว่าซ้ำกับของเดิมไหม
@@ -14,7 +14,67 @@
 
 import { adapter } from '../data/adapter.js';
 
-export const SOURCES = ['namecard', 'form', 'obsidian', 'notion'];
+export const SOURCES = ['namecard', 'form'];
+
+// ══════════════════════════════════════════════════════════
+// BYO API key (ทางเลือก) — เจ้าของขอ "เชื่อม API key ให้ AI เป็นสมองกรอกฟอร์ม" (24 ก.ค. 2569)
+//
+// 🔒 กติกาความปลอดภัย (สำคัญมาก):
+//   • เป็น key ของ "ผู้ใช้เอง" เก็บใน localStorage ของ "เครื่องนี้เท่านั้น"
+//   • ไม่เคยเขียนลง repo / ไม่ส่งเข้า Supabase / ยิงตรงหา Anthropic เท่านั้น
+//     (CLAUDE.md ห้าม hardcode ANTHROPIC_API_KEY ใน repo — ข้อนี้ไม่ละเมิด เพราะ key ไม่อยู่ในโค้ด)
+//   • ไม่ตั้ง key → fallback ไปใช้ Edge Function (adapter.aiExtract) เหมือนเดิม (key อยู่ฝั่งเซิร์ฟเวอร์)
+//   • เตือนผู้ใช้ในหน้าจอ: อย่าใส่บนเครื่องสาธารณะ/เครื่องที่ใช้ร่วมกัน
+// ══════════════════════════════════════════════════════════
+
+const AI_KEY_LS = 'te-dashboard:anthropic-key';
+const AI_MODEL  = 'claude-sonnet-5';
+
+export const aiKey = {
+  get:   () => { try { return localStorage.getItem(AI_KEY_LS) || ''; } catch { return ''; } },
+  set:   (v) => { try { localStorage.setItem(AI_KEY_LS, String(v || '').trim()); } catch {} },
+  clear: () => { try { localStorage.removeItem(AI_KEY_LS); } catch {} },
+  has:   () => !!aiKey.get(),
+};
+
+/** ยิงตรงหา Claude ด้วย key ของผู้ใช้เอง · payload {prompt, image?, text?} → { text } */
+async function callClaudeDirect(key, payload) {
+  const content = [];
+  if (payload.image)
+    content.push({ type: 'image', source: {
+      type: 'base64', media_type: payload.image.media_type, data: payload.image.data } });
+  if (payload.text) content.push({ type: 'text', text: String(payload.text) });
+  content.push({ type: 'text', text: payload.prompt || '' });
+
+  let res, data;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        // ต้องมี header นี้ Anthropic ถึงยอมให้เรียกตรงจากเบราว์เซอร์ (CORS)
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ model: AI_MODEL, max_tokens: 2048, messages: [{ role: 'user', content }] }),
+    });
+    data = await res.json().catch(() => null);
+  } catch {
+    throw new Error('เรียก Claude ไม่สำเร็จ — ตรวจอินเทอร์เน็ต / API key');
+  }
+  if (res.status === 401) throw new Error('API key ไม่ถูกต้องหรือหมดสิทธิ์ — ตรวจ key ที่ตั้งไว้');
+  if (!res.ok) throw new Error(data?.error?.message || `Claude ตอบ error (${res.status})`);
+  const text = (data?.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+  if (!text) throw new Error('Claude ไม่ได้ส่งข้อความกลับมา');
+  return { text };
+}
+
+/** เรียก AI: มี key ของผู้ใช้ → ยิงตรง · ไม่มี → Edge Function (adapter) */
+async function aiExtract(payload) {
+  const key = aiKey.get();
+  return key ? callClaudeDirect(key, payload) : adapter.aiExtract(payload);
+}
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -108,12 +168,12 @@ const REQUIRED = { customer: 'name', pending: 'project_name' };
 const DEST_LABEL = { customer: 'ลูกค้าใน Book 3 สี', pending: 'งานใน Pending Project' };
 const SOURCE_LABEL = {
   namecard: '📇 รูปนามบัตร', form: '📄 ฟอร์มกระดาษ / ลายมือ',
-  obsidian: '🪨 Obsidian', notion: '📝 Notion',
 };
 // แหล่งที่เหมาะกับแต่ละปลายทาง (ฟอร์มกระดาษ → Pending · นามบัตร → ลูกค้า)
+// (ตัด Obsidian / Notion ออกตามคำสั่งเจ้าของ 24 ก.ค. 2569 — เหลือเฉพาะรูป)
 const SOURCES_FOR = {
-  customer: ['namecard', 'obsidian', 'notion'],
-  pending:  ['form', 'obsidian', 'notion'],
+  customer: ['namecard'],
+  pending:  ['form'],
 };
 
 // ══════════════════════════════════════════════════════════
@@ -133,8 +193,6 @@ function promptFor(targetType, source) {
   const srcHint = {
     namecard: 'ฉันจะแนบรูปนามบัตร',
     form:     'ฉันจะแนบรูปฟอร์มกระดาษ/ลายมือ',
-    obsidian: 'ฉันจะวางโน้ตจาก Obsidian',
-    notion:   'ฉันจะวางเนื้อหาจาก Notion',
   }[source] || 'ฉันจะแนบข้อมูล';
 
   return `${srcHint} ช่วยอ่านแล้วแปลงเป็นข้อมูล${DEST_LABEL[targetType]}
@@ -342,13 +400,27 @@ export function openAIImport(targetType = 'customer', opts = {}) {
           <div class="ai-auto">
             <div class="ai-auto-l">
               <strong>📷 ให้ AI อ่านรูปอัตโนมัติ</strong>
-              <span>เลือกรูป/ถ่ายรูป นามบัตร · ฟอร์มกระดาษ · ลายมือ → ระบบส่งให้ Claude อ่านแล้วพักในรายการรอตรวจ (ต้องต่อเน็ต)</span>
+              <span>เลือกรูป/ถ่ายรูป นามบัตร · ฟอร์มกระดาษ · ลายมือ → AI อ่านแล้วกรอกลงฟอร์มในรายการรอตรวจ (ต้องต่อเน็ต + ตั้ง API key หรือ deploy Edge Function)</span>
             </div>
             <label class="btn btn-primary ai-autobtn" id="aiImgBtn">
               เลือกรูป
               <input type="file" id="aiImg" accept="image/*" hidden>
             </label>
           </div>
+
+          <details class="ai-keybox" id="aiKeyBox">
+            <summary>🔑 เชื่อม AI ด้วย API key ของคุณเอง <span class="ai-keystate" id="aiKeyState"></span></summary>
+            <div class="ai-keybody">
+              <p class="ai-keynote">🔒 เก็บบน<b>เครื่องนี้เท่านั้น</b> · ไม่ส่งเข้าระบบ ไม่ขึ้น repo · ยิงตรงหา Anthropic เพื่อให้ AI อ่านรูปแล้วกรอกฟอร์มให้ (ทั้ง Pending และ Book 3 สี)<br><b>⚠️ อย่าใส่บนเครื่องสาธารณะ/เครื่องที่ใช้ร่วมกัน</b></p>
+              <div class="ai-keyrow">
+                <input type="password" class="inp" id="aiKeyInput" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+                <button type="button" class="btn btn-primary btn-sm" id="aiKeySave">บันทึก key</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="aiKeyClear">ลบ key</button>
+              </div>
+              <a class="ai-keylink" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">ขอ API key ที่ console.anthropic.com →</a>
+            </div>
+          </details>
+
           <div class="ai-or"><span>หรือทำเองแบบไม่ใช้เน็ต · ฟรี</span></div>
 
           <p class="ai-step">2 · ก๊อปคำสั่งนี้ไปวางใน Claude พร้อมรูป/โน้ต แล้วรอ JSON</p>
@@ -387,6 +459,20 @@ export function openAIImport(targetType = 'customer', opts = {}) {
 
   const syncPrompt = () => { q('#aiPrompt').value = promptFor(targetType, source); };
   syncPrompt();
+
+  // ── BYO API key (เก็บ localStorage เครื่องนี้เท่านั้น) ──
+  const syncKeyState = () => {
+    const el = q('#aiKeyState');
+    if (el) el.textContent = aiKey.has() ? '· ตั้งไว้แล้ว ✓' : '· ยังไม่ได้ตั้ง';
+  };
+  syncKeyState();
+  if (aiKey.has()) q('#aiKeyBox').open = false;
+  q('#aiKeySave')?.addEventListener('click', () => {
+    const v = q('#aiKeyInput').value.trim();
+    if (!v) return setErr('ใส่ API key ก่อนบันทึก');
+    aiKey.set(v); q('#aiKeyInput').value = ''; syncKeyState(); setErr('');
+  });
+  q('#aiKeyClear')?.addEventListener('click', () => { aiKey.clear(); syncKeyState(); });
 
   q('#aiClose').addEventListener('click', close);
   q('#aiDone').addEventListener('click', close);
@@ -469,7 +555,7 @@ export function openAIImport(targetType = 'customer', opts = {}) {
     if (label) label.nodeValue = 'กำลังให้ AI อ่าน… ';
     try {
       const image = await fileToImagePart(file);
-      const res = await adapter.aiExtract({
+      const res = await aiExtract({
         prompt: promptFor(targetType, source),
         image, source, target_type: targetType,
       });
